@@ -70,9 +70,6 @@
      " "
      (git-modified))))
 
-;;(defun git-status ()
-
-
 (setq eshell-prompt-function
       (lambda ()
 	(let ((git   (git-prompt-branch-name)))

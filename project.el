@@ -27,7 +27,6 @@
 ;;; Code:
 
 ;;(require 'workspace)
-
 (defvar *project-projects* '())
 (defvar *project-website-map* '())
 (defvar *project-directories* '())
@@ -91,7 +90,6 @@
 (defun project--all-projects ()
   "Gather all project names."
   (mapcar #'car *project-projects*))
-
 
 (defun project-switch-project ()
   "Allow user to switch to a project.

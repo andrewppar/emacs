@@ -5,7 +5,7 @@
 
 ;; TODO: Find a better place for this maybe we need a general settings
 ;; section
-(add-hook 'write-file-functions 'delete-trailing-whitespace)
+;; (add-hook 'write-file-functions 'delete-trailing-whitespace)
 
 (defmacro load! (load-string)
   (declare (indent defun))
@@ -127,57 +127,62 @@
   (workspace-to-workspace-number 6))
 
 (which-key-map evil-normal-state-map ","
-  :labels
-  ( "g"  "git"
-    "gr" "code review"
-    "i"  "init"
-    "p"  "projectile"
-    "s"  "s-expression"
-    "w"  "workspaces"
-    )
-  :default-bindings
-  (;; ibuffer
-   "bi" 'ibuffer
-   "bb" 'ivy-switch-buffer
-   "bm" 'messages-buffer
-   "bs" 'save-buffer
-   "bt" 'scratch-buffer
-   "ba" 'save-all-buffers
-   "bq" 'save-all-buffers-kill-no-prompt
-   ;; (ma)git
-   "gs" 'magit-status
-   "gc" 'magit-branch-checkout
-   "gb" 'magit-blame
-   "gl" 'magit-log-current
-   "gr" 'code-review-start
-   "gh" 'git-timemachine
-   ;; init
-   "ii"  'init-file
-   "im"  'modules-file
-   "ic"  'core-file
-   "id"  'display-file
-   "ik"  'keyboard-file
-   ;; projectile
-   "p"   'projectile-command-map
-   ;; s-expressions
-   "sq"  'indent-pp-sexp
-   "sl"  'forward-sexp
-   "sh"  'backward-sexp
-   "st"  'transpose-sexps
-   "sf"  'move-sexp-forward
-   "sb"  'move-sexp-back
-   ;; tools
-   "te"  'eshell
-   "tp"  'project-switch-project
-   "w1"  'to-workspace-1
-   "w2"  'to-workspace-2
-   "w3"  'to-workspace-3
-   "w4"  'to-workspace-4
-   "w5"  'to-workspace-5
-   "w6"  'to-workspace-6
-   "wd"  'workspace-pop
-   ;; generic
-   "x"  'counsel-M-x))
+	       :labels
+	       ("i"  "init"
+		"t"  "tools"
+		"tc" "conda"
+		"tp" "project"
+		"p"  "projectile"
+		"g"  "magit"
+		"w"  "workspace"
+		"s"  "s-expression"
+		"p"  "projectile"
+		"v"  "ivy-view"
+		)
+	       :default-bindings
+	       (;; ibuffer
+		"bi" 'ibuffer
+		"bb" 'workspace-switch-buffer
+		"bm" 'messages-buffer
+		"bt" 'scratch-buffer
+		"ba" 'save-all-buffers
+		"bq" 'save-all-buffers-kill-no-prompt
+		"bs" 'save-buffer
+
+		;; init
+		"ii"  'init-file
+		"im"  'modules-file
+		"ic"  'core-file
+		"id"  'display-file
+		"ik"  'keyboard-file
+		;; workspaces
+                "wd" 'workspace-pop
+                "wj" 'ivy-switch-view
+		"w1" 'to-workspace-1
+		"w2" 'to-workspace-2
+		"w3" 'to-workspace-3
+		"w4" 'to-workspace-4
+		;; magit
+		"gs"  'magit-status
+		"gc"  'magit-branch-checkout
+		"gb"  'magit-blame
+		"gl"  'magit-log-current
+		;; projectile
+		"p"   'projectile-command-map
+		;; generic
+		"x"  'counsel-M-x
+		;; s-expressions
+		"sq"  'indent-pp-sexp
+		"sl"  'forward-sexp
+		"sh"  'backward-sexp
+		"st"  'transpose-sexps
+		;; tools
+		"tp" 'project-switch-project
+		"te" 'eshell
+		"tm" 'mu4e
+		"tca" 'conda-env-activate
+		"tcd" 'conda-env-deactivate
+		))
 
 ;;;;;;;;;;;;
 ;;; Projects
@@ -187,7 +192,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Scratch and Miscellany
-
 ;; TODO
 ;; Clean this up and put it in a macro
 
@@ -210,6 +214,20 @@
 ;; Hacks!
 (add-to-list 'exec-path "/usr/local/bin")
 (setenv "PATH" (mapconcat 'identity exec-path ":"))
+
+(defun scroll-down-one ()
+  (interactive)
+  (scroll-down-command 2))
+
+(defun scroll-up-one ()
+  (interactive)
+  (scroll-up-command 2))
+
+;; Redefine M-n and M-p to scroll like an itty bitty mousewheel
+(setq scroll-preserve-screen-position 1)
+;;scroll window up/down by one line
+(global-set-key (kbd "M-n") 'scroll-up-one)
+(global-set-key (kbd "M-p") 'scroll-down-one)
 
 (setq *end* (float-time))
 (eirene-splash (- *end* *start*))
