@@ -1,4 +1,7 @@
+;; -*- mode: emacs-lisp -*-
+
 (setq *start* (float-time))
+
 (load "~/.emacs.d/display.el")
 ;; Keyboard loads Modules so we don't load it again.
 (load "~/.emacs.d/keyboard.el")
@@ -6,7 +9,7 @@
 (load "~/emacs-files/timesheet.el")
 (load "~/emacs-files/diary-helpers.el")
 
-(server-start)
+;;(server-start)
 
 ;; Custom Theme
 
@@ -24,7 +27,6 @@
  )
 (set-face-attribute 'default nil :height 180)
 
-
 ;; Custom Bindings
 
 (defun messages-buffer ()
@@ -33,7 +35,7 @@
 
 (defun init-file ()
   (interactive)
-  (find-file "~/.emacs"))
+  (find-file "~/.emacs.d/emacs-init"))
 
 (defun modules-file()
   (interactive)
@@ -110,18 +112,6 @@
       (insert (format "#+date: %s\n" date))
       (insert (format "#+author: Andrew Parisi\n")))))
 
- 
-  ;;;;;;;;;;;
-  ;;; eshell
-
-  (defun eshell/clear ()
-    "Clear the eshell buffer."
-    (let ((inhibit-read-only t))
-      (erase-buffer)
-      (eshell-send-input)))
-
-
-
 (which-key-map evil-normal-state-map ","
 	       :labels
 	       ("i" "init"
@@ -161,6 +151,7 @@
 		 "t"  'org-todo
 		 "s"  'my-org-archive-done-tasks
 		 "ic" 'org-insert-code-block
+		 "ij" 'org-insert-jira-link
 		 "c"  'org-mode-ctrl-c-ctrl-c
 		 )
 		(clojure-mode-map
@@ -198,6 +189,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Eshell
 
+(defun eshell/clear ()
+  (interactive)
+  "Clear the eshell buffer."
+  (let ((inhibit-read-only t))
+    (erase-buffer)
+    (eshell-send-input)))
+
 (defun contract-eshell-pwd ()
   (let* ((cwd  (eshell/pwd))
 	 (dirs (split-string cwd "/"))
@@ -215,13 +213,8 @@
       (lambda ()
 	(concat
 	 (propertize "┌─[" 'face `(:foreground "#AFD75F")) 
-	;; (propertize (user-login-name) 'face `(:foreground "red"))
-	;; (propertize "@" 'face `(:foreground "green"))
-	 ;; (propertize (system-name) 'face `(:foreground "blue"))
 	 (propertize (format "%s" conda-env-current-name) 'face `(:foreground "#18aed4"))
 	 (propertize "]──[" 'face `(:foreground "#AFD75F"))
-	 ;;(propertize (format-time-string "%H:%M" (current-time)) 'face `(:foreground "yellow"))
-	;; (propertize "]──[" 'face `(:foreground "green"))
 	 (propertize (concat (contract-eshell-pwd)) 'face `(:foreground "#d0d0d0"))
 	 (propertize "]\n" 'face `(:foreground "#AFD75F"))
 	 (propertize "└─>" 'face `(:foreground "#AFD75F"))
