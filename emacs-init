@@ -3,6 +3,8 @@
 ;; Keyboard loads Modules so we don't load it again.
 (load "~/.emacs.d/keyboard.el")
 (load "~/.emacs.d/splash.el")
+(load "~/emacs-files/timesheet.el")
+(load "~/emacs-files/diary-helpers.el")
 
 (server-start)
 
@@ -20,6 +22,8 @@
 ;; :fringe   (:background nil)
 ;; :transparency ('alpha 90 90)
  )
+(set-face-attribute 'default nil :height 180)
+
 
 ;; Custom Bindings
 
@@ -45,13 +49,85 @@
   (forward-line)
   (insert (format "#+end_src\n"))
   (forward-line -2))
+
+(defun organizer-session()
+    (interactive)
+    (find-file "/Users/andrewparisi/org/status.org")
+    ;;    (refresh-agenda)
+    (let* ((status-buffer (current-buffer))
+           (year      (format-time-string "%Y"))
+           (month     (format-time-string "%B"))
+           (day       (format-time-string "%m-%d-%Y")))
+      (org-agenda-list)
+      (let ((agenda-buffer (current-buffer)))
+        (switch-to-buffer status-buffer)
+        (delete-other-windows)
+        (split-window-below)
+        (other-window 1)
+        (switch-to-buffer agenda-buffer)
+        (other-window 1)
+        (split-window-right)
+        (other-window 1)
+        (task-log)
+        (other-window 1)
+        (other-window 1))))
+
+(defun org-jira-link-todo (project number)
+    (interactive "sProject: \nsNumber: \n")
+    (save-excursion
+      (end-of-line)
+      (let ((end (point)))
+        (beginning-of-line)
+        (re-search-forward " ")
+        (let* ((start       (point))
+               (todo-string (buffer-substring start end)))
+          (cond ((string-match (regexp-quote "TODO") todo-string 0)
+                 (re-search-forward " ")
+                 (insert " "))
+                ((string-match (regexp-quote "IN PROGRESS") todo-string 0)
+                 (re-search-forward " " nil nil 2)
+                 (insert " ")))
+          (backward-char)
+          (org-insert-jira-link project number)))))
+
+  (defun org-insert-jira-link (project number)
+    (interactive "sProject: \nsNumber: \n")
+    (insert (format
+             "[[https://reifyhealth.atlassian.net/browse/%s-%s][%s-%s]]"
+             project number project number)))
+
+  (defun org-archive-finished-todos ()
+    (interactive)
+    (org-map-entries 'org-archive-subtree-default "/DONE" 'file))
+
+
+(defun setup-org-file (title)
+  (interactive "sTitle: ")
+  (let ((date (format-time-string "%m-%d-%Y")))
+    (save-excursion
+      (goto-char 0)
+      (insert (format "#+title: %s\n" title))
+      (insert (format "#+date: %s\n" date))
+      (insert (format "#+author: Andrew Parisi\n")))))
+
  
+  ;;;;;;;;;;;
+  ;;; eshell
+
+  (defun eshell/clear ()
+    "Clear the eshell buffer."
+    (let ((inhibit-read-only t))
+      (erase-buffer)
+      (eshell-send-input)))
+
+
 
 (which-key-map evil-normal-state-map ","
 	       :labels
 	       ("i" "init"
 		"g" "magit"
 		"s" "paredit"
+                "o" "organizer"
 		"v" "ivy view")
 	       :default-bindings
 	       (;; ibuffer
@@ -72,6 +148,12 @@
 		;; ivy view
 		"vs"  'ivy-push-view
 		"vd"  'ivy-pop-view
+                ;; organizer 
+                "os" 'organizer-session 
+                "ol" 'task-log
+                "ot" 'log-task 
+                "of" 'task-log-for-date
+                "or" 'refresh-agenda
 		)
 	       :major-mode
 	       ((org-mode-map
@@ -95,8 +177,65 @@
 		)
 	       )
 
-(define-key evil-normal-state-map "[" 'evil-jump-item)
-(define-key evil-visual-state-map "[" 'evil-jump-item)
+;; TODO
+;; Clean this up and put it in a macro
+(evil-define-key 'normal 'evil-normal-state-map "[" 'evil-jump-item)
+(evil-define-key 'visual 'evil-visual-state-map "[" 'evil-jump-item)
+
+(evil-set-initial-state 'org-agenda-mode 'normal)
+(evil-define-key 'normal org-agenda-mode-map
+  "q" 'org-agenda-quit
+  "r" 'org-agenda-redo
+  "s" 'org-save-all-buffers
+  "t" 'org-agenda-todo
+  "d" 'org-agenda-day-view
+  "w" 'org-agenda-week-view
+  "f" 'org-agenda-later
+  "b" 'org-agenda-earlier
+  "c" 'org-capture
+  ">" 'org-agenda-date-prompt)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Eshell
+
+(defun contract-eshell-pwd ()
+  (let* ((cwd  (eshell/pwd))
+	 (dirs (split-string cwd "/"))
+	 (result ""))
+    (if (> (length dirs) 2)
+	(progn
+	  (dolist (dir (butlast dirs))
+	    (let ((first-letter (if (equal dir "") "" (substring dir 0 1))))
+	      (setq result (concat result "/" first-letter))))
+	  (setq result (concat result "/" (car (last dirs)))))
+      (setq result cwd))
+    result))
+
+(setq eshell-prompt-function
+      (lambda ()
+	(concat
+	 (propertize "┌─[" 'face `(:foreground "#AFD75F")) 
+	;; (propertize (user-login-name) 'face `(:foreground "red"))
+	;; (propertize "@" 'face `(:foreground "green"))
+	 ;; (propertize (system-name) 'face `(:foreground "blue"))
+	 (propertize (format "%s" conda-env-current-name) 'face `(:foreground "#18aed4"))
+	 (propertize "]──[" 'face `(:foreground "#AFD75F"))
+	 ;;(propertize (format-time-string "%H:%M" (current-time)) 'face `(:foreground "yellow"))
+	;; (propertize "]──[" 'face `(:foreground "green"))
+	 (propertize (concat (contract-eshell-pwd)) 'face `(:foreground "#d0d0d0"))
+	 (propertize "]\n" 'face `(:foreground "#AFD75F"))
+	 (propertize "└─>" 'face `(:foreground "#AFD75F"))
+	 (propertize (if (= (user-uid) 0) " # " " λ ") 'face `(:foreground "#AFD75F"))
+	 )))
+
+  ;; End of Eshell
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Hacks!
+(add-to-list 'exec-path "/usr/local/bin")
+(setenv "PATH" (mapconcat 'identity exec-path ":"))
+
+(evil-define-key 'normal 'org-mode-map (kbd "<tab>") #'org-cycle) 
 
 (setq *end* (float-time))
 (memacs-splash (- *end* *start*))
@@ -106,10 +245,11 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(org cider python lsp-mode magit clojure-mode conda evil-collection counsel ivy which-key use-package evil)))
+   '(lsp-clients evil-org which-key use-package python org magit lsp-mode evil-collection counsel conda cider)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  )
+(put 'dired-find-alternate-file 'disabled nil)

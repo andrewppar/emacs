@@ -116,6 +116,11 @@
    "bx" 'kill-buffer-and-window
    "ww" 'other-window
    "wd" 'delete-window
-   ))
+   "w0" 'delete-window
+   "w1" 'delete-other-windows
+   "w2" 'split-window-below
+   "w3" 'split-window-right
+   "wr" 'window-configuration-to-register
+   "wj" 'jump-to-register))
 
 
