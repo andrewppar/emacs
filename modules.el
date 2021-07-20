@@ -8,6 +8,12 @@
   :calls
   ((evil-collection-init))
   )
+ (undo-tree
+  :ensure t
+  :calls
+  ((global-undo-tree-mode)
+   (evil-set-undo-system 'undo-tree))
+  )
  (counsel
   :ensure t)
  (ivy
@@ -34,6 +40,9 @@
   :calls
   ((which-key-mode))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Evil Mode Configuration
+
 ;; Default Loaded Packages
 (modules!
  (ibuffer
@@ -58,6 +67,7 @@
   :vars
   (org-startup-indented
    t
+   org-startup-truncated nil
    org-hide-leading-stars nil
    org-directory "~/org"
    org-log-done t
@@ -74,6 +84,7 @@
     '((python . t)
       (clojure . t)
       (emacs-lisp . t)
+      (sql . t)
       (shell . t))))
   )
  (cider
@@ -89,11 +100,33 @@
    python-shell-interpreter-args "--simple-prompt -i"))
  (lsp-mode
   :ensure t
+  :config
+  (lsp-enable-yasnippet
+   nil
+   company-minimum-prefix-length 1
+   lsp-lens-enable t
+   lsp-enable-symbol-highlighting t
+   lsp-modeline-diagnostics-enable t
+   lsp-ui-doc-show-with-cursor nil ;; doc popup for cursor
+   lsp-ui-doc-alignment 'window	;; relative location of doc popup: frame window
+   lsp-ui-sideline-enable t
+   lsp-ui-sideline-show-code-actions t
+   lsp-signature-auto-activate nil)
   :hook
   ((python-mode . lsp)
    (clojure-mode . lsp)
+   (sql . lsp)
    (lsp-mode . lsp-enable-which-key-integration))
-  )
+  :calls ((lsp-register-client
+	   (make-lsp-client :new-connection (lsp-stdio-connection '("clojure-lsp"))
+			    :major-modes '(clojure-mode clojurec-mode clojurescript-mode)
+			    :server-id 'clojure-lsp))
+	  (add-to-list 'lsp-language-id-configuration '(clojure-mode . "clojure-mode"))
+	  (add-hook 'clojure-mode-hook #'lsp)
+	  (add-hook 'clojurec-mode-hook #'lsp)
+	  (add-hook 'clojurescript-mode-hook #'lsp)))
+ (company
+  :ensure t)
  (magit
   :ensure t
   :vars
