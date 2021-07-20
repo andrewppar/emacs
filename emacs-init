@@ -1,1049 +1,115 @@
-;;;;;;;;;;;;;;;;;;;;;;;;
-;;; General Settings ;;;
-;;;;;;;;;;;;;;;;;;;;;;;;
+(setq *start* (float-time))
+(load "~/.emacs.d/display.el")
+;; Keyboard loads Modules so we don't load it again.
+(load "~/.emacs.d/keyboard.el")
+(load "~/.emacs.d/splash.el")
 
-(require 'package)
+(server-start)
 
-(add-to-list 'package-archives '("org" . "http://orgmode.org/elpa/"))
-(add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/"))
-(add-to-list 'package-archives '("melpa-stable" . "http://stable.melpa.org/packages"))
+;; Custom Theme
 
-(setq package-enable-at-startup nil)
-(package-initialize)
+(colors!
+ :background "#3b3b3f"
+ :foreground "#d0d0d0"
+ :comment "#8a8a8a"
+ :string "#ffc63f"
+ :constant (:foreground "#ffc63f" :weight 'bold)
+ :function (:foreground "#18aed4" :weight 'bold)
+ :keyword  (:foreground "#AFD75F" :weight 'bold)
+ :type     (:foreground "#18aed4")
+;; :fringe   (:background nil)
+;; :transparency ('alpha 90 90)
+ )
 
-;;disable toolbar
-(tool-bar-mode -1)
-(menu-bar-mode -1)
+;; Custom Bindings
 
-(turn-on-font-lock)
-(show-paren-mode 1)
-
-;;show time in status bar
-(display-time-mode  1)
-
-;;disable welcome screen
-(setq inhibit-splash-screen t)
-
-;;show empty lines nicely
-(setq-default indicate-empty-lines t)
-(global-vi-tilde-fringe-mode)
-
-
-;; Delete trailing whitespace
-(add-hook 'before-save-hook 'delete-trailing-whitespace)
-
-;;set automargin
-(require 'automargin)
-(automargin-mode 1)
-
-;; line wrap around words but leave things on the same line
-(setq-default word-wrap t)
-
-;; set transparency
-;;(set-frame-parameter (selected-frame) 'alpha '(90 90))
-;;(add-to-list 'default-frame-alist '(alpha 90 90))
-
-;;;Use evil mode to save pinkies.
-(require 'evil)
-(evil-mode 1)
-(setq evil-want-abbrev-expand-on-insert-exit nil)
-(setq evil-emacs-state-cursor '("red" box))
-(setq evil-normal-state-cursor '("green" box))
-(setq evil-visual-state-cursor '("orange" box))
-(setq evil-insert-state-cursor '("red" bar))
-(setq evil-replace-state-cursor '("red" bar))
-(setq evil-operator-state-cursor '("red" hollow))
-
-(define-key evil-normal-state-map "(" 'evil-jump-item)
-(define-key evil-visual-state-map "(" 'evil-jump-item)
-
-;replace <esc> with jk.
-(define-key evil-insert-state-map "j" #'cofi/maybe-exit)
-(evil-define-command cofi/maybe-exit ()
-  :repeat change
+(defun messages-buffer ()
   (interactive)
-  (let ((modified (buffer-modified-p)))
-    (insert "j")
-    (let ((evt (read-event (format "Insert %c to exit insert sta\
- te" ?k)
-			   nil 0.5)))
-      (cond
-       ((null evt) (message ""))
-       ((and (integerp evt) (char-equal evt ?k))
-	(delete-char -1)
-	(set-buffer-modified-p modified)
-	(push 'escape unread-command-events))
-       (t (setq unread-command-events (append unread-command-events
-					      (list evt))))))))
-(defvar my-leader-map (make-sparse-keymap)
-  "keymap for \"leader key\" shortcuts.")
+  (switch-to-buffer "*Messages*"))
 
-(define-key evil-normal-state-map "," my-leader-map)
-(define-key my-leader-map "b" 'switch-to-buffer)
-(define-key my-leader-map "h" 'fixup-whitespace)
-(define-key my-leader-map "f" 'find-file)
-(define-key my-leader-map "k" 'kill-buffer)
-(define-key my-leader-map "1" 'delete-other-windows)
-(define-key my-leader-map "3" 'split-window-right)
-(define-key my-leader-map "0" 'delete-window)
-(define-key my-leader-map "s" 'save-buffer)
-(define-key my-leader-map "o" 'other-window)
-(define-key my-leader-map "e" 'eval-buffer)
-(define-key my-leader-map "2" 'split-window-below)
-(define-key my-leader-map "g" 'proof-tree)
-(define-key my-leader-map "t" 'org-todo)
-(define-key my-leader-map "z" 'vimish-fold-toggle)
-(define-key my-leader-map "a" 'vimish-fold)
-
-;;macros
-(define-key my-leader-map "w" "I#+LATEX: jk")
-
-(defun nnoremap (string)
-  (interactive "sSequence: ")
-  (open-init)
-  (goto-char (point-min))
-  (search-forward "(define-key my-leader-map \"w\"" nil nil nil)
-  (kill-line)
-  (insert " \"")
-  (insert string)
-  (insert "\"")
-  (insert ")")
-  (save-buffer ".emacs")
-  (eval-buffer)
-  (kill-buffer ".emacs"))
-
-
-;;compile
-(with-eval-after-load 'tex-mode
-  (define-key my-leader-map "c" 'compile-latex))
-
-(with-eval-after-load 'haskell-mode
-  (define-key my-leader-map "c" 'haskell-process-load-or-reload))
-
-(with-eval-after-load 'java-mode
-  (defun gradle-build-and-run ()
-    (interactive)
-    (gradle-run "build run"))
-  (defin-key my-leader-map "c" 'gradle-build-and-run))
-
-(defun gradle-build-and-run ()
-    (interactive)
-    (gradle-run "build run"))
-
-;;;Number lines
-(require 'hlinum)
-(hlinum-activate)
-(linum-relative-global-mode)
-(setq linum-relative-current-symbol "")
-(set-face-attribute 'linum-highlight-face nil :foreground "#d0d0d0" :background "#5F0000")
-
-;;;Vertical Split default
-(setq split-width-threshold 0)
-(setq split-height-threshold nil)
-
-;;;Flyspell mode
-(defun add-word-to-dictionary ()
+(defun init-file ()
   (interactive)
-  (let ((current-location (point))
-	(word             (flyspell-get-word)))
-    (when (consp word)
-      (flyspell-do-correct 'save nil (car word) current-location (cadr word) (caddr word) current-location))))
+  (find-file "~/.emacs"))
 
-;Set Theme
-(setq visible-bell nil)
- ;;@todo abstract out the color codes and give the reasonable names.
-
-(set-background-color "#3b3b3f")
-(set-foreground-color "#d0d0d0")
-(set-face-foreground  'font-lock-comment-face "#8a8a8a")
-(set-face-foreground  'font-lock-string-face "#ffc63f")
-(set-face-attribute   'font-lock-constant-face nil :foreground "#ffc63f" :weight 'bold)
-(set-face-attribute   'font-lock-function-name-face nil :foreground "#18aed4" :weight 'bold)
-(set-face-attribute   'font-lock-keyword-face nil :foreground "#7cca00" :weight 'bold)
-(set-face-attribute   'font-lock-builtin-face nil :foreground  "pink")
-(set-face-attribute   'font-lock-type-face nil :foreground "green")
-(set-face-attribute   'fringe nil :background nil)
-
-;; Mode Line
-(set-face-attribute 'mode-line nil :background "black" :foreground "#d0d0d0")
-(set-face-attribute 'mode-line-buffer-id nil :background "black" :foreground "green")
-(set-face-attribute 'mode-line-highlight nil :box nil :background "deep sky blue")
-(set-face-attribute 'mode-line-inactive nil  :background "black")
-
-(defvar mode-line-directory
-  '(:propertize
-    (:eval (if (buffer-file-name) default-directory ""))
-    face mode-line-directory)
-  "Formats the current directory")
-
-(put 'mode-line-directory 'risky-local-variable t)
-
-(setq display-time-string-forms
-      '((propertize
-	 (format-time-string "%H:%M %m-%d " now)
-	 'face 'modeline-display-time
-	 'help-echo (format-time-string "%H:%M %m-%d" now))))
-
-(setq-default mode-line-format
-	      (list
-	       " " mode-line-modified
-	       " %m"
-	       " [" mode-line-directory mode-line-buffer-identification "]%6 "
-	       mode-line-misc-info
-	       mode-line-end-spaces))
-
-(setq global-mode-string '("" display-time-string appt-mode-string))
-
-(display-time-update)
-
-;; clear meta-/ interference
-(global-unset-key "\M-.")  ;; You have revoked find-tag!!!!!!
-
-;;Clipboard?
-(setq x-select-enable-clipboard t)
-
-(load "/home/andrew/.emacs.d/surround.el")
-
-;;;Keymappings
-(global-set-key (kbd "C-J") nil)
-(global-set-key (kbd "C-x C-b") nil)
-(global-set-key (kbd "C-x C-b") 'buffer-menu)
-(global-set-key (kbd "C-c e") 'open-init)
-(global-set-key (kbd "C-c M-w") 'copy-parentheses)
-(global-set-key (kbd "C-c ;") 'comment-region)
-(global-set-key (kbd "C-c '") 'surround)
-
-
-
-(defun comment-sexp ()
+(defun modules-file()
   (interactive)
-  (let ((beg (point))
-	end)
-    (progn
-      (save-excursion
-	(forward-list 1)
-	(setq end (point)))
-      (comment-region beg end)
-      (comment-region beg end))))
-
-(defun eval-sexp ()
-  (interactive)
-  (let (begin
-	end
-	value)
-    (up-list)
-    (setq value (with-output-to-string (princ (call-interactively 'eval-last-sexp))))
-    (backward-list)
-    (setq begin (point))
-    (forward-list)
-    (setq end (point))
-    (kill-region begin end)
-    (insert value)))
-
-;;;;;;;;;;;;;;;;;;
-;;; Shell Mode ;;;
-;;;;;;;;;;;;;;;;;;
-
-(define-key shell-mode-map (kbd "SPC") 'comint-magic-space)
-
-;;;;;;;;;;;;;;;;;
-;;; La Mulana ;;;
-;;;;;;;;;;;;;;;;;
-
-(defun start-la-mulana-session ()
-  (find-file "/home/andrew/Documents/games/la-mulana/notes.org"))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;
-;;; Theorem Provers ;;;
-;;;;;;;;;;;;;;;;;;;;;;;
-
-(defconst *session* :uninitialized)
-
-
-;; Start up Diversion Theorem Prover Session
-;; This is the theorem prover that uses the hyper-
-;; sequents from my dissertation.
-(defun start-diversion-session ()
-  (initialize-diversion-session)
-  (shell "*git*")
-  (switch-to-buffer "*git*")
-  (insert "cd /home/andrew/Documents/projects/expert-systems/")
-  (comint-send-input)
-  (shell "*meld*")
-  (switch-to-buffer "*meld*")
-  (insert "cd /home/andrew/Documents/projects/expert-systems/")
-  (comint-send-input)
-  (find-file "/home/andrew/org/status.org")
-  (find-file "/home/andrew/Documents/projects/expert-systems/issues.txt")
-  (find-file "/home/andrew/Documents/projects/expert-systems/Diversion.hs")
-  (message "
-         /\\     /\\
-        {  `---'  }
-        {  O   O  }
-        ~~>  V  <~~
-         \\  \\|/  /
-          `-----'____
-          /     \\    \\_
-         {       }\\  )_\\_   _
-         |  \\_/  |/ /  \\_\\_/ )
-          \\__/  /(_/     \\__/
-            (__/
-
-Welcome, Andrew -- Hacks and Glory Await!"))
-
-(defun initialize-diversion-session ()
-    (setq *session* :diversion))
-
-(defun git-diversion-update (password)
-  (interactive "sPassword: ")
-  (let ((buffer (current-buffer)))
-    (switch-to-buffer "*git*")
-    (insert "git pull")
-    (comint-send-input)
-    (sleep-for 4)
-    (insert password)
-    (comint-send-input)
-    (switch-to-buffer buffer)))
-
-(defun backup-file (filename)
-  (interactive "sFilename: ")
-  (let* ((file-path (concat "/home/andrew/Documents/projects/expert-systems/" filename))
-	(new-file  (concat file-path ".bk")))
-    (shell "backup")
-    (switch-to-buffer "backup")
-    (insert (concat "cp " file-path " " new-file))
-    (comint-send-input)
-    (kill-buffer "backup")))
-
-(defun diversion-session-files ()
-  (list "/home/andrew/Documents/projects/expert-systems/Diversion.hs"))
-
-;;   (let ((update-process (get-buffer-process "*git*")))
-;;     (set-process-filter update-process 'wait-for-update-prompt)))
-
-;; (defun wait-for-update-prompt (process string)
-;;   (let ((buffer (process-buffer process)))
-;;     (with-current-buffer buffer
-;;       (insert string)
-;;       (when (buffer-live-p buffer)
-;; 	(when (string-match "Password for 'https://andrewparisi@bitbucket.org': " string)
-;; 	  (let ((password (read-passwd "Password: ")))
-;; 	    (process-send-string process password)))
-;; 	(insert-string)
-;; 	(remove-function (process-filter process) #'wait-for-update-prompt)))))
-
-;;; Start Tree Hypersequent session
-;;; This is the depth first theorem prover
-;;; It also uses tree hypersequents instead of
-;;; hypersequents
-
-(defun start-tree-hypersequent-session ()
-  (interactive)
-  (initialize-tree-session)
-  (shell "*git*")
-  (switch-to-buffer "*git*")
-  (insert "cd /home/andrew/Documents/haskell/modal-theorem-prover/")
-  (comint-send-input)
-  (shell "*meld*")
-  (switch-to-buffer "*meld*")
-  (insert "cd /home/andrew/Documents/haskell/modal-theorem-prover/")
-  (comint-send-input)
-  (find-file "/home/andrew/Documents/haskell/modal-theorem-prover/tasks.org")
-  (find-file "/home/andrew/Documents/haskell/modal-theorem-prover/DepthFirstProver.hs")
-  (message "
-         /\\     /\\
-        {  `---'  }
-        {  O   O  }
-        ~~>  V  <~~
-         \\  \\|/  /
-          `-----'____
-          /     \\    \\_
-         {       }\\  )_\\_   _
-         |  \\_/  |/ /  \\_\\_/ )
-          \\__/  /(_/     \\__/
-            (__/
-
-Welcome, Andrew -- Hacks and Glory Await!"))
-
-(defun initialize-tree-session ()
-  (setq *session* :tree))
-
-(defun git-tree-update ()
-  (switch-to-buffer "*git*")
-  (insert "git pull")
-  (comint-send-input))
-
-(defun tree-session-files ()
-  (list
-   "/home/andrew/Documents/haskell/modal-theorem-prover/Utilities.hs"
-   "/home/andrew/Documents/haskell/modal-theorem-prover/Formula.hs"
-   "/home/andrew/Documents/haskell/modal-theorem-prover/Canonicalizer.hs"
-   "/home/andrew/Documents/haskell/modal-theorem-prover/Sequent.hs"
-   "/home/andrew/Documents/haskell/modal-theorem-prover/Hypersequent.hs"
-   "/home/andrew/Documents/haskell/modal-theorem-prover/DepthFirstProver.hs"
-   "/home/andrew/Documents/haskell/modal-theorem-prover/Tests.hs"
-   "/home/andrew/Documents/haskell/modal-theorem-prover/Main.hs"))
-
-
-
-;;shared internals
-
-(defun session-update ()
-  (interactive)
-  (case *session*
-    (:uninitialized
-     nil)
-    (:diversion
-     (git-diversion-update))
-    (:tree
-     (git-tree-update))))
-
-(defun meld ()
-  (interactive)
-  (switch-to-buffer "*meld*")
-  (insert "meld . ")
-  (comint-send-input))
-
-;;;;;;;;;;;;
-;;; Mail ;;;
-;;;;;;;;;;;;
-
-(defun start-mail-and-tasks-session ()
-  (find-file "/home/andrew/org/status.org")
-  (org-agenda)
-  (mu4e))
-
-(add-to-list 'load-path "/usr/share/emacs24/site-lisp/mu4e")
-(require 'mu4e)
-(require 'evil-mu4e)
-
-(setq mu4e-maildir "~/mail")
-(setq mu4e-drafts-folder "/[Gmail].Drafts")
-(setq mu4e-sent-folder   "/[Gmail].Sent")
-(setq mu4e-trash-folder  "/[Gmail].Trash")
-
-(setq mu4e-sent-messages-behavior 'delete)
-
-(setq mu4e-get-mail-command "offlineimap")
-
-(setq
-   user-mail-address "andrew.p.parisi@gmail.com"
-   user-full-name  "Andrew Parisi"
-   mu4e-compose-signature
-    (concat
-     "Andrew Parisi\n"
-     "andrew.p.parisi@gmail.com\n"
-     "https://andrewparisi.weebly.com/\n"))
-
-(add-to-list 'mu4e-view-actions
-  '("ViewInBrowser" . mu4e-action-view-in-browser) t)
-
-;;Sending Mail
-
-
-
-(require 'smtpmail)
-(setq message-send-mail-function 'smtpmail-send-it
-      starttls-use-gnutls t
-      smtpmail-auth-credentials "/home/aparisi/.authinfo"
-      smtpmail-stream-type 'starttls
-      smtpmail-default-smtp-server "smtp.gmail.com"
-      smtpmail-smtp-server "smtp.gmail.com"
-      smtpmail-smtp-service 587
-      smtpmail-debug-info t)
-
-
-
-;; (setq message-send-mail-function 'smtpmail-send-it
-;;    starttls-use-gnutls t
-;;    smtpmail-starttls-credentials '(("smtp.gmail.com" 587 nil nil))
-;;    smtpmail-auth-credentials
-;;      '(("smtp.gmail.com" 587 "andrew.p.parisi@gmail.com" nil))
-;;    smtpmail-default-smtp-server "smtp.gmail.com"
-;;    smtpmail-smtp-server "smtp.gmail.com"
-;;    smtpmail-smtp-service 587
-;;    smtpmail-debug-info t
-;;    )
-
-;; ;; configuration for sending mail
-;; ;; I have my "default" parameters from Gmail
-;; (setq mu4e-sent-folder "/home/andrew/mail/[Gmail].Sent"
-;;       ;; mu4e-sent-messages-behavior 'delete ;; Unsure how this should be configured
-;;       mu4e-drafts-folder "/home/andrew/mail/[Gmail].Drafts"
-;;       user-mail-address "andrew.p.parisi@gmail.com"
-;;       smtpmail-default-smtp-server "smtp.gmail.com"
-;;       smtpmail-smtp-server "smtp.gmail.com"
-;;       smtpmail-smtp-service 587)
-
-;; ;; tell message mode how to send it
-;; (setq message-send-mail-function 'smtpmail-send-it)
-;; ;; if our mail server lives at smtp.example.org; if you have a local
-;; ;; mail-server, simply use 'localhost' here.
-;; (setq smtpmail-smtp-server "smtp.gmail.com")
-
-
-
-;; ;; Now I set a list of
-;; (defvar my-mu4e-account-alist
-;;   '(("Gmail"
-;;      (mu4e-sent-folder "/Gmail/sent")
-;;      (user-mail-address "andrew.p.parisi@gmail.com")
-;;      (smtpmail-smtp-user "andrew.p.parisi")
-;;      (smtpmail-local-domain "gmail.com")
-;;      (smtpmail-default-smtp-server "smtp.gmail.com")
-;;      (smtpmail-smtp-server "smtp.gmail.com")
-;;      (smtpmail-smtp-service 587)
-;;      )
-;;      ;; Include any other accounts here ...
-;;     ))
-
-;; (defun my-mu4e-set-account ()
-;;   "Set the account for composing a message.
-;;    This function is taken from:
-;;      https://www.djcbsoftware.nl/code/mu/mu4e/Multiple-accounts.html"
-;;   (let* ((account
-;;     (if mu4e-compose-parent-message
-;;         (let ((maildir (mu4e-message-field mu4e-compose-parent-message :maildir)))
-;;     (string-match "/\\(.*?\\)/" maildir)
-;;     (match-string 1 maildir))
-;;       (completing-read (format "Compose with account: (%s) "
-;;              (mapconcat #'(lambda (var) (car var))
-;;             my-mu4e-account-alist "/"))
-;;            (mapcar #'(lambda (var) (car var)) my-mu4e-account-alist)
-;;            nil t nil nil (caar my-mu4e-account-alist))))
-;;    (account-vars (cdr (assoc account my-mu4e-account-alist))))
-;;     (if account-vars
-;;   (mapc #'(lambda (var)
-;;       (set (car var) (cadr var)))
-;;         account-vars)
-;;       (error "No email account found"))))
-;; (add-hook 'mu4e-compose-pre-hook 'my-mu4e-set-account)
-
-
-
-
-;; (setq message-send-mail-function 'smtpmail-send-it
-;;      smtpmail-stream-type 'starttls
-;;      smtpmail-default-smtp-server "smtp.gmail.com"
-;;      smtpmail-smtp-server "smtp.gmail.com"
-;;      smtpmail-smtp-service 587)
-
-;; don't keep message buffers around
-;;(setq message-kill-buffer-on-exit t)
-
-;; (defun mail ()
-;;   (interactive)
-;;   (with-output-to-temp-buffer "updating"
-;;     (switch-to-buffer "updating")
-;;     (call-process-shell-command "offlineimap -q -f INBOX" nil "updating" t))
-;;   (kill-buffer "updating")
-;;  (mu4e))
-
-;;;;;;;;;;;;;;;
-;; Org Mode ;;;
-;;;;;;;;;;;;;;;
-
-;; org mode
-(require 'org)
-
-;; Set to the location of your Org files on your local system
-(setq org-directory "~/org")
-
-;; Set to the name of the file where new notes will be stored
-(setq org-mobile-inbox-for-pull "~/org/flagged.org")
-
-;; org-mobile files
-(setq org-mobile-files '("~/org/status.org" "~/org/tasks.org"))
-
-;; Set to <your Dropbox root directory>/MobileOrg.
-(setq org-mobile-directory "~/Dropbox/Apps/MobileOrg")
-
-;; define org mode todos
-
-
-
-(define-key global-map "\C-cl" 'org-store-link)
-(define-key global-map "\C-ca" 'org-agenda)
-(setq org-log-done t)
-(setq org-todo-keywords
-      '((sequence "TODO" "IN PROGRESS" "DONE")
-	(sequence "CLUE" "|" "SOLVED")))
-(setq org-hide-leading-stars t)
-
-(setq org-agenda-files (list "~/org/status.org"))
-
-(setq org-file-apps
-      '(("\\.docx\\'" . default)
-	("\\.mm\\'" . default)
-	("\\.x?html?\\'" . default)
-	("\\.pdf\\'" . "evince %s")
-	(auto-mode . emacs)))
-
-(require 'ox-odt)
-(require 'ox-md)
-
-(eval-after-load 'org-agenda
- '(progn
-    (evil-set-initial-state 'org-agenda-mode 'normal)
-    (evil-define-key 'normal org-agenda-mode-map
-      (kbd "<RET>") 'org-agenda-switch-to
-      (kbd "\t") 'org-agenda-goto
-
-      "q" 'org-agenda-quit
-      "r" 'org-agenda-redo
-      "S" 'org-save-all-org-buffers
-      "gj" 'org-agenda-goto-date
-      "gJ" 'org-agenda-clock-goto
-      "gm" 'org-agenda-bulk-mark
-      "go" 'org-agenda-open-link
-      "s" 'org-agenda-schedule
-      "+" 'org-agenda-priority-up
-      "," 'org-agenda-priority
-      "-" 'org-agenda-priority-down
-      "y" 'org-agenda-todo-yesterday
-      "n" 'org-agenda-add-note
-      "t" 'org-agenda-todo
-      ":" 'org-agenda-set-tags
-      ";" 'org-timer-set-timr
-      "I" 'helm-org-task-file-headings
-      "i" 'org-agenda-clock-in-avy
-      "O" 'org-agenda-clock-out-avy
-      "u" 'org-agenda-bulk-unmark
-      "x" 'org-agenda-exit
-      "j"  'org-agenda-next-line
-      "k"  'org-agenda-previous-line
-      "vt" 'org-agenda-toggle-time-grid
-      "va" 'org-agenda-archives-mode
-      "vw" 'org-agenda-week-view
-      "vl" 'org-agenda-log-mode
-      "vd" 'org-agenda-day-view
-      "vc" 'org-agenda-show-clocking-issues
-      "g/" 'org-agenda-filter-by-tag
-      ;;"o" 'delete-other-windows
-      "gh" 'org-agenda-holiday
-      "gv" 'org-agenda-view-mode-dispatch
-      "f" 'org-agenda-later
-      "b" 'org-agenda-earlier
-      "c" 'helm-org-capture-templates
-      "e" 'org-agenda-set-effort
-      "n" nil  ; evil-search-next
-      "{" 'org-agenda-manipulate-query-add-re
-      "}" 'org-agenda-manipulate-query-subtract-re
-      "A" 'org-agenda-toggle-archive-tag
-      "." 'org-agenda-goto-today
-      "0" 'evil-digit-argument-or-evil-beginning-of-line
-      "<" 'org-agenda-filter-by-category
-      ">" 'org-agenda-date-prompt
-      "F" 'org-agenda-follow-mode
-      "D" 'org-agenda-deadline
-      "H" 'org-agenda-holidays
-      "J" 'org-agenda-next-date-line
-      "K" 'org-agenda-previous-date-line
-      "L" 'org-agenda-recenter
-      "P" 'org-agenda-show-priority
-      "R" 'org-agenda-clockreport-mode
-      "Z" 'org-agenda-sunrise-sunset
-      "T" 'org-agenda-show-tags
-      "X" 'org-agenda-clock-cancel
-      "[" 'org-agenda-manipulate-query-add
-      "g\\" 'org-agenda-filter-by-tag-refine
-"]" 'org-agenda-manipulate-query-subtract)))
-
-
-(setq org-startup-truncated nil)
+  (find-file "~/.emacs.d/modules.el"))
 
 (defun my-org-archive-done-tasks ()
-  (interactive)
-  (org-map-entries 'org-archive-subtree "/DONE" 'file))
-
-(define-key org-mode-map (kbd "C-c a") 'my-org-archive-done-tasks)
-
-;;security
-(setq org-confirm-babel-evaluate nil)
-
-(defun open-tasks ()
-  (interactive)
-  (find-file "/home/andrew/org/status.org"))
-
-;; org mode for latex
-;; compile pdf and open
-
-;; maybe one day you can understand this ..
-;; ?o \"As PDF file and open\"
- ;;               \(lambda (a s v b)
- ;;                 \(if a (org-latex-export-to-pdf t s v b)
- ;;                   \(org-open-file
-;;                    \(org-latex-export-to-pdf nil s v b)))))))
-
- (global-set-key (kbd "C-c c") (kbd "C-c C-e l o")) ;; this works fine though
-
-(setq org-highlight-latex-and-related '(latex))
-(setq org-latex-with-hyperref nil)
-(load "/home/andrew/.emacs.d/org-latex-classes.el")
-
-;;;;;;;;;;;;;;;;;;;;
-;;; Haskell-mode ;;;
-;;;;;;;;;;;;;;;;;;;;
-
-(require 'haskell-interactive-mode)
-(require 'haskell-process)
-
-(defun haskell-compile-project ()
-  (interactive)
-  (let ((files          (project-files *session*))
-	(current-buffer (current-buffer)))
-    (dolist (file files)
-      (find-file file)
-      (haskell-process-load-or-reload))
-    (switch-to-buffer current-buffer)))
-
-(defun new-test (function-name input-type result-type)
-  (interactive "sFunction Name: \nsInput Type:  \nsResultType: ")
-  (let* ((test-name            (concat function-name "Test"))
-	 (verbose-test-name    (concat test-name "Verbose"))
-	 (test-case-table-name (concat test-name "CaseTable")))
-    (insert test-name) (insert " :: Bool \n")
-    (insert test-name) (insert " = \n testCaseTable ")
-    (let ((test-line (concat function-name " " test-case-table-name)))
-      (insert test-line)
-      (insert " \n\n")
-      (insert verbose-test-name) (insert " :: IO () \n")
-      (insert verbose-test-name) (insert " = \n testCaseTableVerbose ")
-      (insert test-line))
-    (insert "\n\n")
-    (insert test-case-table-name)
-    (let ((type-declaration (concat " :: [(" input-type "," result-type ")] \n")))
-      (insert type-declaration))
-    (insert test-case-table-name)
-    (insert " = [")))
-
-;;haskell mode  leader
-(define-key my-leader-map "a" 'haskell-process-do-type)
-(define-key my-leader-map "." 'haskell-mode-jump-to-def)
-
-(add-hook 'haskell-mode-hook 'haskell-indent-mode)
-(add-hook 'haskell-mode-hook 'interactive-haskell-mode)
-
-(require 'hindent)
-(add-hook 'haskell-mode-hook #'hindent-mode)
-
-
-;;disable popup errors
-(setq haskell-interactive-popup-errors nil)
-
-;;Custom Functions
-(defun open-init ()
-  (interactive)
-  (find-file "/home/andrew/.emacs"))
-
-(defun copy-parentheses ()
-  (interactive)
-  (let (start
-	end)
-    (save-excursion
-      (setq start (point))
-      (forward-list 1)
-      (setq end (point)))
-    (kill-ring-save start end)))
-
-
-;;;;;;;;;;;;;;;;;
-;;; JAVA Mode ;;;
-;;;;;;;;;;;;;;;;;
-
-(with-eval-after-load 'java-mode
-  (setq eclim-executable "~/.p2/pool/plugins/org.eclim_2.8.0/bin/eclim")
-  (require 'eclim)
-  (add-hook 'java-mode-hook 'eclim-mode)
-  (require 'eclimd)
-  (require 'gradle-mode)
-  (add-hook 'java-mode-hook '(lambda() (gradle-mode 1))))
-
-
-
-
-;;;;;;;;;;;;;;;;;;
-;;; LaTeX Mode ;;;
-;;;;;;;;;;;;;;;;;;
-
-;; depricate at some point and move to org mode.
-
-(add-hook 'latex-mode-hook
-	  (lambda () (local-set-key (kbd "C-c C-b") nil)))
-(add-hook 'latex-mode-hook
-	  (lambda () (local-set-key (kbd "C-c C-b") 'compile-latex)))
-(add-hook 'latex-mode-hook
-	  (lambda () (local-set-key (kbd "C-c l") 'environment-from-position)))
-(add-hook 'latex-mode-hook
-	  (lambda () (local-set-key (kbd "C-c s") 'command)))
-(eval-after-load "latex-mode"
-  '(progn
-     (define-key my-leader-map "c" nil)
-     (define-key my-leader-map "c" 'compile-latex)))
-
-(defun commnd (command title)
-  (interactive "sCommand: \nsText: ")
-  (insert "\\"command"\{"text"\}"))
-
-(defun environment (type)
-  (interactive "sEnvironment: ")
-  (insert "\\begin{" type "}
-
-\\end{" type "}")
-  (beginning-of-line 0))
-
-(defun environment-from-position ()
-  (interactive)
-  (backward-word)
-  (let ((begin (point))
-	end)
-    (save-excursion
-      (forward-word)
-      (setq end (point)))
-    (let ((string (buffer-substring begin end)))
-      (kill-region begin end)
-      (environment string))))
-
-(defun proof-tree (prem)
-  (interactive "sPremise type: ")
-  (insert "\\"prem "{\$\\Gamma \Ra C\$}
-"))
-
-(defun italics ()
-  (interactive)
-  (let ((beginning (region-beginning))
-	(end       (region-end)))
-    (goto-char beginning)
-    (insert "\\textit{")
-    (goto-char (+ 8 end))
-    (insert "}")))
-
-
-(defun compile-latex ()
-  (interactive)
-  (progn
-    (save-buffer
-    (compile-latex-int))))
-
-(defun compile-latex-int ()
-  (interactive)
-  (let* ((file-name       (buffer-file-name (window-buffer (minibuffer-selected-window))))
-	 (directory       (file-name-directory file-name))
-	 (current-buffer  (buffer-name))
-	 (command-to-run  (concat "compileLaTeX.sh " file-name)))
-    (when (get-buffer "*shell*")
-      (switch-to-buffer "*shell*")
-      (rename-buffer "*old-shell*"))
-    (if (get-buffer "*latex-log*")
-	(switch-to-buffer "*latex-log*")
-      (progn
-	(shell)
-	(rename-buffer "*latex-log*")))
-    (insert "cd " directory)
-    (comint-send-input)
-    (insert command-to-run)
-    (comint-send-input)
-    (switch-to-buffer current-buffer)))
-
-(defun article (title date)
-  (interactive "sTitle: \nsDate: ")
-  (progn
-    (insert "\\documentclass[11pt]{amsart}
-
-%%VARIABLES
-
-\\def \\mycitecolor {black}
-
-%%INVOKED PACKAGES
-
-\\usepackage{amsaddr}
-\\usepackage{geometry}
-\\geometry{letterpaper}
-%\\geometry{landscape}
-%\\usepackage[parfill]{parskip}    % Activate to begin paragraphs with an empty line rather than an indent
-\\usepackage{graphicx}
-\\usepackage{amssymb}
-\\usepackage{epstopdf}
-\\usepackage{setspace}
-\\usepackage{libertine}
-\\usepackage{mathrsfs}
-\\usepackage{bussproofs}
-\\usepackage{multicol}
-\\usepackage[colorlinks=true,urlcolor = blue, citecolor = \\mycitecolor, pdfpagelabels=true, hyperindex=true, pagebackref=true]{hyperref}
-\\usepackage[all]{hypcap}
-\\usepackage{cleveref}
-\\usepackage{framed}
-\\usepackage[authoryear]{natbib}
-\\usepackage{enumerate}
-\\usepackage{stmaryrd}
-\\usepackage[capposition=top]{floatrow}
-\\floatsetup[figure]{capposition=top}
-\\usepackage{titlesec}
-\\usepackage{rotating}
-
-\\titleformat{\\section}[block]
-    {\\normalfont\\bfseries}
-    {\\thesection}
-    {1em}
-    {}
-
-\\titleformat{\\subsection}[block]
-    {\\normalfont\itshape}
-    {\thesubsection}
-    {1em}
-    {}
-
-\\def\\changemargin#1#2{\\list{}{\\rightmargin#2\\leftmargin#1}\\item[]}
-\\let\\endchangemargin=\\endlist
-
-%%MY COMMANDS
-
-\\newcommand{\\Ra}{\\Rightarrow}
-\\newcommand{\\ra}{\\rightarrow}
-\\newcommand{\\UI}{\\UnaryInfC}
-\\newcommand{\\LL}{\\LeftLabel}
-\\newcommand{\\RL}{\\RightLabel}
-\\newcommand{\\BI}{\\BinaryInfC}
-\\newcommand{\\AX}{\\AxiomC}
-\\newcommand{\\vp}{\\varphi}
-\\newcommand{\\vd}{\\vdash}
-\\newcommand{\\sq}{\\square}
-\\newcommand{\\pcite}[1]{\\citeauthor{#1}{\\color{\\mycitecolor}{'s}} \\citeyear{#1}}
-
-
-%%NEW ENVIRONMENTS
-
-\\makeatletter
-\\@addtoreset{case}{section}
-\\@addtoreset{case}{subsection}
-\\makeatother
-
-\\newtheorem{Lemma}{Lemma}
-\\newtheorem{Claim}{Claim}
-\\newtheorem{Theorem}{Theorem}
-\\newtheorem{Corollary}{Corollary}
-\\theoremstyle{definition}
-\\newtheorem{Definition}{Definition}
-\\newtheorem{Fact}{Fact}
-
-\\theoremstyle{remark}
-\\newtheorem{Note}{Note}
-\\newtheorem{case}{Case}
-\\newtheorem{subcase}{Case}
-\\numberwithin{subcase}{case}
-\\newtheorem{subsubcase}{Case}
-\\numberwithin{subsubcase}{subcase}
-\\newtheorem{subsubsubcase}{Case}
-\\numberwithin{subsubsubcase}{subsubcase}
-
-\\newenvironment{scprooftree}[1]%
-  {\\gdef\\scalefactor{#1}\\begin{center}\\proofSkipAmount \\leavevmode}%
-  {\\scalebox{\\scalefactor}{\\DisplayProof}\\proofSkipAmount \\end{center} }
-
-%%TITLE PAGE INFO
-
-\\title{"title"}
-\\author{Andrew Parisi}
-\\address[A1]{Cycorp}
-\\email{\\href{mailto:aparisi@cyc.com}{aparisi@cyc.com}}
-\\date{"date"}                                           % Activate to display a given date or no date
-
-\\begin{document}")
-    (when (y-or-n-p "Abstract? ")
-      (insert "\\begin{abstract}
-
-\\end{abstract}
-
-"))
-
-    (insert "
-
-\\maketitle
-\\doublespacing
-
-\\bibliographystyle{apalike}
-\\bibliography{/home/andrew/Documents/tex/Bibliography.bib}
-
-\\end{document}
-")
-    (forward-line -5)))
-
-(defun tear-off-window ()
-  "Create a new frame displaying buffer of selected window.
-    If window is not the only one in frame, then delete it.
-    Otherwise, this command effectively clones the frame and window."
-  (interactive)
-  (let ((owin  (selected-window))
-        (buf   (window-buffer))
-        (fr    (make-frame)))
-    (select-frame fr)
-    (switch-to-buffer buf)
-    (save-window-excursion
-      (select-window owin)
-      (unless (one-window-p) (delete-window owin)))))
-
-;;;;;;;;;;;;;;;;;;;;;
-;;; Proof General ;;;
-;;;;;;;;;;;;;;;;;;;;;
-
-;;Load proof general
-(load-file "/home/andrew/.emacs.d/ProofGeneral-4.2/generic/proof-site.el")
-(setq coq-prog-name "/usr/bin/coqtop")
-
-;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Starting Sessions ;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun start-session ()
-  (interactive)
-  (with-temp-buffer
-    (progn
-      (split-window-right)
-      (switch-to-buffer (current-buffer))
-      (insert "Hello Andrew, what session would you like to start?")
-      (insert "\n\n\n\n\n")
-      (insert "[a] Mail & Tasks\n")
-      (insert "[l] La Mulana\n")
-      (insert "[m] Diversion.hs\n")
-      (insert "[n] DepthFirstTheoremProver.hs\n")
-      (insert "[Space] Exit Menu")
-      (setq vi-tilde-fringe-mode t)
-      (let ((char             (read-event)))
-	(delete-window)
-	(cond ((equal char ?a)
-	       (start-mail-and-tasks-session))
-	      ((equal char ?l)
-	       (start-la-mulana-session))
-	      ((equal char ?m)
-	       (start-diversion-session))
-	      ((equal char ?n)
-	       (start-tree-hypersequent-session))
-	      (t
-	       nil)
-	      )))))
-
-(defun project-files (session)
-  (case session
-    (:tree
-     (tree-session-files))
-    (:diversion
-     (diversion-session-files))))
-
-
-
-
-;;(start-session)
-
-;;;;;;;;;;;;;;;;;;;;;
-;;; scratch space ;;;
-;;;;;;;;;;;;;;;;;;;;;
-
-
-
-(defun shutdown ()
-  (interactive)
-  (shell "*shutdown*")
-  (switch-to-buffer "*shutdown*")
-  (insert "sudo shutdown now")
-  (comint-send-input))
+    (interactive)
+    (org-map-entries 'org-archive-subtree "/DONE" 'file))
+
+(defun org-insert-code-block (language settings)
+  (interactive "sLanguage: \nsSettings: ")
+  (insert (format "#+begin_src %s %s\n\n" language settings))
+  (forward-line)
+  (insert (format "#+end_src\n"))
+  (forward-line -2))
+ 
+
+(which-key-map evil-normal-state-map ","
+	       :labels
+	       ("i" "init"
+		"g" "magit"
+		"s" "paredit"
+		"v" "ivy view")
+	       :default-bindings
+	       (;; ibuffer
+		"bi" 'ibuffer
+		"bb" 'ivy-switch-buffer
+		"bm" 'messages-buffer
+		;; init
+		"ii"  'init-file
+		"im"  'modules-file
+		;; magit
+		"gs"  'magit-status
+		;; generic
+	        "x"  'counsel-M-x
+	        ;; paredit mode
+		"sq"  'indent-pp-sexp
+		"sl"  'forward-sexp
+		"sh"  'backward-sexp
+		;; ivy view
+		"vs"  'ivy-push-view
+		"vd"  'ivy-pop-view
+		)
+	       :major-mode
+	       ((org-mode-map
+		 "a"  'org-agenda
+		 "t"  'org-todo
+		 "s"  'my-org-archive-done-tasks
+		 "ic" 'org-insert-code-block
+		 "c"  'org-mode-ctrl-c-ctrl-c
+		 )
+		(clojure-mode-map
+		 "jj" 'cider-jack-in
+		 "jc" 'cider-connect-clj
+		 "jq" 'cider-quit
+		 "s"  'cider-toggle-trace-var
+		 "g"  'xref-find-definitions
+		 "c"  'cider-eval-defun-at-point
+		 )
+		
+		(magit-mode-map
+		 "" 'magit-dispatch)
+		)
+	       )
+
+(define-key evil-normal-state-map "[" 'evil-jump-item)
+(define-key evil-visual-state-map "[" 'evil-jump-item)
+
+(setq *end* (float-time))
+(memacs-splash (- *end* *start*))
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(package-selected-packages
+   '(org cider python lsp-mode magit clojure-mode conda evil-collection counsel ivy which-key use-package evil)))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )
