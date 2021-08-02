@@ -1,13 +1,18 @@
 (require 'package)
 
-(add-to-list 'package-archives 
-             '("org" . "http://orgmode.org/elpa/") t)
-(add-to-list 'package-archives 
-             '("melpa-stable" . "https://stable.melpa.org/packages/") t)
-(add-to-list 'package-archives 
-             '("melpa" . "https://melpa.org/packages/") t)
+(add-to-list
+ 'package-archives
+ '("org" . "http://orgmode.org/elpa/") t)
 
-(defun update-core ()
+(add-to-list
+ 'package-archives
+ '("melpa-stable" . "https://stable.melpa.org/packages/") t)
+
+(add-to-list
+ 'package-archives
+ '("melpa" . "https://melpa.org/packages/") t)
+
+(defun install-core ()
   (setq package-list '(evil use-package))
   
  ; activate all the packages (in particular autoloads)
@@ -22,51 +27,46 @@
   (unless (package-installed-p package)
     (package-install package))))
 
+(defvar *packages* '())
 
-(defun generate-configuration (module)
-  (let ((var-plist (plist-get module :vars))
-	(result    '()))
-    (when var-plist
-      (cl-do ((variable (car var-plist) (car rest))
-	      (value    (cadr var-plist) (cadr rest))
-	      (rest     (cddr var-plist) (cddr rest)))
-	  ((not rest)
-	   (setq result (cons `(setq ,variable ,value) result)))
-	(setq result (cons `(setq ,variable ,value) result)))
-      `(:config . ,result))))
+(defun read-packages ()
+  (find-file "~/.emacs.d/packages")
+  (let ((package-string (buffer-substring
+			 (point-min) (point-max))))
+    (kill-this-buffer)
+    (split-string package-string "\n")))
 
-(defmacro modules! (&rest modules)
-  (let ((result '()))
-    (dolist (module modules)
-      (if (listp module)
-	  (let* ((module-result '())
-		 (module-core   (cdr module))
-		 (config-block  (generate-configuration module-core))
-		 (ensure?       (plist-get module-core :ensure))
-		 (ensure-block  (if ensure? '(:ensure t) nil))
-		 (call-block    (plist-get module-core :calls))
-		 (hook-block   (plist-get module-core :hook))
-		 (blocks        ensure-block))
-	    (when call-block
-	      (if config-block
-		  (setq config-block (append config-block call-block))
-		(setq config-block (cons :config call-block))))
-	    (when config-block
-	      (setq blocks (append blocks config-block)))
-	    (when hook-block
-	      (setq blocks (cons :hook (cons hook-block blocks))))
-	    (setq result
-		  (cons `(use-package ,(car module) . ,blocks) result)))
-	(setq result (cons `(use-package ,module :ensure t) result))))
-    (message (format "Modules Loaded: %s" result))
-    (cons 'progn result)))
+(defun write-packages (packages)
+  (find-file "~/.emacs.d/packages")
+  (erase-buffer)
+  (dolist (package packages)
+    (insert (format "%s\n" package)))
+  (save-buffer)
+  (kill-this-buffer))
 
-(defmacro ensure-evil-mode! (&rest modes)
-  (let ((result '()))
-    (dolist (mode modes)
-      (push
-       `(setq evil-emacs-state-modes (delq ,mode evil-emacs-state-modes))
-       result))
-    (cons 'progn result)))
+(defun sync-packages ()
+  (let ((to-delete (read-packages))
+	(current-packages *packages*))
+    (message (format "CUR: %s" current-packages))
+    (dolist (package current-packages)
+      (setq to-delete (remove package to-delete)))
+    (message (format "CURRENT: %s" current-packages))
+    (dolist (package to-delete)
+      (let ((package-spec (cadr
+			   (assoc
+			    (intern package)
+			    package-alist))))
+	(when package-spec
+	  (package-delete package-spec))))
+    (write-packages current-packages)))
 
+(defun save-package (module-name)
+  (let ((packages (read-packages)))
+    (if (member module-name packages)
+	(write-packages packages)
+      (write-packages (cons module-name packages)))))
 
+(defmacro module! (module-name &rest args)
+  (declare (indent defun))
+  (setq *packages* (cons (symbol-name module-name) *packages*))
+  `(use-package ,module-name ,@args))

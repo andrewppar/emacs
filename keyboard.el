@@ -1,34 +1,44 @@
 (load "~/.emacs.d/core.el")
 
-;; For use with evil-collection
-;; if evil-collections is removed from
-;; default load packageds this can be removed
-(setq evil-want-keybinding nil)
+(use-package evil
+  :ensure t
+  :demand t
+  :config
+  (evil-mode t)
+  )
 
-(require 'evil)
-(evil-mode t)
+(use-package which-key
+  :ensure t
+  :demand t
+  :requires evil
+  :config
+  (set-face-attribute 'which-key-command-description-face nil :inherit nil)
+  (setq which-key-idle-delay 0.1
+		 which-key-separator " → ")
+	   (which-key-mode))
 
-(load "~/.emacs.d/modules.el")
-
-;replace <esc> with jk.
-(define-key evil-insert-state-map "j" #'cofi/maybe-exit)
+;; replace <esc> with jk.
 (evil-define-command cofi/maybe-exit ()
   :repeat change
   (interactive)
   (let ((modified (buffer-modified-p)))
     (insert "j")
-    (let ((evt (read-event (format "Insert %c to exit insert state" ?k)
-			   nil 0.5)))
+    (let ((evt
+	   (read-event
+	    (format "Insert %c to exit insert state" ?k)
+	    nil 0.5)))
       (cond
        ((null evt) (message ""))
        ((and (integerp evt) (char-equal evt ?k))
 	(delete-char -1)
 	(set-buffer-modified-p modified)
 	(push 'escape unread-command-events))
-       (t (setq unread-command-events (append unread-command-events
-					      (list evt))))))))
-
-(setq evil-emacs-state-modes (delq 'ibuffer-mode evil-emacs-state-modes))
+       (t
+	(setq unread-command-events
+	      (append unread-command-events
+		      (list evt))))))))
+(define-key
+  evil-insert-state-map "j" #'cofi/maybe-exit)
 
 ;;;;;;;;;;;;;;
 ;; Keybindings
@@ -51,7 +61,6 @@
 		    (evil-define-key 'normal ,map ,(concat "m" binding) ,item)
 		    (evil-define-key 'normal ,map ,binding-string ,item)))))
     result))
-  
 
 (defun get-which-key-item-internal (map trigger configuration-plist type)
   (let ((items (plist-get configuration-plist type))
@@ -94,8 +103,6 @@
     (message (format "BINDINGS: %s" (cons 'progn (append labels bindings major-mode-bindings))))
     (cons 'progn (append labels bindings major-mode-bindings))))
 
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Default Keybindings
 
@@ -104,10 +111,12 @@
  ("" "main menu"
   "w" "window"
   "b" "buffer"
+  "e" "eval"
   "m" "major mode")
   :default-bindings
-  ("f"  'find-file
-   "e"  'eval-buffer
+  ("f"  'counsel-find-file
+   "eb" 'eval-buffer
+   "ed" 'eval-defun
    "0"  'delete-window
    "1"  'delete-other-windows
    "2"  'split-window-below
@@ -123,4 +132,63 @@
    "wr" 'window-configuration-to-register
    "wj" 'jump-to-register))
 
+
+                              ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defun generate-mm-bindings (mode bindings-plist)
+  (let ((bindings (plist-get bindings-plist :bindings))
+	(mode-map (intern-soft (concat
+				(symbol-name mode)
+				"-map")))
+	(result '()))
+    (when (and mode-map bindings)
+      (do-bindings (key function bindings)
+	(setq result
+	      (append (list
+		       (concat "m" key) function
+		       (concat ",m" key) function)
+		      result)))
+      `(evil-define-key 'normal ,mode-map . ,result))))
+
+(defun generate-mm-labels (mode bindings-plist)
+  (let ((bindings (plist-get bindings-plist :labels))
+	(result  '()))
+    (when bindings
+      (do-bindings (keys label bindings)
+	(setq result
+	      (append (list
+		       (concat "m" keys) label
+		       (concat ",m" keys) label)
+		      result)))
+      `(which-key-add-major-mode-key-based-replacements
+	 ',mode . ,result))))
+
+(defmacro major-mode-map (mode &rest bindings-plist)
+  (declare (indent defun))
+  (let ((bindings
+	 (generate-mm-bindings mode bindings-plist))
+	(labels
+	 (generate-mm-labels   mode bindings-plist))
+	(result '()))
+    (setq result `(progn ,bindings ,labels))
+    result))
+
+
+(defmacro do-bindings (binding-list &rest body)
+  (declare (indent defun))
+  (let ((key (car binding-list))
+	(val (cadr binding-list))
+	(bindings (caddr binding-list)))
+    `(cl-do ((,key (car ,bindings) (car next))
+	     (,val (cadr ,bindings) (cadr next))
+	     (next (cddr ,bindings) (cddr next)))
+	 ((not next)
+	  (progn
+	    ,@body
+	  ))
+       (progn
+	 ,@body))))
+       
 
