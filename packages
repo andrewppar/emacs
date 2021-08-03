@@ -1,0 +1,15 @@
+conda
+haskell-mode
+clojure-mode
+magit
+company
+lsp-ui
+lsp-mode
+python
+cider
+org-agenda
+org
+ibuffer
+ivy
+counsel
+undo-tree
