@@ -1,6 +1,7 @@
-(load "~/.emacs.d/keyboard.el")
+(load! "~/.emacs.d/keyboard.el")
 
 (add-to-list 'exec-path "/usr/local/bin")
+(add-to-list 'exec-path "/Library/TeX/texbin/")
 (setenv "PATH" (mapconcat 'identity exec-path ":"))
 
 ;; TODO: Create module! macro that is a thin wrapper around use-package
@@ -49,11 +50,11 @@
    '(("home"
       ("python"
        (or (mode . pyhton-mode)
-	   (directory . "/Users/andrew/Documents/python")
+	   (directory . "/Users/andrewparisi/Documents/python")
 	   (name . "\*Python\*")))
       ("clojure"
        (or (mode . clojure-mode)
-	   (directory . "/Users/andrew/Documents/clojure")
+	   (directory . "/Users/andrewparisi/Documents/clojure")
 	   (name . "\*cider\*")))
       ("magit"
        (name . "\*magit"))
@@ -71,7 +72,12 @@
   :ensure t
   :requires evil
   :init
-  (message "HERE")
+  (defun org-insert-jira-link (project number)
+  (interactive "sProject: \nsNumber: \n")
+  (insert (format
+           "[[https://reifyhealth.atlassian.net/browse/%s-%s][%s-%s]]"
+           project number project number)))
+  
   (defun my-org-archive-done-tasks ()
     (interactive)
     (org-map-entries 'org-archive-subtree "/DONE" 'file))
@@ -83,19 +89,41 @@
     (insert (format "#+end_src\n"))
     (forward-line -2))
 
+  (defun setup-org-file (title)
+  (interactive "sTitle: ")
+  (let ((date (format-time-string "%m-%d-%Y")))
+    (save-excursion
+      (goto-char 0)
+      (insert (format "#+title: %s\n" title))
+      (insert (format "#+date: %s\n" date))
+      (insert (format "#+author: Andrew Parisi\n")))))
+
+  (defun org-task-goto-general ()
+    (interactive)
+    (goto-char (org-goto-heading "General" '("Tasks"))))
+
+  (defun org-task-goto-jira ()
+    (interactive)
+    (goto-char (org-goto-heading "JIRA" '("Tasks"))))
+
   (major-mode-map org-mode
     :bindings
     ("a"  'org-agenda
      "t"  'org-todo
      "s"  'my-org-archive-done-tasks
+     "fi" 'setup-org-file
      "ic" 'org-insert-code-block
+     "ij" 'org-insert-jira-link
+     "it" 'org-jira-link-todo
      "e"  'org-export-dispatch
-     "c"  'org-mode-ctrl-c-ctrl-c)
+     "c"  'org-capture)
     :labels
-    ("i"  "insert"))
+    ("i"  "insert"
+     "f"  "org-file"))
   (evil-define-key 'normal org-mode-map
     (kbd "<tab>") 'org-cycle)
   :config
+  (require 'ox-md)
   (setq org-startup-indented t
 	org-startup-truncated nil
 	org-hide-leading-stars nil
@@ -106,6 +134,14 @@
 	org-hide-leading-stars t
 	org-confirm-babel-evaluate nil
 	org-agenda-files (list "~/org/status.org")
+	org-capture-default-notes-file "~/org/status.org"
+	org-capture-templates
+	'(("g" "general" entry
+	   (file+function "~/org/status.org" org-task-goto-general)
+	   "*** TODO %?\nSCHEDULED: %^t")
+	  ("j" "jira" entry
+	   (file+function "~/org/status.org" org-task-goto-jira)
+	   "*** TODO %?\nSCHEDULED: %^t"))
 	org-babel-clojure-backend 'cider)
   (org-babel-do-load-languages
    'org-babel-load-languages
@@ -130,19 +166,55 @@
      "f" 'org-agenda-later
      "b" 'org-agenda-earlier
      "c" 'org-capture
+     (kbd "<RET>") 'org-agenda-goto
      ">" 'org-agenda-date-prompt))
 
-(module! cider
-:ensure t
-:requires evil)
+(module! cider				;
+  :ensure t
+  :requires evil
+  :config
+  (defun cider-show-cider-buffer ()
+    "Shows the nrepl buffer, but does not focus it."
+    (interactive)
+    (command-execute 'cider-switch-to-repl-buffer)
+    (command-execute 'cider-switch-to-last-clojure-buffer))
+  
+  (defun clojure-set-up-key-bindings ()
+    (define-key clojure-mode-map (kbd "C-c r") 'cider-repl))
+  ;; If necessary, add more calls to `define-key' here ...
+  (with-eval-after-load 'cider
+    (evil-define-key 'insert cider-repl-mode-map
+      (kbd "C-j") 'cider-repl-next-input
+      (kbd "C-k") 'cider-repl-previous-input))
+  (major-mode-map cider-repl-mode
+    :bindings
+    ("c" 'cider-repl-clear-buffer
+     "k" 'cider-repl-previous-input
+     "j" 'cider-repl-next-input))
+  (add-hook 'cider-repl-mode-hook 'clojure-set-up-key-bindings)
+  
+  
+  (setq cider-repl-pop-to-buffer-on-connect nil
+	cider-show-error-buffer nil))
 
 (module! python
   :ensure t
   :requires evil
   :config
+  (major-mode-map python-mode
+    :bindings
+    ("sd" 'python-shell-send-defun
+     "sb" 'python-shell-send-buffer)
+    :labels
+    ("s"  "send"))
+  (evil-define-key 'normal 'evil-normal-state-map (kbd "C-j") 'comint-next-input)
+  (evil-define-key 'insert 'evil-insert-state-map (kbd "C-j") 'comint-next-input)
+  (evil-define-key 'normal 'evil-normal-state-map (kbd "C-k") 'comint-previous-input)
+  (evil-define-key 'insert 'evil-insert-state-map (kbd "C-k") 'comint-previous-input)
   (setq
     python-shell-interpreter "ipython"
-    python-shell-interpreter-args "--simple-prompt -i"))
+    python-shell-interpreter-args "--simple-prompt -i --InteractiveShell.display_page=True"
+    flycheck-display-errors-function #'flycheck-display-error-messages-unless-error-list))
 
 (module! lsp-mode
   :init
@@ -160,6 +232,11 @@
   (add-to-list 'lsp-language-id-configuration '(clojurec-mode . "clojure"))
   (add-to-list 'lsp-language-id-configuration '(clojurescript-mode . "clojurescript")))
 
+(module! flycheck
+  :ensure t 
+  :init 
+  (global-flycheck-mode))
+
 (module! lsp-ui
   :ensure t
   :after (lsp-mode)
@@ -174,7 +251,7 @@
               lsp-ui-doc-border (face-foreground 'default)
               lsp-ui-peek-enable t
               lsp-ui-peek-show-directory t
-              lsp-ui-sideline-update-mode 'line
+	      lsp-ui-sideline-show-diagnostics t
               lsp-ui-sideline-enable t
               lsp-ui-sideline-show-code-actions t
               lsp-ui-sideline-show-hover t
@@ -242,4 +319,25 @@
   :requires evil
   :config
   (setq
-   conda-anaconda-home "/Users/andrew/anaconda3"))
+   conda-anaconda-home "/Users/andrewparisi/anaconda3"
+   conda-env-home-directory "/Users/andrewparisi/anaconda3")
+  (conda-env-initialize-eshell)
+  )
+
+(module! eshell
+  :init
+  (evil-define-key 'normal 'eshell-mode-map
+    (kbd "C-j") 'eshell-next-input
+    (kbd "C-k") 'eshell-previous-input)
+  (evil-define-key 'insert 'eshell-mode-map
+    (kbd "C-j") 'eshell-next-input
+    (kbd "C-k") 'eshell-previous-input))
+
+(module! telephone-line
+  :ensure t
+  :config
+  (setq telephone-line-primary-right-separator 'telephone-line-abs-left
+	telephone-line-secondary-right-separator 'telephone-line-abs-hollow-left
+	telephone-line-height 24
+	telephone-line-evil-use-short-tag t)
+  (telephone-line-mode +1))

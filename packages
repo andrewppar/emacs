@@ -1,13 +1,17 @@
+telephone-line
+eshell
 conda
 haskell-mode
 clojure-mode
 magit
 company
 lsp-ui
+flycheck
 lsp-mode
 python
 cider
 org-agenda
+ox-ipynb
 org
 ibuffer
 ivy
