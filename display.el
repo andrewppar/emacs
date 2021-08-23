@@ -1,6 +1,7 @@
 (tool-bar-mode -1)
 (menu-bar-mode -1)
-;;(scroll-bar-mode -1)
+(when window-system
+  (scroll-bar-mode -1))
 (display-time-mode 1)
 (setq inhibit-splash-screen t)
 
@@ -10,6 +11,9 @@
 (turn-on-font-lock)
 (show-paren-mode 1)
 (setq-default indicate-empty-lines t)
+
+(ignore-errors (set-frame-font "Menlo-14"))
+
 
 (defvar *dispaly/keyword-function-map*
   '(:constant font-lock-constant-face
@@ -77,5 +81,5 @@
 ;;	(push `(add-to-list default-frame-alist '(,letter ,num1 ,num2)) result)
 	(push `(set-frame-parameter (selected-frame) ,letter '(,num1 ,num2)) result)
 	))
-    (message (format "COLORS: %s" result))
+    ;;(message (format "COLORS: %s" result))
     (cons 'progn result)))

@@ -2,13 +2,26 @@
 
 (setq *start* (float-time))
 
-(load "~/.emacs.d/display.el")
-(load "~/.emacs.d/keyboard.el")
-(load "~/.emacs.d/modules.el")
-(load "~/.emacs.d/splash.el")
-(load "~/emacs-files/timesheet.el")
-(load "~/emacs-files/diary-helpers.el")
-(load "~/emacs-files/eshell.el")
+(defmacro load! (load-string)
+  (declare (indent defun))
+  (let ((start (float-time)))
+    `(progn
+       (load ,load-string)
+       (message
+	(format "done loading %s: %s"
+		,load-string ,(- (float-time) start))))))
+
+
+
+(load! "~/.emacs.d/display.el")
+(load! "~/.emacs.d/modules.el")
+(load! "~/.emacs.d/splash.el")
+(load! "~/emacs-files/timesheet.el")
+(load! "~/emacs-files/diary-helpers.el")
+(load! "~/emacs-files/eshell.el")
+
+(add-to-list 'load-path "/Users/andrewparisi/.emacs.d/elpa/ox-ipynb") ;Modify with your own path
+(require 'ox-ipynb)
 
 ;;(server-start)
 
@@ -34,6 +47,10 @@
 (defun messages-buffer ()
   (interactive)
   (switch-to-buffer "*Messages*"))
+
+(defun scratch-buffer ()
+  (interactive)
+  (switch-to-buffer "*scratch*"))
 
 (defun init-file ()
   (interactive)
@@ -61,12 +78,13 @@
 (defun organizer-session()
     (interactive)
     (find-file "/Users/andrewparisi/org/status.org")
-    ;;    (refresh-agenda)
+   ;; (archive-calendar-items)
     (let* ((status-buffer (current-buffer))
            (year      (format-time-string "%Y"))
            (month     (format-time-string "%B"))
            (day       (format-time-string "%m-%d-%Y")))
       (org-agenda-list)
+      (org-agenda-day-view)
       (let ((agenda-buffer (current-buffer)))
         (switch-to-buffer status-buffer)
         (delete-other-windows)
@@ -78,7 +96,8 @@
         (other-window 1)
         (task-log)
         (other-window 1)
-        (other-window 1))))
+        (other-window 1)))
+    (window-configuration-to-register ?a))
 
 (defun org-jira-link-todo (project number)
     (interactive "sProject: \nsNumber: \n")
@@ -98,39 +117,26 @@
           (backward-char)
           (org-insert-jira-link project number)))))
 
-  (defun org-insert-jira-link (project number)
-    (interactive "sProject: \nsNumber: \n")
-    (insert (format
-             "[[https://reifyhealth.atlassian.net/browse/%s-%s][%s-%s]]"
-             project number project number)))
+(defun org-archive-finished-todos ()
+  (interactive)
+  (org-map-entries 'org-archive-subtree-default "/DONE" 'file))
 
-  (defun org-archive-finished-todos ()
-    (interactive)
-    (org-map-entries 'org-archive-subtree-default "/DONE" 'file))
-
-
-(defun setup-org-file (title)
-  (interactive "sTitle: ")
-  (let ((date (format-time-string "%m-%d-%Y")))
-    (save-excursion
-      (goto-char 0)
-      (insert (format "#+title: %s\n" title))
-      (insert (format "#+date: %s\n" date))
-      (insert (format "#+author: Andrew Parisi\n")))))
 
 (which-key-map evil-normal-state-map ","
 	       :labels
-	       ("i" "init"
-		"g" "magit"
-		"s" "paredit"
-                "o" "organizer"
-		"v" "ivy view"
+	       ("i"  "init"
+		"g"  "magit"
+		"s"  "paredit"
+                "o"  "organizer"
+		"oe" "edit"
+		"v"  "ivy view"
 		)
 	       :default-bindings
 	       (;; ibuffer
 		"bi" 'ibuffer
 		"bb" 'ivy-switch-buffer
 		"bm" 'messages-buffer
+		"bs" 'scratch-buffer
 		;; init
 		"ii"  'init-file
 		"im"  'modules-file
@@ -139,43 +145,27 @@
 		"gs"  'magit-status
 		;; generic
 	        "x"  'counsel-M-x
+		"'"  'eshell
 	        ;; paredit mode
 		"sq"  'indent-pp-sexp
 		"sl"  'forward-sexp
 		"sh"  'backward-sexp
-		"st"  'transpose-sexp
+		"st"  'transpose-sexps
 		;; ivy view
 		"vs"  'ivy-push-view
 		"vd"  'ivy-pop-view
                 ;; organizer 
-                "os" 'organizer-session 
-                "ol" 'task-log
-                "ot" 'log-task 
-                "of" 'task-log-for-date
-                "or" 'refresh-agenda
-		)
-	       :major-mode
-	       ((org-mode-map
-		 "a"  'org-agenda
-		 "t"  'org-todo
-		 "s"  'my-org-archive-done-tasks
-		 "ic" 'org-insert-code-block
-		 "ij" 'org-insert-jira-link
-		 "c"  'org-mode-ctrl-c-ctrl-c
-		 )
-		(clojure-mode-map
-		 "jj" 'cider-jack-in
-		 "jc" 'cider-connect-clj
-		 "jq" 'cider-quit
-		 "s"  'cider-toggle-trace-var
-		 "g"  'xref-find-definitions
-		 "c"  'cider-eval-defun-at-point
-		 )
-		
-		(magit-mode-map
-		 "" 'magit-dispatch)
-		)
-	       )
+                "os"  'organizer-session 
+                "ol"  'task-log
+                "ot"  'log-task 
+                "of"  'task-log-for-date
+		"og"  'get-tasks-in-range
+                "or"  'refresh-agenda
+		"oa"  'add-calendar-item-for-today
+		"oed" 'edit-task-description-at-point
+		"oes" 'edit-task-start-time-at-point
+		"oee" 'edit-task-end-time-at-point
+		"oeg" 'edit-task-group-at-point))
 
 ;; TODO
 ;; Clean this up and put it in a macro
@@ -196,7 +186,7 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(lsp-clients evil-org which-key use-package python org magit lsp-mode evil-collection counsel conda cider)))
+   '(esup lsp-clients evil-org which-key use-package python org magit lsp-mode evil-collection counsel conda cider)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

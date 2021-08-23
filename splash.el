@@ -8,4 +8,3 @@
   (insert "\\/ /_/ \\___|_|_|\\___/  \\_/ \\_/_| |_|\\__,_|_|  \\___| \\_/\\_/   \n")
   (insert "\n\n\n")
   (insert (format "Load time: %s" load-time)))
-	
