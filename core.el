@@ -1,3 +1,7 @@
+(setq gc-cons-threshold 64000000)
+(add-hook 'after-init-hook #'(lambda ()
+                               ;; restore after startup
+                               (setq gc-cons-threshold 800000)))
 (require 'package)
 
 (add-to-list
@@ -70,9 +74,10 @@
 
 (defmacro module! (module-name &rest args)
   (declare (indent defun))
-  (let ((start (float-time)))
+  (let ((start (gensym "start")))
     (setq *packages* (cons (symbol-name module-name) *packages*))
     `(progn
-       (message (format "Loading %s..." ',module-name)) 
-       (use-package ,module-name ,@args)
-       (message (format "Done loading %s ... %s" ',module-name ,(- (float-time) start))))))
+       (let ((,start (float-time)))
+	 (message (format "Loading %s..." ',module-name)) 
+	 (use-package ,module-name ,@args)
+	 (message (format "Done loading %s ... %s" ',module-name (- (float-time) ,start)))))))

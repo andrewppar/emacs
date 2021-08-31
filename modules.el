@@ -71,12 +71,12 @@
 (module! org
   :ensure t
   :requires evil
-  :init
+  :config
   (defun org-insert-jira-link (project number)
-  (interactive "sProject: \nsNumber: \n")
-  (insert (format
-           "[[https://reifyhealth.atlassian.net/browse/%s-%s][%s-%s]]"
-           project number project number)))
+    (interactive "sProject: \nsNumber: \n")
+    (insert (format
+             "[[https://reifyhealth.atlassian.net/browse/%s-%s][%s-%s]]"
+             project number project number)))
   
   (defun my-org-archive-done-tasks ()
     (interactive)
@@ -90,13 +90,13 @@
     (forward-line -2))
 
   (defun setup-org-file (title)
-  (interactive "sTitle: ")
-  (let ((date (format-time-string "%m-%d-%Y")))
-    (save-excursion
-      (goto-char 0)
-      (insert (format "#+title: %s\n" title))
-      (insert (format "#+date: %s\n" date))
-      (insert (format "#+author: Andrew Parisi\n")))))
+    (interactive "sTitle: ")
+    (let ((date (format-time-string "%m-%d-%Y")))
+      (save-excursion
+	(goto-char 0)
+	(insert (format "#+title: %s\n" title))
+	(insert (format "#+date: %s\n" date))
+	(insert (format "#+author: Andrew Parisi\n")))))
 
   (defun org-task-goto-general ()
     (interactive)
@@ -122,7 +122,6 @@
      "f"  "org-file"))
   (evil-define-key 'normal org-mode-map
     (kbd "<tab>") 'org-cycle)
-  :config
   (require 'ox-md)
   (setq org-startup-indented t
 	org-startup-truncated nil
@@ -216,63 +215,84 @@
     python-shell-interpreter-args "--simple-prompt -i --InteractiveShell.display_page=True"
     flycheck-display-errors-function #'flycheck-display-error-messages-unless-error-list))
 
-(module! lsp-mode
-  :init
-  (setq lsp-clojure-server-command '("clojure-lsp")
-	lsp-enable-indentation nil
-	lsp-enable-completion-at-point nil)
-  ;; (setq indent-region-function #'clojure-indent-function)
-  (add-hook 'clojure-mode-hook #'lsp)
-  (add-hook 'clojurec-mode-hook #'lsp)
-  (add-hook 'clojurescript-mode-hook #'lsp)
-  (add-hook 'python-mode-hook #'lsp)
+(module! blacken
+  :ensure t
+  :hook (python-mode . blacken-mode)
   :config
-  (require 'lsp-clojure)
-  (add-to-list 'lsp-language-id-configuration '(clojure-mode . "clojure"))
-  (add-to-list 'lsp-language-id-configuration '(clojurec-mode . "clojure"))
-  (add-to-list 'lsp-language-id-configuration '(clojurescript-mode . "clojurescript")))
+  (setq blacken-line-length '79))
+
+(module! eglot
+  :ensure t
+  :config
+  (add-to-list 'eglot-server-programs '(clojure-mode . ("clojure-lsp"))))
+
+;;(module! lsp-mode
+;;  :init
+;;  (setq lsp-clojure-server-command '("clojure-lsp")
+;;	lsp-enable-indentation nil
+;;	lsp-enable-completion-at-point nil)
+;;  ;; (setq indent-region-function #'clojure-indent-function)
+;;  (add-hook 'clojure-mode-hook #'lsp)
+;;  (add-hook 'clojurec-mode-hook #'lsp)
+;;  (add-hook 'clojurescript-mode-hook #'lsp)
+;;  (add-hook 'python-mode-hook #'lsp)
+;;  :config
+;;  (lsp-register-custom-settings
+;;   '(("pyls.plugins.pyls_mypy.enabled" t t)
+;;     ("pyls.plugins.pyls_mypy.live_mode" nil t)
+;;     ("pyls.plugins.pyls_black.enabled" t t)
+;;     ("pyls.plugins.pyls_isort.enabled" t t)))
+;;  (require 'lsp-clojure)
+;;  (add-to-list 'lsp-language-id-configuration '(clojure-mode . "clojure"))
+;;  (add-to-list 'lsp-language-id-configuration '(clojurec-mode . "clojure"))
+;;  (add-to-list 'lsp-language-id-configuration '(clojurescript-mode . "clojurescript"))
+;;  :hook
+;;  ((python-mode . lsp)))
+
+
+;;(module! lsp-ui
+;;  :ensure t
+;;  :after (lsp-mode)
+;;
+;;  :init (setq lsp-ui-doc-enable t
+;;              lsp-ui-doc-use-webkit t
+;;              lsp-ui-doc-header t
+;;              lsp-ui-doc-delay 0.2
+;;              lsp-ui-doc-include-signature t
+;;              lsp-ui-doc-alignment 'at-point
+;;              lsp-ui-doc-use-childframe t
+;;              lsp-ui-doc-border (face-foreground 'default)
+;;              lsp-ui-peek-enable t
+;;              lsp-ui-peek-show-directory t
+;;	      lsp-ui-sideline-show-diagnostics t
+;;              lsp-ui-sideline-enable t
+;;              lsp-ui-sideline-show-code-actions t
+;;              lsp-ui-sideline-show-hover t
+;;              lsp-ui-sideline-ignore-duplicate t)
+;;  :config
+;;  (add-to-list 'lsp-ui-doc-frame-parameters '(right-fringe . 8))
+;;
+;;  ;; `C-g'to close doc
+;;  (advice-add #'keyboard-quit :before #'lsp-ui-doc-hide)
+;;
+;;  ;; Reset `lsp-ui-doc-background' after loading theme
+;;  (add-hook 'after-load-theme-hook
+;;	    (lambda ()
+;;              (setq lsp-ui-doc-border (face-foreground 'default))
+;;              (set-face-background 'lsp-ui-doc-background
+;;				   (face-background 'tooltip))))
+;;
+;;  ;; WORKAROUND Hide mode-line of the lsp-ui-imenu buffer
+;;  ;; @see https://github.com/emacs-lsp/lsp-ui/issues/243
+;;  (defadvice lsp-ui-imenu (after hide-lsp-ui-imenu-mode-line activate)
+;;    (setq mode-line-format nil)))
 
 (module! flycheck
   :ensure t 
   :init 
   (global-flycheck-mode))
 
-(module! lsp-ui
-  :ensure t
-  :after (lsp-mode)
 
-  :init (setq lsp-ui-doc-enable t
-              lsp-ui-doc-use-webkit t
-              lsp-ui-doc-header t
-              lsp-ui-doc-delay 0.2
-              lsp-ui-doc-include-signature t
-              lsp-ui-doc-alignment 'at-point
-              lsp-ui-doc-use-childframe t
-              lsp-ui-doc-border (face-foreground 'default)
-              lsp-ui-peek-enable t
-              lsp-ui-peek-show-directory t
-	      lsp-ui-sideline-show-diagnostics t
-              lsp-ui-sideline-enable t
-              lsp-ui-sideline-show-code-actions t
-              lsp-ui-sideline-show-hover t
-              lsp-ui-sideline-ignore-duplicate t)
-  :config
-  (add-to-list 'lsp-ui-doc-frame-parameters '(right-fringe . 8))
-
-  ;; `C-g'to close doc
-  (advice-add #'keyboard-quit :before #'lsp-ui-doc-hide)
-
-  ;; Reset `lsp-ui-doc-background' after loading theme
-  (add-hook 'after-load-theme-hook
-	    (lambda ()
-              (setq lsp-ui-doc-border (face-foreground 'default))
-              (set-face-background 'lsp-ui-doc-background
-				   (face-background 'tooltip))))
-
-  ;; WORKAROUND Hide mode-line of the lsp-ui-imenu buffer
-  ;; @see https://github.com/emacs-lsp/lsp-ui/issues/243
-  (defadvice lsp-ui-imenu (after hide-lsp-ui-imenu-mode-line activate)
-    (setq mode-line-format nil)))
 
 (module! company
   :ensure t
@@ -287,9 +307,16 @@
    #'magit-display-buffer-fullframe-status-v1
    ediff-window-setup-function
    #'ediff-setup-windows-plain)
+
+  (defun git-commit-message-setup ()
+    (insert (format "%s " (magit-get-current-branch))))
+
+  (add-hook 'git-commit-setup-hook 'git-commit-message-setup)
+
   (major-mode-map magit-mode
     :bindings
-    ("" 'magit-dispatch)))
+    ("" 'magit-dispatch))
+  )
 
 (module! clojure-mode
   :ensure t
@@ -311,7 +338,7 @@
 (module! haskell-mode
   :ensure t
   :requires (evil which-key)
-  :init
+  :config
   (require 'ob-haskell))
 
 (module! conda
@@ -332,12 +359,3 @@
   (evil-define-key 'insert 'eshell-mode-map
     (kbd "C-j") 'eshell-next-input
     (kbd "C-k") 'eshell-previous-input))
-
-(module! telephone-line
-  :ensure t
-  :config
-  (setq telephone-line-primary-right-separator 'telephone-line-abs-left
-	telephone-line-secondary-right-separator 'telephone-line-abs-hollow-left
-	telephone-line-height 24
-	telephone-line-evil-use-short-tag t)
-  (telephone-line-mode +1))
