@@ -1,10 +1,12 @@
+eshell
 conda
 haskell-mode
 clojure-mode
 magit
 company
-lsp-ui
-lsp-mode
+flycheck
+eglot
+blacken
 python
 cider
 org-agenda
