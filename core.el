@@ -1,3 +1,7 @@
+(setq gc-cons-threshold 64000000)
+(add-hook 'after-init-hook #'(lambda ()
+                               ;; restore after startup
+                               (setq gc-cons-threshold 800000)))
 (require 'package)
 
 (add-to-list
@@ -11,6 +15,8 @@
 (add-to-list
  'package-archives
  '("melpa" . "https://melpa.org/packages/") t)
+
+(setq read-process-output-max (* 1024 1024))
 
 (defun install-core ()
   (setq package-list '(evil use-package))
@@ -47,10 +53,10 @@
 (defun sync-packages ()
   (let ((to-delete (read-packages))
 	(current-packages *packages*))
-    (message (format "CUR: %s" current-packages))
+    ;;(message (format "CUR: %s" current-packages))
     (dolist (package current-packages)
       (setq to-delete (remove package to-delete)))
-    (message (format "CURRENT: %s" current-packages))
+    ;;(message (format "CURRENT: %s" current-packages))
     (dolist (package to-delete)
       (let ((package-spec (cadr
 			   (assoc
@@ -68,5 +74,10 @@
 
 (defmacro module! (module-name &rest args)
   (declare (indent defun))
-  (setq *packages* (cons (symbol-name module-name) *packages*))
-  `(use-package ,module-name ,@args))
+  (let ((start (gensym "start")))
+    (setq *packages* (cons (symbol-name module-name) *packages*))
+    `(progn
+       (let ((,start (float-time)))
+	 (message (format "Loading %s..." ',module-name)) 
+	 (use-package ,module-name ,@args)
+	 (message (format "Done loading %s ... %s" ',module-name (- (float-time) ,start)))))))

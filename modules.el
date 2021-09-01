@@ -1,7 +1,7 @@
-(load "~/.emacs.d/keyboard.el")
+(load! "~/.emacs.d/keyboard.el")
 
 (add-to-list 'exec-path "/usr/local/bin")
-(add-to-list 'exec-path "/Library/TeX/texbin")
+(add-to-list 'exec-path "/Library/TeX/texbin/")
 (setenv "PATH" (mapconcat 'identity exec-path ":"))
 
 ;; TODO: Create module! macro that is a thin wrapper around use-package
@@ -50,11 +50,11 @@
    '(("home"
       ("python"
        (or (mode . pyhton-mode)
-	   (directory . "/Users/andrew/Documents/python")
+	   (directory . "/Users/andrewparisi/Documents/python")
 	   (name . "\*Python\*")))
       ("clojure"
        (or (mode . clojure-mode)
-	   (directory . "/Users/andrew/Documents/clojure")
+	   (directory . "/Users/andrewparisi/Documents/clojure")
 	   (name . "\*cider\*")))
       ("magit"
        (name . "\*magit"))
@@ -71,7 +71,13 @@
 (module! org
   :ensure t
   :requires evil
-  :init
+  :config
+  (defun org-insert-jira-link (project number)
+    (interactive "sProject: \nsNumber: \n")
+    (insert (format
+             "[[https://reifyhealth.atlassian.net/browse/%s-%s][%s-%s]]"
+             project number project number)))
+  
   (defun my-org-archive-done-tasks ()
     (interactive)
     (org-map-entries 'org-archive-subtree "/DONE" 'file))
@@ -83,19 +89,40 @@
     (insert (format "#+end_src\n"))
     (forward-line -2))
 
+  (defun setup-org-file (title)
+    (interactive "sTitle: ")
+    (let ((date (format-time-string "%m-%d-%Y")))
+      (save-excursion
+	(goto-char 0)
+	(insert (format "#+title: %s\n" title))
+	(insert (format "#+date: %s\n" date))
+	(insert (format "#+author: Andrew Parisi\n")))))
+
+  (defun org-task-goto-general ()
+    (interactive)
+    (goto-char (org-goto-heading "General" '("Tasks"))))
+
+  (defun org-task-goto-jira ()
+    (interactive)
+    (goto-char (org-goto-heading "JIRA" '("Tasks"))))
+
   (major-mode-map org-mode
     :bindings
     ("a"  'org-agenda
      "t"  'org-todo
      "s"  'my-org-archive-done-tasks
+     "fi" 'setup-org-file
      "ic" 'org-insert-code-block
+     "ij" 'org-insert-jira-link
+     "it" 'org-jira-link-todo
      "e"  'org-export-dispatch
-     "c"  'org-mode-ctrl-c-ctrl-c)
+     "c"  'org-capture)
     :labels
-    ("i"  "insert"))
+    ("i"  "insert"
+     "f"  "org-file"))
   (evil-define-key 'normal org-mode-map
     (kbd "<tab>") 'org-cycle)
-  :config
+  (require 'ox-md)
   (setq org-startup-indented t
 	org-startup-truncated nil
 	org-hide-leading-stars nil
@@ -106,6 +133,14 @@
 	org-hide-leading-stars t
 	org-confirm-babel-evaluate nil
 	org-agenda-files (list "~/org/status.org")
+	org-capture-default-notes-file "~/org/status.org"
+	org-capture-templates
+	'(("g" "general" entry
+	   (file+function "~/org/status.org" org-task-goto-general)
+	   "*** TODO %?\nSCHEDULED: %^t")
+	  ("j" "jira" entry
+	   (file+function "~/org/status.org" org-task-goto-jira)
+	   "*** TODO %?\nSCHEDULED: %^t"))
 	org-babel-clojure-backend 'cider)
   (org-babel-do-load-languages
    'org-babel-load-languages
@@ -141,85 +176,76 @@
      "f" 'org-agenda-later
      "b" 'org-agenda-earlier
      "c" 'org-capture
+     (kbd "<RET>") 'org-agenda-goto
      ">" 'org-agenda-date-prompt))
 
-(module! cider
+(module! cider				;
   :ensure t
   :requires evil
   :config
-  (major-mode-map cider-mode-map
+  (defun cider-show-cider-buffer ()
+    "Shows the nrepl buffer, but does not focus it."
+    (interactive)
+    (command-execute 'cider-switch-to-repl-buffer)
+    (command-execute 'cider-switch-to-last-clojure-buffer))
+  
+  (defun clojure-set-up-key-bindings ()
+    (define-key clojure-mode-map (kbd "C-c r") 'cider-repl))
+  ;; If necessary, add more calls to `define-key' here ...
+  (with-eval-after-load 'cider
+    (evil-define-key 'insert cider-repl-mode-map
+      (kbd "C-j") 'cider-repl-next-input
+      (kbd "C-k") 'cider-repl-previous-input))
+  (major-mode-map cider-repl-mode
     :bindings
-    ("j" 'cider-repl-previous-input
-     "k" 'cider-repl-next-input))
-  (setq cider-show-error-buffer nil))
+    ("c" 'cider-repl-clear-buffer
+     "k" 'cider-repl-previous-input
+     "j" 'cider-repl-next-input))
+  (add-hook 'cider-repl-mode-hook 'clojure-set-up-key-bindings)
+  
+  
+  (setq cider-repl-pop-to-buffer-on-connect nil
+	cider-show-error-buffer nil))
 
 (module! python
   :ensure t
   :requires evil
   :config
+  (major-mode-map python-mode
+    :bindings
+    ("sd" 'python-shell-send-defun
+     "sb" 'python-shell-send-buffer)
+    :labels
+    ("s"  "send"))
+  (evil-define-key 'normal 'evil-normal-state-map (kbd "C-j") 'comint-next-input)
+  (evil-define-key 'insert 'evil-insert-state-map (kbd "C-j") 'comint-next-input)
+  (evil-define-key 'normal 'evil-normal-state-map (kbd "C-k") 'comint-previous-input)
+  (evil-define-key 'insert 'evil-insert-state-map (kbd "C-k") 'comint-previous-input)
   (setq
     python-shell-interpreter "ipython"
-    python-shell-interpreter-args "--simple-prompt -i"))
+    python-shell-interpreter-args "--simple-prompt -i --InteractiveShell.display_page=True"
+    flycheck-display-errors-function #'flycheck-display-error-messages-unless-error-list))
 
-(module! lsp-mode
-  :init
-  (setq lsp-clojure-server-command '("clojure-lsp")
-	lsp-enable-indentation nil
-	lsp-enable-completion-at-point nil)
-  ;; (setq indent-region-function #'clojure-indent-function)
-  (add-hook 'clojure-mode-hook #'lsp)
-  (add-hook 'clojurec-mode-hook #'lsp)
-  (add-hook 'clojurescript-mode-hook #'lsp)
-  (add-hook 'python-mode-hook #'lsp)
+(module! blacken
+  :ensure t
+  :hook (python-mode . blacken-mode)
   :config
-  (require 'lsp-clojure)
-  (add-to-list 'lsp-language-id-configuration '(clojure-mode . "clojure"))
-  (add-to-list 'lsp-language-id-configuration '(clojurec-mode . "clojure"))
-  (add-to-list 'lsp-language-id-configuration '(clojurescript-mode . "clojurescript")))
+  (setq blacken-line-length '79))
 
 (module! flycheck
   :ensure t
   :config
   (global-flycheck-mode))
 
-(module! lsp-ui
+(module! eglot
   :ensure t
-  :after (lsp-mode)
-
-  :init (setq lsp-ui-doc-enable t
-              lsp-ui-doc-use-webkit t
-              lsp-ui-doc-header t
-              lsp-ui-doc-delay 0.2
-              lsp-ui-doc-include-signature t
-              lsp-ui-doc-alignment 'at-point
-              lsp-ui-doc-use-childframe t
-              lsp-ui-doc-border (face-foreground 'default)
-              lsp-ui-peek-enable t
-              lsp-ui-peek-show-directory t
-	      lsp-ui-sideline-show-diagnostics t
-              lsp-ui-sideline-update-mode 'line
-	      lsp-modeline-code-actions-enable t
-              lsp-ui-sideline-enable t
-              lsp-ui-sideline-show-code-actions t
-              lsp-ui-sideline-show-hover t
-              lsp-ui-sideline-ignore-duplicate t)
   :config
-  (add-to-list 'lsp-ui-doc-frame-parameters '(right-fringe . 8))
+  (add-to-list 'eglot-server-programs '(clojure-mode . ("clojure-lsp"))))
 
-  ;; `C-g'to close doc
-  (advice-add #'keyboard-quit :before #'lsp-ui-doc-hide)
-
-  ;; Reset `lsp-ui-doc-background' after loading theme
-  (add-hook 'after-load-theme-hook
-	    (lambda ()
-              (setq lsp-ui-doc-border (face-foreground 'default))
-              (set-face-background 'lsp-ui-doc-background
-				   (face-background 'tooltip))))
-
-  ;; WORKAROUND Hide mode-line of the lsp-ui-imenu buffer
-  ;; @see https://github.com/emacs-lsp/lsp-ui/issues/243
-  (defadvice lsp-ui-imenu (after hide-lsp-ui-imenu-mode-line activate)
-    (setq mode-line-format nil)))
+(module! flycheck
+  :ensure t 
+  :init 
+  (global-flycheck-mode))
 
 (module! company
   :ensure t
@@ -234,9 +260,16 @@
    #'magit-display-buffer-fullframe-status-v1
    ediff-window-setup-function
    #'ediff-setup-windows-plain)
+
+  (defun git-commit-message-setup ()
+    (insert (format "%s " (magit-get-current-branch))))
+
+  (add-hook 'git-commit-setup-hook 'git-commit-message-setup)
+
   (major-mode-map magit-mode
     :bindings
-    ("" 'magit-dispatch)))
+    ("" 'magit-dispatch))
+  )
 
 (module! clojure-mode
   :ensure t
