@@ -1,4 +1,6 @@
-(load "~/.emacs.d/core.el")
+(load! "~/.emacs.d/core.el")
+
+(require 'use-package)
 
 (use-package evil
   :ensure t
@@ -44,7 +46,7 @@
 ;; Keybindings
 
 (defun generate-which-key-binding-sexp (map trigger binding item type)
-  (message (format "KeyBinding: %s %s %s %s %s" map trigger binding item type))
+  ;;(message (format "KeyBinding: %s %s %s %s %s" map trigger binding item type))
   (let ((binding-string (if (equal type :major-mode)
 			    (concat trigger "m" binding)
 			  (concat trigger binding)))
@@ -100,7 +102,7 @@
   (let ((labels              (make-labels map trigger configuration))
 	(bindings            (make-default-bindings map trigger configuration))
 	(major-mode-bindings (make-major-mode-bindings trigger configuration)))
-    (message (format "BINDINGS: %s" (cons 'progn (append labels bindings major-mode-bindings))))
+    ;;(message (format "BINDINGS: %s" (cons 'progn (append labels bindings major-mode-bindings))))
     (cons 'progn (append labels bindings major-mode-bindings))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -112,6 +114,7 @@
   "w" "window"
   "b" "buffer"
   "e" "eval"
+  "r" "kill-ring"
   "m" "major mode")
   :default-bindings
   ("f"  'counsel-find-file
@@ -191,5 +194,3 @@
 	  ))
        (progn
 	 ,@body))))
-       
-
