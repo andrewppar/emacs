@@ -123,7 +123,8 @@
    "3"  'split-window-right
    "bd" 'kill-buffer
    "bx" 'kill-buffer-and-window
-   "ww" 'other-window
+   "ry" 'counsel-yank-pop
+   "a"  'other-window
    "wd" 'delete-window
    "w0" 'delete-window
    "w1" 'delete-other-windows

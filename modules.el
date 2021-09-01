@@ -1,6 +1,7 @@
 (load "~/.emacs.d/keyboard.el")
 
 (add-to-list 'exec-path "/usr/local/bin")
+(add-to-list 'exec-path "/Library/TeX/texbin")
 (setenv "PATH" (mapconcat 'identity exec-path ":"))
 
 ;; TODO: Create module! macro that is a thin wrapper around use-package
@@ -71,7 +72,6 @@
   :ensure t
   :requires evil
   :init
-  (message "HERE")
   (defun my-org-archive-done-tasks ()
     (interactive)
     (org-map-entries 'org-archive-subtree "/DONE" 'file))
@@ -116,6 +116,17 @@
      (sql . t)
      (shell . t))))
 
+(module! ox-latex
+  :config
+  (add-to-list 'org-latex-classes
+               `("altacv"
+		 ,(with-temp-buffer (insert-file-contents "/Users/andrew/.emacs.d/resume")
+				   (buffer-string))
+		 ("\\section{%s}" . "\\section*{%s}")
+		 ("\\subsection{%s}" . "\\subsection*{%s}")
+		 ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
+		 ("\\paragraph{%s}" . "\\paragraph*{%s}"))))
+
 (module! org-agenda
   :requires evil
   :config
@@ -133,8 +144,14 @@
      ">" 'org-agenda-date-prompt))
 
 (module! cider
-:ensure t
-:requires evil)
+  :ensure t
+  :requires evil
+  :config
+  (major-mode-map cider-mode-map
+    :bindings
+    ("j" 'cider-repl-previous-input
+     "k" 'cider-repl-next-input))
+  (setq cider-show-error-buffer nil))
 
 (module! python
   :ensure t
@@ -160,6 +177,11 @@
   (add-to-list 'lsp-language-id-configuration '(clojurec-mode . "clojure"))
   (add-to-list 'lsp-language-id-configuration '(clojurescript-mode . "clojurescript")))
 
+(module! flycheck
+  :ensure t
+  :config
+  (global-flycheck-mode))
+
 (module! lsp-ui
   :ensure t
   :after (lsp-mode)
@@ -174,7 +196,9 @@
               lsp-ui-doc-border (face-foreground 'default)
               lsp-ui-peek-enable t
               lsp-ui-peek-show-directory t
+	      lsp-ui-sideline-show-diagnostics t
               lsp-ui-sideline-update-mode 'line
+	      lsp-modeline-code-actions-enable t
               lsp-ui-sideline-enable t
               lsp-ui-sideline-show-code-actions t
               lsp-ui-sideline-show-hover t
@@ -229,17 +253,29 @@
      "a"  'lsp-execute-code-action)
     :labels
     (""  "major mode"
-     "j"  "repl")))
+     "j"  "repl"))
+  :config
+  (evil-define-key 'normal 'cider-mode-map
+    (kbd "C-k") 'cider-repl-previous-input
+    (kbd "C-j") 'cider-repl-next-input)
+  (evil-define-key 'insert 'cider-mode-map
+    (kbd "C-k") 'cider-repl-previous-input
+    (kbd "C-j") 'cider-repl-next-input))
 
 (module! haskell-mode
   :ensure t
   :requires (evil which-key)
   :init
-  (require 'ob-haskell))
+  (require 'ob-haskell)
+  :config
+  (major-mode-map haskell-mode
+    :bindings
+    ("c" 'haskell-process-load-file)))
 
 (module! conda
   :ensure t
   :requires evil
   :config
   (setq
-   conda-anaconda-home "/Users/andrew/anaconda3"))
+   conda-anaconda-home "/Users/andrew/anaconda3"
+   conda-env-home-directory "/Users/andrew/anaconda3"))

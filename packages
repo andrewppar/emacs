@@ -4,12 +4,15 @@ clojure-mode
 magit
 company
 lsp-ui
+flycheck
 lsp-mode
 python
 cider
 org-agenda
+ox-latex
 org
 ibuffer
+ispell
 ivy
 counsel
 undo-tree
