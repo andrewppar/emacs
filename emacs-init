@@ -35,6 +35,11 @@
   (interactive)
   (switch-to-buffer "*Messages*"))
 
+
+(defun scratch-buffer ()
+  (interactive)
+  (switch-to-buffer "*scratch*"))
+
 (defun init-file ()
   (interactive)
   (find-file "~/.emacs"))
@@ -46,6 +51,7 @@
 (defun core-file ()
   (interactive)
   (find-file "~/.emacs.d/core.el"))
+
 
 (defun my-org-archive-done-tasks ()
     (interactive)
@@ -139,8 +145,9 @@
 	       :default-bindings
 	       (;; ibuffer
 		"bi" 'ibuffer
-		"bb" 'ivy-switch-buffer
+		"bb" 'counsel-switch-buffer
 		"bm" 'messages-buffer
+		"bs" 'scratch-buffer
 		;; init
 		"ii"  'init-file
 		"im"  'modules-file
@@ -153,7 +160,7 @@
 		"sq"  'indent-pp-sexp
 		"sl"  'forward-sexp
 		"sh"  'backward-sexp
-		"st"  'transpose-sexp
+		"st"  'transpose-sexps
 		;; ivy view
 		"vs"  'ivy-push-view
 		"vd"  'ivy-pop-view
@@ -173,6 +180,11 @@
 ;; Clean this up and put it in a macro
 (evil-define-key 'normal 'evil-normal-state-map "[" 'evil-jump-item)
 (evil-define-key 'visual 'evil-visual-state-map "[" 'evil-jump-item)
+
+(evil-define-key 'normal 'evil-normal-state-map (kbd "C-k") 'comint-previous-input)
+(evil-define-key 'insert 'evil-insert-state-map (kbd "C-k") 'comint-previous-input)
+(evil-define-key 'normal 'evil-normal-state-map (kbd "C-j") 'comint-next-input)
+(evil-define-key 'insert 'evil-insert-state-map (kbd "C-j") 'comint-next-input)
 
 (setq *end* (float-time))
 (memacs-splash (- *end* *start*))
