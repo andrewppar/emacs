@@ -68,9 +68,11 @@
   (setq evil-emacs-state-modes
 	(delq 'ibuffer-mode evil-emacs-state-modes)))
 
+(module! projectile
+  :ensure t)
+
 (module! org
   :ensure t
-  :requires evil
   :config
   (defun org-insert-jira-link (project number)
     (interactive "sProject: \nsNumber: \n")
@@ -82,9 +84,9 @@
     (interactive)
     (org-map-entries 'org-archive-subtree "/DONE" 'file))
 
-  (defun org-insert-code-block (language settings)
-    (interactive "sLanguage: \nsSettings: ")
-    (insert (format "#+begin_src %s %s\n\n" language settings))
+  (defun org-insert-code-block (language results)
+    (interactive "sLanguage: \nsResults: ")
+    (insert (format "#+begin_src %s :session :results %s\n\n" language results))
     (forward-line)
     (insert (format "#+end_src\n"))
     (forward-line -2))
@@ -93,10 +95,10 @@
     (interactive "sTitle: ")
     (let ((date (format-time-string "%m-%d-%Y")))
       (save-excursion
-	(goto-char 0)
-	(insert (format "#+title: %s\n" title))
-	(insert (format "#+date: %s\n" date))
-	(insert (format "#+author: Andrew Parisi\n")))))
+  	(goto-char 0)
+  	(insert (format "#+title: %s\n" title))
+  	(insert (format "#+date: %s\n" date))
+  	(insert (format "#+author: Andrew Parisi\n")))))
 
   (defun org-task-goto-general ()
     (interactive)
@@ -116,32 +118,46 @@
      "ij" 'org-insert-jira-link
      "it" 'org-jira-link-todo
      "e"  'org-export-dispatch
-     "c"  'org-capture)
+     "c"  'org-capture
+     "mp" 'org-move-subtree-up
+     "mn" 'org-move-subtree-down
+     "mj" 'org-move-item-up
+     "mk" 'org-move-item-down
+     "mh" 'org-promote-subtree
+     "ml" 'org-demote-subtree
+     "di" 'org-toggle-inline-images)
     :labels
     ("i"  "insert"
+     "m"  "move"
+     "d"  "dial"
      "f"  "org-file"))
   (evil-define-key 'normal org-mode-map
     (kbd "<tab>") 'org-cycle)
+  ;;SLOW
   (require 'ox-md)
   (setq org-startup-indented t
-	org-startup-truncated nil
-	org-hide-leading-stars nil
-	org-directory "~/org"
-	org-log-done t
-	org-todo-keywords
-	'((sequence "TODO" "IN PROGRESS" "|" "DONE"))
-	org-hide-leading-stars t
-	org-confirm-babel-evaluate nil
-	org-agenda-files (list "~/org/status.org")
-	org-capture-default-notes-file "~/org/status.org"
-	org-capture-templates
-	'(("g" "general" entry
-	   (file+function "~/org/status.org" org-task-goto-general)
-	   "*** TODO %?\nSCHEDULED: %^t")
-	  ("j" "jira" entry
-	   (file+function "~/org/status.org" org-task-goto-jira)
-	   "*** TODO %?\nSCHEDULED: %^t"))
-	org-babel-clojure-backend 'cider)
+  	org-startup-truncated nil
+  	org-hide-leading-stars nil
+  	org-directory "~/org"
+  	org-log-done t
+  	org-todo-keywords
+  	'((sequence "TODO" "IN PROGRESS" "|" "DONE"))
+  	org-hide-leading-stars t
+  	org-confirm-babel-evaluate nil
+  	org-agenda-files (list "~/org/status.org")
+  	org-capture-default-notes-file "~/org/status.org"
+   	org-capture-templates
+  	'(("g" "general" entry
+  	   (file+function "~/org/status.org" org-task-goto-general)
+  	   "*** TODO %?\nSCHEDULED: %^t")
+  	  ("j" "jira" entry
+  	   (file+function "~/org/status.org" org-task-goto-jira)
+  	   "*** TODO [[https://reifyhealth.atlassian.net/browse/%^{Project}-%^{Issue}][%\\1-%\\2]]: %?\nSCHEDULED: %^t"))
+  	org-babel-clojure-backend 'cider
+	org-plantuml-jar-path
+	(expand-file-name "/Users/andrewparisi/Documents/java/jars/plantuml.jar"))
+
+  ;; SLOW
   (org-babel-do-load-languages
    'org-babel-load-languages
    '((python . t)
@@ -149,7 +165,9 @@
      (haskell . t)
      (emacs-lisp . t)
      (sql . t)
-     (shell . t))))
+     (plantuml . t)
+     (shell . t)))
+  )
 
 (module! org-agenda
   :requires evil
@@ -182,7 +200,7 @@
     (define-key clojure-mode-map (kbd "C-c r") 'cider-repl))
   ;; If necessary, add more calls to `define-key' here ...
   (with-eval-after-load 'cider
-    (evil-define-key 'insert cider-repl-mode-map
+    (evil-define-key 'normal 'cider-repl-mode-map
       (kbd "C-j") 'cider-repl-next-input
       (kbd "C-k") 'cider-repl-previous-input))
   (major-mode-map cider-repl-mode
@@ -203,9 +221,10 @@
   (major-mode-map python-mode
     :bindings
     ("sd" 'python-shell-send-defun
-     "sb" 'python-shell-send-buffer)
+     "sb" 'python-shell-send-buffer
+     "b"  'blacken-buffer)
     :labels
-    ("s"  "send"))
+    ("s" "send"))
   (evil-define-key 'normal 'evil-normal-state-map (kbd "C-j") 'comint-next-input)
   (evil-define-key 'insert 'evil-insert-state-map (kbd "C-j") 'comint-next-input)
   (evil-define-key 'normal 'evil-normal-state-map (kbd "C-k") 'comint-previous-input)
@@ -217,82 +236,98 @@
 
 (module! blacken
   :ensure t
-  :hook (python-mode . blacken-mode)
   :config
   (setq blacken-line-length '79))
 
-(module! eglot
+(use-package lsp-pyright
   :ensure t
   :config
-  (add-to-list 'eglot-server-programs '(clojure-mode . ("clojure-lsp"))))
+  (setq
+   lsp-pyright-disable-language-services nil
+   lsp-pyright-disable-organize-imports  nil
+   lsp-pyright-auto-import-completions   nil
+   lsp-pyright-diagnostic-mode "openFilesOnly"
+   lsp-pyright-typechecking-mode "basic")
+  :hook (python-mode . (lambda ()
+                          (require 'lsp-pyright)
+                          (lsp))))
 
-;;(module! lsp-mode
-;;  :init
-;;  (setq lsp-clojure-server-command '("clojure-lsp")
-;;	lsp-enable-indentation nil
-;;	lsp-enable-completion-at-point nil)
-;;  ;; (setq indent-region-function #'clojure-indent-function)
-;;  (add-hook 'clojure-mode-hook #'lsp)
-;;  (add-hook 'clojurec-mode-hook #'lsp)
-;;  (add-hook 'clojurescript-mode-hook #'lsp)
-;;  (add-hook 'python-mode-hook #'lsp)
-;;  :config
-;;  (lsp-register-custom-settings
-;;   '(("pyls.plugins.pyls_mypy.enabled" t t)
-;;     ("pyls.plugins.pyls_mypy.live_mode" nil t)
-;;     ("pyls.plugins.pyls_black.enabled" t t)
-;;     ("pyls.plugins.pyls_isort.enabled" t t)))
-;;  (require 'lsp-clojure)
-;;  (add-to-list 'lsp-language-id-configuration '(clojure-mode . "clojure"))
-;;  (add-to-list 'lsp-language-id-configuration '(clojurec-mode . "clojure"))
-;;  (add-to-list 'lsp-language-id-configuration '(clojurescript-mode . "clojurescript"))
-;;  :hook
-;;  ((python-mode . lsp)))
+(module! lsp-mode
+  :ensure t
+  :init
+  (setq lsp-enable-indentation nil
+	lsp-enable-completion-at-point nil)
+  (add-hook 'clojure-mode-hook #'lsp)
+  (add-hook 'clojurec-mode-hook #'lsp)
+  (add-hook 'clojurescript-mode-hook #'lsp)
+  (add-hook 'python-mode-hook #'lsp)
+  :config
+  ;; Clojure
+  (require 'lsp-clojure)
+  
+  (add-to-list 'lsp-language-id-configuration '(clojure-mode . "clojure"))
+  (add-to-list 'lsp-language-id-configuration '(clojurec-mode . "clojure"))
+  (add-to-list 'lsp-language-id-configuration '(clojurescript-mode . "clojurescript"))
+  (add-to-list 'lsp-language-id-configuration '(python-mode . "python"))
+  :hook
+  ((clojure-mode . lsp)
+   (ess-r-mode . lsp)
+   (python-mode . lsp)))
 
+(module! lsp-ui
+  :ensure t
+  :after (lsp-mode)
+  :init (setq lsp-ui-doc-enable t
+              lsp-ui-doc-use-webkit t
+              lsp-ui-doc-header t
+              lsp-ui-doc-delay 0.2
+              lsp-ui-doc-include-signature t
+              lsp-ui-doc-alignment 'at-point
+              lsp-ui-doc-use-childframe t
+              lsp-ui-doc-border (face-foreground 'default)
+              lsp-ui-peek-enable t
+              lsp-ui-peek-show-directory t
+	      lsp-ui-sideline-show-diagnostics t
+              lsp-ui-sideline-enable t
+              lsp-ui-sideline-show-code-actions t
+              lsp-ui-sideline-show-hover t
+              lsp-ui-sideline-ignore-duplicate t)
+  :config
+  (add-to-list 'lsp-ui-doc-frame-parameters '(right-fringe . 8))
 
-;;(module! lsp-ui
-;;  :ensure t
-;;  :after (lsp-mode)
-;;
-;;  :init (setq lsp-ui-doc-enable t
-;;              lsp-ui-doc-use-webkit t
-;;              lsp-ui-doc-header t
-;;              lsp-ui-doc-delay 0.2
-;;              lsp-ui-doc-include-signature t
-;;              lsp-ui-doc-alignment 'at-point
-;;              lsp-ui-doc-use-childframe t
-;;              lsp-ui-doc-border (face-foreground 'default)
-;;              lsp-ui-peek-enable t
-;;              lsp-ui-peek-show-directory t
-;;	      lsp-ui-sideline-show-diagnostics t
-;;              lsp-ui-sideline-enable t
-;;              lsp-ui-sideline-show-code-actions t
-;;              lsp-ui-sideline-show-hover t
-;;              lsp-ui-sideline-ignore-duplicate t)
-;;  :config
-;;  (add-to-list 'lsp-ui-doc-frame-parameters '(right-fringe . 8))
-;;
-;;  ;; `C-g'to close doc
-;;  (advice-add #'keyboard-quit :before #'lsp-ui-doc-hide)
-;;
-;;  ;; Reset `lsp-ui-doc-background' after loading theme
-;;  (add-hook 'after-load-theme-hook
-;;	    (lambda ()
-;;              (setq lsp-ui-doc-border (face-foreground 'default))
-;;              (set-face-background 'lsp-ui-doc-background
-;;				   (face-background 'tooltip))))
-;;
-;;  ;; WORKAROUND Hide mode-line of the lsp-ui-imenu buffer
-;;  ;; @see https://github.com/emacs-lsp/lsp-ui/issues/243
-;;  (defadvice lsp-ui-imenu (after hide-lsp-ui-imenu-mode-line activate)
-;;    (setq mode-line-format nil)))
+  ;; `C-g'to close doc
+  (advice-add #'keyboard-quit :before #'lsp-ui-doc-hide)
+
+  ;; Reset `lsp-ui-doc-background' after loading theme
+  (add-hook 'after-load-theme-hook
+	    (lambda ()
+              (setq lsp-ui-doc-border (face-foreground 'default))
+              (set-face-background 'lsp-ui-doc-background
+				   (face-background 'tooltip))))
+
+  ;; WORKAROUND Hide mode-line of the lsp-ui-imenu buffer
+  ;; @see https://github.com/emacs-lsp/lsp-ui/issues/243
+  (defadvice lsp-ui-imenu (after hide-lsp-ui-imenu-mode-line activate)
+    (setq mode-line-format nil)))
+
+(module! realgud
+  :ensure t)
 
 (module! flycheck
   :ensure t 
   :init 
-  (global-flycheck-mode))
-
-
+  (global-flycheck-mode)
+  :config
+  (flycheck-define-checker
+      python-mypy ""
+      :command ("mypy"
+		"--ignore-missing-imports" "--fast-parser"
+		source-original)
+      :error-patterns
+      ((error line-start (file-name) ":" line ": error:" (message) line-end))
+      :modes python-mode)
+  (add-to-list 'flycheck-checkers 'python-mypy t)
+  (flycheck-add-next-checker 'python-pylint 'python-mypy t))
 
 (module! company
   :ensure t
@@ -333,13 +368,22 @@
      "a"  'lsp-execute-code-action)
     :labels
     (""  "major mode"
-     "j"  "repl")))
+     "j"  "repl"))
+  :config
+  (setq lsp-clojure-server-command '("clojure-lsp")))
 
 (module! haskell-mode
   :ensure t
   :requires (evil which-key)
   :config
   (require 'ob-haskell))
+
+
+(module! ess
+  :ensure t
+  :init (require 'ess-site)
+  :config
+  (setq ess-r-backend 'lsp))
 
 (module! conda
   :ensure t
@@ -359,3 +403,50 @@
   (evil-define-key 'insert 'eshell-mode-map
     (kbd "C-j") 'eshell-next-input
     (kbd "C-k") 'eshell-previous-input))
+
+(module! mu4e
+  :load-path "/usr/local/share/emacs/site-lisp/mu/mu4e/"
+  :config
+  (setq mu4e-mu-binary (executable-find "mu")
+	mu4e-maildir "~/.maildir"
+	mu4e-get-mail-command (concat
+			       (executable-find "mbsync")
+			       " -a")
+	mu4e-update-interval 300
+	mu4e-attachment-dir "~/Desktop"
+	mu4e-change-filename-when-moving t
+	mu4e-user-mail-address-list '("andrew.parisi@reifyhealth.com")
+	mu4e-confirm-quit nil)
+  ;; sending emails
+  (require 'smtpmail)
+  ;;(require 'epa-file)
+  ;;(epa-file-enable)
+  (auth-source-forget-all-cached)
+  (setq epa-pinentry-mode 'loopback
+	message-kill-buffer-on-exit t
+	send-mail-function 'sendmail-send-it
+	message-send-mail-function 'sendmail-send-it
+	sendmail-program (executable-find "msmtp"))
+
+  (defun timu/set-msmtp-account ()
+    (if (message-mail-p)
+	(save-excursion
+          (let*
+              ((from (save-restriction
+                       (message-narrow-to-headers)
+                       (message-fetch-field "from")))
+               (account "gmail"))
+            (setq message-sendmail-extra-arguments (list '"-a" account))))))
+  (add-hook 'message-send-mail-hook 'timu/set-msmtp-account)
+
+  ;; mu4e cc & bcc
+  ;; this is custom as well
+  (add-hook 'mu4e-compose-mode-hook
+            (defun timu/add-cc-and-bcc ()
+              "My Function to automatically add Cc & Bcc: headers.
+    This is in the mu4e compose mode."
+              (save-excursion (message-add-header "Cc:\n"))
+              (save-excursion (message-add-header "Bcc:\n"))))
+
+  ;; mu4e address completion
+  (add-hook 'mu4e-compose-mode-hook 'company-mode))

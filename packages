@@ -1,3 +1,4 @@
+mu4e
 eshell
 conda
 haskell-mode
@@ -5,12 +6,16 @@ clojure-mode
 magit
 company
 flycheck
-eglot
+realgud
+lsp-ui
+lsp-mode
 blacken
 python
 cider
 org-agenda
 org
+treemacs
+projectile
 ibuffer
 ivy
 counsel
