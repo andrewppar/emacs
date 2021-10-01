@@ -2,6 +2,8 @@
 
 (setq *start* (float-time))
 
+(add-hook 'write-file-hooks 'delete-trailing-whitespace nil t)
+
 (defmacro load! (load-string)
   (declare (indent defun))
   (let ((start (gensym "start")))
@@ -11,7 +13,7 @@
 	(format "done loading %s: %s"
 		,load-string (- (float-time) ,start))))))
 
-
+(setq user-mail-address "andrew.parisi@reifyhealth.com")
 
 (load! "~/.emacs.d/display.el")
 (load! "~/.emacs.d/modules.el")
@@ -19,11 +21,6 @@
 (load! "~/emacs-files/timesheet.el")
 (load! "~/emacs-files/diary-helpers.el")
 (load! "~/emacs-files/eshell.el")
-
-(add-to-list 'load-path "/Users/andrewparisi/.emacs.d/elpa/ox-ipynb") ;Modify with your own path
-(require 'ox-ipynb)
-
-;;(server-start)
 
 ;; Custom Theme
 
@@ -68,21 +65,15 @@
     (interactive)
     (org-map-entries 'org-archive-subtree "/DONE" 'file))
 
-(defun org-insert-code-block (language settings)
-  (interactive "sLanguage: \nsSettings: ")
-  (insert (format "#+begin_src %s %s\n\n" language settings))
-  (forward-line)
-  (insert (format "#+end_src\n"))
-  (forward-line -2))
-
 (defun organizer-session()
     (interactive)
     (find-file "/Users/andrewparisi/org/status.org")
-   ;; (archive-calendar-items)
+    (refresh-calendar-items)
     (let* ((status-buffer (current-buffer))
            (year      (format-time-string "%Y"))
            (month     (format-time-string "%B"))
            (day       (format-time-string "%m-%d-%Y")))
+      
       (org-agenda-list)
       (org-agenda-day-view)
       (let ((agenda-buffer (current-buffer)))
@@ -121,10 +112,15 @@
   (interactive)
   (org-map-entries 'org-archive-subtree-default "/DONE" 'file))
 
+(defun email ()
+  (interactive)
+  (delete-other-windows)
+  (mu4e))
 
 (which-key-map evil-normal-state-map ","
 	       :labels
 	       ("i"  "init"
+		"t"  "tools"
 		"g"  "magit"
 		"s"  "paredit"
                 "o"  "organizer"
@@ -165,7 +161,9 @@
 		"oed" 'edit-task-description-at-point
 		"oes" 'edit-task-start-time-at-point
 		"oee" 'edit-task-end-time-at-point
-		"oeg" 'edit-task-group-at-point))
+		"oeg" 'edit-task-group-at-point
+		;; tools
+		"te"  'email))
 
 ;; TODO
 ;; Clean this up and put it in a macro

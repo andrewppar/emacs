@@ -112,6 +112,7 @@
  :labels
  ("" "main menu"
   "w" "window"
+  "l" "app"
   "b" "buffer"
   "e" "eval"
   "r" "kill-ring"
@@ -120,6 +121,7 @@
   ("f"  'counsel-find-file
    "eb" 'eval-buffer
    "ed" 'eval-defun
+   "lm" 'email
    "0"  'delete-window
    "1"  'delete-other-windows
    "2"  'split-window-below
