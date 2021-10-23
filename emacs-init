@@ -3,8 +3,7 @@
 (setq *start* (float-time))
 
 (defmacro load! (load-string)
-  (declare (indent defun))
-  (let ((start (gensym "start")))
+  (declare (indent defun)) (let ((start (gensym "start")))
     `(let ((,start (float-time)))
        (load ,load-string)
        (message
@@ -16,14 +15,7 @@
 (load! "~/.emacs.d/display.el")
 (load! "~/.emacs.d/modules.el")
 (load! "~/.emacs.d/splash.el")
-(load! "~/emacs-files/timesheet.el")
-(load! "~/emacs-files/diary-helpers.el")
-(load! "~/emacs-files/eshell.el")
-
-(add-to-list 'load-path "/Users/andrewparisi/.emacs.d/elpa/ox-ipynb") ;Modify with your own path
-(require 'ox-ipynb)
-
-;;(server-start)
+(load! "~/.emacs.d/eshell.el")
 
 ;; Custom Theme
 
@@ -64,73 +56,20 @@
   (interactive)
   (find-file "~/.emacs.d/core.el"))
 
-
-(defun my-org-archive-done-tasks ()
-    (interactive)
-    (org-map-entries 'org-archive-subtree "/DONE" 'file))
-
-(defun org-insert-code-block (language settings)
-  (interactive "sLanguage: \nsSettings: ")
-  (insert (format "#+begin_src %s %s\n\n" language settings))
-  (forward-line)
-  (insert (format "#+end_src\n"))
-  (forward-line -2))
-
-(defun organizer-session()
-    (interactive)
-    (find-file "/Users/andrewparisi/org/status.org")
-   ;; (archive-calendar-items)
-    (let* ((status-buffer (current-buffer))
-           (year      (format-time-string "%Y"))
-           (month     (format-time-string "%B"))
-           (day       (format-time-string "%m-%d-%Y")))
-      (org-agenda-list)
-      (org-agenda-day-view)
-      (let ((agenda-buffer (current-buffer)))
-        (switch-to-buffer status-buffer)
-        (delete-other-windows)
-        (split-window-below)
-        (other-window 1)
-        (switch-to-buffer agenda-buffer)
-        (other-window 1)
-        (split-window-right)
-        (other-window 1)
-        (task-log)
-        (other-window 1)
-        (other-window 1)))
-    (window-configuration-to-register ?a))
-
-(defun org-jira-link-todo (project number)
-    (interactive "sProject: \nsNumber: \n")
-    (save-excursion
-      (end-of-line)
-      (let ((end (point)))
-        (beginning-of-line)
-        (re-search-forward " ")
-        (let* ((start       (point))
-               (todo-string (buffer-substring start end)))
-          (cond ((string-match (regexp-quote "TODO") todo-string 0)
-                 (re-search-forward " ")
-                 (insert " "))
-                ((string-match (regexp-quote "IN PROGRESS") todo-string 0)
-                 (re-search-forward " " nil nil 2)
-                 (insert " ")))
-          (backward-char)
-          (org-insert-jira-link project number)))))
-
-(defun org-archive-finished-todos ()
+(defun display-file ()
   (interactive)
-  (org-map-entries 'org-archive-subtree-default "/DONE" 'file))
+  (find-file "~/.emacs.d/display.el"))
 
+(defun keyboard-file ()
+  (interactive)
+  (find-file "~/.emacs.d/keyboard.el"))
 
 (which-key-map evil-normal-state-map ","
 	       :labels
 	       ("i"  "init"
 		"g"  "magit"
-		"s"  "paredit"
-                "o"  "organizer"
-		"oe" "edit"
-		"v"  "ivy view"
+		"s"  "s-expression"
+		"t"  "tools"
 		)
 	       :default-bindings
 	       (;; ibuffer
@@ -142,31 +81,19 @@
 		"ii"  'init-file
 		"im"  'modules-file
 		"ic"  'core-file
+		"id"  'display-file
+		"ik"  'keyboard-file
 		;; magit
 		"gs"  'magit-status
 		;; generic
 	        "x"  'counsel-M-x
-		"'"  'eshell
-	        ;; paredit mode
+	        ;; s-expressions
 		"sq"  'indent-pp-sexp
 		"sl"  'forward-sexp
 		"sh"  'backward-sexp
 		"st"  'transpose-sexps
-		;; ivy view
-		"vs"  'ivy-push-view
-		"vd"  'ivy-pop-view
-                ;; organizer 
-                "os"  'organizer-session 
-                "ol"  'task-log
-                "ot"  'log-task 
-                "of"  'task-log-for-date
-		"og"  'get-tasks-in-range
-                "or"  'refresh-agenda
-		"oa"  'add-calendar-item-for-today
-		"oed" 'edit-task-description-at-point
-		"oes" 'edit-task-start-time-at-point
-		"oee" 'edit-task-end-time-at-point
-		"oeg" 'edit-task-group-at-point))
+		;; tools
+		"te" 'eshell))
 
 ;; TODO
 ;; Clean this up and put it in a macro
@@ -182,23 +109,5 @@
 (add-to-list 'exec-path "/usr/local/bin")
 (setenv "PATH" (mapconcat 'identity exec-path ":"))
 
-(evil-define-key 'normal 'org-mode-map (kbd "<tab>") #'org-cycle) 
-
 (setq *end* (float-time))
-(memacs-splash (- *end* *start*))
-;;(split-window-right)
-;;(eshell)
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(package-selected-packages
-   '(esup lsp-clients evil-org which-key use-package python org evil-collection counsel conda cider)))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
-(put 'dired-find-alternate-file 'disabled nil)
+(memacs-splash (- *end* *start*)) 
