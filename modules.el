@@ -65,6 +65,10 @@
       ("filesystem"
        (or (mode . dired-mode)
 	   (mode . shell-mode))))))
+
+  (add-hook 'ibuffer-mode-hook
+	    '(lambda ()
+	       (ibuffer-switch-to-saved-filter-groups "default")))
   (setq evil-emacs-state-modes
 	(delq 'ibuffer-mode evil-emacs-state-modes))) 
 
