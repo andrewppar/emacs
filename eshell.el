@@ -62,11 +62,9 @@
 
 (setq eshell-prompt-function
       (lambda ()
-	(let ((git   (git-prompt-branch-name))
-	      (conda conda-env-current-name))
+	(let ((git   (git-prompt-branch-name)))
 	  (concat
 	   (eshell/prompt-start)
 	   (eshell/prompt-section "ⓖ" (git-prompt-status))
-	   (eshell/prompt-section "ⓒ" conda-env-current-name)
 	   (eshell/prompt-end)
 	   ))))
