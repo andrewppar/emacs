@@ -20,11 +20,6 @@
 (load! "~/emacs-files/diary-helpers.el")
 (load! "~/emacs-files/eshell.el")
 
-(add-to-list 'load-path "/Users/andrewparisi/.emacs.d/elpa/ox-ipynb") ;Modify with your own path
-(require 'ox-ipynb)
-
-;;(server-start)
-
 ;; Custom Theme
 
 (colors!
@@ -194,7 +189,8 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(esup lsp-clients evil-org which-key use-package python org evil-collection counsel conda cider)))
+   '(esup lsp-clients evil-org which-key use-package python org evil-collection counsel conda cider))
+ '(send-mail-function 'smtpmail-send-it))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

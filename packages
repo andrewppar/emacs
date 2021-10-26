@@ -1,11 +1,13 @@
-eshell
+mu4e
 conda
 haskell-mode
 clojure-mode
 magit
 company
 flycheck
-eglot
+lsp-ui
+lsp-mode
+flycheck
 blacken
 python
 cider
@@ -13,7 +15,6 @@ org-agenda
 ox-latex
 org
 ibuffer
-ispell
 ivy
 counsel
 undo-tree

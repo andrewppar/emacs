@@ -71,6 +71,8 @@
 (module! org
   :ensure t
   :requires evil
+  :init
+  (add-hook 'org-mode-hook 'turn-on-flyspell)
   :config
   (defun org-insert-jira-link (project number)
     (interactive "sProject: \nsNumber: \n")
@@ -147,6 +149,7 @@
    '((python . t)
      (clojure . t)
      (haskell . t)
+     (latex . t)
      (emacs-lisp . t)
      (sql . t)
      (shell . t))))
@@ -237,10 +240,58 @@
   :config
   (global-flycheck-mode))
 
-(module! eglot
-  :ensure t
+(module! lsp-mode
+  :init
+  (setq lsp-clojure-server-command '("clojure-lsp")
+ 	lsp-enable-indentation nil
+ 	lsp-enable-completion-at-point nil
+	indent-region-function #'clojure-indent-function)
+  (add-hook 'clojure-mode-hook #'lsp)
+  (add-hook 'clojurec-mode-hook #'lsp)
+  (add-hook 'clojurescript-mode-hook #'lsp)
+  (add-hook 'python-mode-hook #'lsp)
   :config
-  (add-to-list 'eglot-server-programs '(clojure-mode . ("clojure-lsp"))))
+  (require 'lsp-clojure)
+  (add-to-list 'lsp-language-id-configuration '(clojure-mode . "clojure"))
+  (add-to-list 'lsp-language-id-configuration '(clojurec-mode . "clojure"))
+  (add-to-list 'lsp-language-id-configuration '(clojurescript-mode . "clojurescript")))
+
+(module! lsp-ui
+  :ensure t
+  :after (lsp-mode)
+
+  :init (setq lsp-ui-doc-enable t
+              lsp-ui-doc-use-webkit t
+              lsp-ui-doc-header t
+              lsp-ui-doc-delay 0.2
+              lsp-ui-doc-include-signature t
+              lsp-ui-doc-alignment 'at-point
+              lsp-ui-doc-use-childframe t
+              lsp-ui-doc-border (face-foreground 'default)
+              lsp-ui-peek-enable t
+              lsp-ui-peek-show-directory t
+ 	      lsp-ui-sideline-show-diagnostics t
+              lsp-ui-sideline-enable t
+              lsp-ui-sideline-show-code-actions t
+              lsp-ui-sideline-show-hover t
+              lsp-ui-sideline-ignore-duplicate t)
+  :config
+  (add-to-list 'lsp-ui-doc-frame-parameters '(right-fringe . 8))
+
+  ;; `C-g'to close doc
+  (advice-add #'keyboard-quit :before #'lsp-ui-doc-hide)
+
+  ;; Reset `lsp-ui-doc-background' after loading theme
+  (add-hook 'after-load-theme-hook
+ 	    (lambda ()
+              (setq lsp-ui-doc-border (face-foreground 'default))
+              (set-face-background 'lsp-ui-doc-background
+ 				   (face-background 'tooltip))))
+
+  ;; WORKAROUND Hide mode-line of the lsp-ui-imenu buffer
+  ;; @see https://github.com/emacs-lsp/lsp-ui/issues/243
+  (defadvice lsp-ui-imenu (after hide-lsp-ui-imenu-mode-line activate)
+    (setq mode-line-format nil)))
 
 (module! flycheck
   :ensure t 
@@ -280,7 +331,8 @@
     ("jj" 'cider-jack-in
      "jc" 'cider-connect-clj
      "jq" 'cider-quit
-     "s"  'cider-toggle-trace-var
+     "e"  'cider-eval-bufer
+     "."  'cider-toggle-trace-var
      "g"  'xref-find-definitions
      "c"  'cider-eval-defun-at-point
      "a"  'lsp-execute-code-action)
@@ -312,3 +364,40 @@
   (setq
    conda-anaconda-home "/Users/andrew/anaconda3"
    conda-env-home-directory "/Users/andrew/anaconda3"))
+
+;; Find a way to package this up
+(module! mu4e
+  :load-path  "/usr/local/share/emacs/site-lisp/mu/mu4e/"
+  :config
+  (setq mu4e-mu-binary (executable-find "mu")
+	mu4e-maildir "~/.maildir"
+	mu4e-get-mail-command
+	(concat (executable-find "mbsync") " -a")
+	mu4e-update-interval 180
+	mu4e-attachment-dir "~/Desktop"
+	mu4e-change-filenames-when-moving t
+	user-mail-address "andrew.p.parisi@gmail.com"
+;;	mu4e-maildir-shortcuts
+;;	'(("gmail/INBOX" . ?g))
+	mu4e-sent-messages-behavior 'delete
+
+
+	user-full-name "Andrew Parisi"
+	mu4e-compose-signature
+	"Andrew Parisi"
+	mu4e-show-images t
+	mu4e-html2text-command "textutil -stdin -format html -convert txt -stdout")
+	
+  ;;Custom Bindings
+  (define-key mu4e-view-mode-map (kbd "j") 'next-line)
+  (define-key mu4e-view-mode-map (kbd "k") 'previous-line)
+  (define-key mu4e-headers-mode-map (kbd "j") 'next-line)
+  (define-key mu4e-headers-mode-map (kbd "k") 'previous-line)
+  (define-key mu4e-main-mode-map (kbd "U") 'mu4e-update-index))
+
+(setf epa-pinentry-mode 'loopback)
+
+
+(setq smtpmail-smtp-server "smtp.gmail.com"
+      smtpmail-stream-type 'starttls
+      smtpmail-smtp-service 587)
