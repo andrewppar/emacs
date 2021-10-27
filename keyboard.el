@@ -5,9 +5,10 @@
 (use-package evil
   :ensure t
   :demand t
+  :init
+  (setq evil-want-keybinding nil)
   :config
-  (evil-mode t)
-  )
+  (evil-mode t))
 
 (use-package which-key
   :ensure t
@@ -82,7 +83,7 @@
 
 (defun make-labels (map trigger configuration-plist)
   (get-which-key-item-internal map trigger configuration-plist :labels))
-      
+
 (defun make-default-bindings (map trigger configuration-plist)
   (get-which-key-item-internal map trigger configuration-plist :default-bindings))
 
@@ -97,7 +98,7 @@
 		       major-map trigger configuration-plist :major-mode)
 		      result))))
     result))
-					
+
 (defmacro which-key-map (map trigger &rest configuration)
   (let ((labels              (make-labels map trigger configuration))
 	(bindings            (make-default-bindings map trigger configuration))
@@ -112,7 +113,6 @@
  :labels
  ("" "main menu"
   "w" "window"
-  "l" "app"
   "b" "buffer"
   "e" "eval"
   "r" "kill-ring"
@@ -121,7 +121,6 @@
   ("f"  'counsel-find-file
    "eb" 'eval-buffer
    "ed" 'eval-defun
-   "lm" 'email
    "0"  'delete-window
    "1"  'delete-other-windows
    "2"  'split-window-below

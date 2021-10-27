@@ -2,7 +2,10 @@
 
 (setq *start* (float-time))
 
-(add-hook 'write-file-hooks 'delete-trailing-whitespace nil t)
+
+;; TODO: Find a better place for this maybe we need a general settings
+;; section
+(add-hook 'write-file-functions 'delete-trailing-whitespace)
 
 (defmacro load! (load-string)
   (declare (indent defun))
@@ -34,7 +37,7 @@
  :keyword  (:foreground "#AFD75F" :weight 'bold)
  :type     (:foreground "#18aed4")
 ;; :fringe   (:background nil)
-;; :transparency ('alpha 90 90)
+ :transparency ('alpha 90 90)
  )
 ;; TODO add this to  colors!
 (set-face-attribute 'default nil :height 180)
@@ -69,11 +72,11 @@
     (interactive)
     (find-file "/Users/andrewparisi/org/status.org")
     (refresh-calendar-items)
+    (evil-close-folds)
     (let* ((status-buffer (current-buffer))
            (year      (format-time-string "%Y"))
            (month     (format-time-string "%B"))
            (day       (format-time-string "%m-%d-%Y")))
-      
       (org-agenda-list)
       (org-agenda-day-view)
       (let ((agenda-buffer (current-buffer)))
@@ -90,24 +93,6 @@
         (other-window 1)))
     (window-configuration-to-register ?a))
 
-(defun org-jira-link-todo (project number)
-    (interactive "sProject: \nsNumber: \n")
-    (save-excursion
-      (end-of-line)
-      (let ((end (point)))
-        (beginning-of-line)
-        (re-search-forward " ")
-        (let* ((start       (point))
-               (todo-string (buffer-substring start end)))
-          (cond ((string-match (regexp-quote "TODO") todo-string 0)
-                 (re-search-forward " ")
-                 (insert " "))
-                ((string-match (regexp-quote "IN PROGRESS") todo-string 0)
-                 (re-search-forward " " nil nil 2)
-                 (insert " ")))
-          (backward-char)
-          (org-insert-jira-link project number)))))
-
 (defun org-archive-finished-todos ()
   (interactive)
   (org-map-entries 'org-archive-subtree-default "/DONE" 'file))
@@ -121,6 +106,9 @@
 	       :labels
 	       ("i"  "init"
 		"t"  "tools"
+		"tc" "conda"
+		"ti" "lsp-ui-imenu"
+		"p" "projectile"
 		"g"  "magit"
 		"s"  "paredit"
                 "o"  "organizer"
@@ -128,7 +116,8 @@
 		"v"  "ivy view"
 		)
 	       :default-bindings
-	       (;; ibuffer
+	       ("c"  'org-capture
+		;; ibuffer
 		"bi" 'ibuffer
 		"bb" 'ivy-switch-buffer
 		"bm" 'messages-buffer
@@ -139,9 +128,11 @@
 		"ic"  'core-file
 		;; magit
 		"gs"  'magit-status
+		"gc"  'magit-branch-checkout
+		"gb"  'magit-blame
+		"gl"  'magit-log-current
 		;; generic
 	        "x"  'counsel-M-x
-		"'"  'eshell
 	        ;; paredit mode
 		"sq"  'indent-pp-sexp
 		"sl"  'forward-sexp
@@ -150,10 +141,10 @@
 		;; ivy view
 		"vs"  'ivy-push-view
 		"vd"  'ivy-pop-view
-                ;; organizer 
-                "os"  'organizer-session 
+                ;; organizer
+                "os"  'organizer-session
                 "ol"  'task-log
-                "ot"  'log-task 
+                "ot"  'log-task
                 "of"  'task-log-for-date
 		"og"  'get-tasks-in-range
                 "or"  'refresh-agenda
@@ -162,8 +153,16 @@
 		"oes" 'edit-task-start-time-at-point
 		"oee" 'edit-task-end-time-at-point
 		"oeg" 'edit-task-group-at-point
+		;; projectile
+		"p" 'projectile-command-map
 		;; tools
-		"te"  'email))
+		"tm"  'email
+		"tca" 'conda-env-activate
+		"tcd" 'conda-env-deactivate
+		"tcs" 'conda-env-switch
+		"tii" 'lsp-ui-imenu ;It's a little hacky to have this here
+		"tiq" 'lsp-ui-imenu--kill
+		"te"  'eshell))
 
 ;; TODO
 ;; Clean this up and put it in a macro
@@ -174,23 +173,24 @@
 (add-to-list 'exec-path "/usr/local/bin")
 (setenv "PATH" (mapconcat 'identity exec-path ":"))
 
-(evil-define-key 'normal 'org-mode-map (kbd "<tab>") #'org-cycle) 
+(evil-define-key 'normal 'org-mode-map (kbd "<tab>") #'org-cycle)
 
 (setq *end* (float-time))
 (memacs-splash (- *end* *start*))
 ;;(split-window-right)
 ;;(eshell)
+
+(put 'dired-find-alternate-file 'disabled nil)
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(esup lsp-clients evil-org which-key use-package python org evil-collection counsel conda cider)))
+   '(evil-magit sqlformat which-key use-package undo-tree treemacs-projectile treemacs-evil test-simple sphinx-doc shrink-path python project org magit lsp-ui lsp-pyright loc-changes load-relative jsonrpc haskell-mode flymake flycheck flx-ido esup ess envrc dash-functional csv-mode counsel conda company cider blacken all-the-icons)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  )
-(put 'dired-find-alternate-file 'disabled nil)
