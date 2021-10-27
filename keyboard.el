@@ -12,7 +12,6 @@
 
 (use-package which-key
   :ensure t
-  :demand t
   :requires evil
   :config
   (set-face-attribute 'which-key-command-description-face nil :inherit nil)

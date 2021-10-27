@@ -8,8 +8,7 @@
 (add-hook 'write-file-functions 'delete-trailing-whitespace)
 
 (defmacro load! (load-string)
-  (declare (indent defun))
-  (let ((start (gensym "start")))
+  (declare (indent defun)) (let ((start (gensym "start")))
     `(let ((,start (float-time)))
        (load ,load-string)
        (message
@@ -21,9 +20,7 @@
 (load! "~/.emacs.d/display.el")
 (load! "~/.emacs.d/modules.el")
 (load! "~/.emacs.d/splash.el")
-(load! "~/emacs-files/timesheet.el")
-(load! "~/emacs-files/diary-helpers.el")
-(load! "~/emacs-files/eshell.el")
+(load! "~/.emacs.d/eshell.el")
 
 ;; Custom Theme
 
@@ -64,43 +61,13 @@
   (interactive)
   (find-file "~/.emacs.d/core.el"))
 
-(defun my-org-archive-done-tasks ()
-    (interactive)
-    (org-map-entries 'org-archive-subtree "/DONE" 'file))
-
-(defun organizer-session()
-    (interactive)
-    (find-file "/Users/andrewparisi/org/status.org")
-    (refresh-calendar-items)
-    (evil-close-folds)
-    (let* ((status-buffer (current-buffer))
-           (year      (format-time-string "%Y"))
-           (month     (format-time-string "%B"))
-           (day       (format-time-string "%m-%d-%Y")))
-      (org-agenda-list)
-      (org-agenda-day-view)
-      (let ((agenda-buffer (current-buffer)))
-        (switch-to-buffer status-buffer)
-        (delete-other-windows)
-        (split-window-below)
-        (other-window 1)
-        (switch-to-buffer agenda-buffer)
-        (other-window 1)
-        (split-window-right)
-        (other-window 1)
-        (task-log)
-        (other-window 1)
-        (other-window 1)))
-    (window-configuration-to-register ?a))
-
-(defun org-archive-finished-todos ()
+(defun display-file ()
   (interactive)
-  (org-map-entries 'org-archive-subtree-default "/DONE" 'file))
+  (find-file "~/.emacs.d/display.el"))
 
-(defun email ()
+(defun keyboard-file ()
   (interactive)
-  (delete-other-windows)
-  (mu4e))
+  (find-file "~/.emacs.d/keyboard.el"))
 
 (which-key-map evil-normal-state-map ","
 	       :labels
@@ -110,87 +77,50 @@
 		"ti" "lsp-ui-imenu"
 		"p" "projectile"
 		"g"  "magit"
-		"s"  "paredit"
-                "o"  "organizer"
-		"oe" "edit"
-		"v"  "ivy view"
+		"s"  "s-expression"
+		"t"  "tools"
 		)
 	       :default-bindings
 	       ("c"  'org-capture
 		;; ibuffer
 		"bi" 'ibuffer
-		"bb" 'ivy-switch-buffer
+		"bb" 'counsel-switch-buffer
 		"bm" 'messages-buffer
 		"bs" 'scratch-buffer
 		;; init
 		"ii"  'init-file
 		"im"  'modules-file
 		"ic"  'core-file
+		"id"  'display-file
+		"ik"  'keyboard-file
 		;; magit
 		"gs"  'magit-status
 		"gc"  'magit-branch-checkout
 		"gb"  'magit-blame
 		"gl"  'magit-log-current
 		;; generic
-	        "x"  'counsel-M-x
-	        ;; paredit mode
+	  "x"  'counsel-M-x
+	  ;; s-expressions
 		"sq"  'indent-pp-sexp
 		"sl"  'forward-sexp
 		"sh"  'backward-sexp
 		"st"  'transpose-sexps
-		;; ivy view
-		"vs"  'ivy-push-view
-		"vd"  'ivy-pop-view
-                ;; organizer
-                "os"  'organizer-session
-                "ol"  'task-log
-                "ot"  'log-task
-                "of"  'task-log-for-date
-		"og"  'get-tasks-in-range
-                "or"  'refresh-agenda
-		"oa"  'add-calendar-item-for-today
-		"oed" 'edit-task-description-at-point
-		"oes" 'edit-task-start-time-at-point
-		"oee" 'edit-task-end-time-at-point
-		"oeg" 'edit-task-group-at-point
-		;; projectile
-		"p" 'projectile-command-map
 		;; tools
-		"tm"  'email
-		"tca" 'conda-env-activate
-		"tcd" 'conda-env-deactivate
-		"tcs" 'conda-env-switch
-		"tii" 'lsp-ui-imenu ;It's a little hacky to have this here
-		"tiq" 'lsp-ui-imenu--kill
-		"te"  'eshell))
+		"te" 'eshell))
 
 ;; TODO
 ;; Clean this up and put it in a macro
 (evil-define-key 'normal 'evil-normal-state-map "[" 'evil-jump-item)
 (evil-define-key 'visual 'evil-visual-state-map "[" 'evil-jump-item)
 
+(evil-define-key 'normal 'evil-normal-state-map (kbd "C-k") 'comint-previous-input)
+(evil-define-key 'insert 'evil-insert-state-map (kbd "C-k") 'comint-previous-input)
+(evil-define-key 'normal 'evil-normal-state-map (kbd "C-j") 'comint-next-input)
+(evil-define-key 'insert 'evil-insert-state-map (kbd "C-j") 'comint-next-input)
+
 ;; Hacks!
 (add-to-list 'exec-path "/usr/local/bin")
 (setenv "PATH" (mapconcat 'identity exec-path ":"))
 
-(evil-define-key 'normal 'org-mode-map (kbd "<tab>") #'org-cycle)
-
 (setq *end* (float-time))
-(memacs-splash (- *end* *start*))
-;;(split-window-right)
-;;(eshell)
-
-(put 'dired-find-alternate-file 'disabled nil)
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(package-selected-packages
-   '(evil-magit sqlformat which-key use-package undo-tree treemacs-projectile treemacs-evil test-simple sphinx-doc shrink-path python project org magit lsp-ui lsp-pyright loc-changes load-relative jsonrpc haskell-mode flymake flycheck flx-ido esup ess envrc dash-functional csv-mode counsel conda company cider blacken all-the-icons)))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
+(memacs-splash (- *end* *start*)) 
