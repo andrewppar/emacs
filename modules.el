@@ -71,3 +71,24 @@
   (add-hook 'ibuffer-mode-hook
 	    '(lambda ()
 	       (ibuffer-switch-to-saved-filter-groups "default"))))
+
+(module! magit
+  :ensure t
+  :config
+  (setq
+   magit-display-buffer-function
+   #'magit-display-buffer-fullframe-status-v1
+   ediff-window-setup-function
+   #'ediff-setup-windows-plain)
+
+  (defun git-commit-message-setup ()
+    (insert (format "%s " (magit-get-current-branch))))
+
+  (add-hook 'git-commit-setup-hook 'git-commit-message-setup)
+
+  (major-mode-map magit-mode
+    :bindings
+    ("" 'magit-dispatch)))
+
+                       ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
