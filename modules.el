@@ -9,12 +9,12 @@
 ;; TODO: Figure a way to auto configure lsp mode for a language
 ;;;;;;;;;;;;;;;;;;;;
 ;; Required Packages
-
 ;; TODO See whether or not these can be paired down
 
 (module! undo-tree
   :ensure t
   :requires evil
+  :diminish
   :config
   (global-undo-tree-mode)
   (evil-set-undo-system 'undo-tree))
@@ -29,12 +29,20 @@
   :requires evil
   :config
   (setq ivy-height 10
-		 ivy-use-virtual-buffers t
-		 ivy-count-format ""
-		 ivy-initial-inputs-alist nil
-		 ivy-re-builders-alist
-		 '((t . ivy--regex-ignore-order)))
+	ivy-use-virtual-buffers t
+	ivy-count-format ""
+	ivy-initial-inputs-alist nil
+	ivy-re-builders-alist
+	'((t . ivy--regex-ignore-order)))
   (ivy-mode 1))
+
+(module! evil-collection
+  :after evil
+  :ensure t
+  :init
+  :config
+  (evil-collection-init)
+  (setq evil-collection-magit-use-z-for-folds t))
 
                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -47,39 +55,72 @@
   :config
   (setq
    ibuffer-saved-filter-groups
-   '(("home"
+   '(("default"
       ("python"
-       (or (mode . pyhton-mode)
+       (or (mode . python-mode)
 	   (directory . "/Users/andrewparisi/Documents/python")
 	   (name . "\*Python\*")))
       ("clojure"
        (or (mode . clojure-mode)
 	   (directory . "/Users/andrewparisi/Documents/clojure")
 	   (name . "\*cider\*")))
+      ("R"
+       (or (mode . ess-r-mode)))
       ("magit"
        (name . "\*magit"))
       ("help"
        (or (name . "\*Help\*")
 	   (name . "\*Apropos\*")
 	   (name . "\*info\*")))
+      ("organizer"
+       (or (mode . org-mode)
+	   (name . "*Org Agenda*")
+	   (name . "*Todays Task Log*")))
+      ("emacs"
+       (or (mode . emacs-lisp-mode)))
       ("filesystem"
        (or (mode . dired-mode)
-	   (mode . shell-mode))))))
-  (setq evil-emacs-state-modes
-	(delq 'ibuffer-mode evil-emacs-state-modes)))
+	   (mode . eshell-mode)))))
+   evil-emacs-state-modes (delq 'ibuffer-mode evil-emacs-state-modes)
+   ibuffer-expert t
+   ibuffer-show-empty-filter-groups nil)
+  (add-hook 'ibuffer-mode-hook
+	    '(lambda ()
+	       (ibuffer-switch-to-saved-filter-groups "default"))))
 
 (module! projectile
-  :ensure t)
+  :ensure t
+  :init
+  (projectile-mode +1)
+  :config
+  (setq projectile-completion-system 'ivy
+        projectile-switch-project-action 'projectile-dired
+	projectile-sort-order 'recentf))
+
+(module! envrc
+  :ensure t
+  :init
+  (envrc-global-mode))
 
 (module! org
   :ensure t
+  :init
+  (setq *project* "DPS")
   :config
-  (defun org-insert-jira-link (project number)
-    (interactive "sProject: \nsNumber: \n")
-    (insert (format
-             "[[https://reifyhealth.atlassian.net/browse/%s-%s][%s-%s]]"
-             project number project number)))
-  
+  (defun org-insert-jira-link ()
+    (interactive)
+    (let ((project nil)
+	  (number  nil))
+      (if *project*
+	  (setq project *project*)
+	(setq project
+	      (read-from-minibuffer "Project: ")))
+      (setq number (read-from-minibuffer "Number: "))
+      (insert (format
+               "[[https://reifyhealth.atlassian.net/browse/%s-%s][%s-%s]]"
+               project number project number)) ))
+
+
   (defun my-org-archive-done-tasks ()
     (interactive)
     (org-map-entries 'org-archive-subtree "/DONE" 'file))
@@ -108,6 +149,25 @@
     (interactive)
     (goto-char (org-goto-heading "JIRA" '("Tasks"))))
 
+  (defun org-jira-link-todo ()
+    (interactive)
+    (save-excursion
+      (end-of-line)
+      (let ((end (point)))
+        (beginning-of-line)
+        (re-search-forward " ")
+        (let* ((start       (point))
+               (todo-string (buffer-substring start end)))
+          (cond ((string-match (regexp-quote "TODO") todo-string 0)
+                 (re-search-forward " ")
+                 (insert " "))
+                ((string-match (regexp-quote "IN PROGRESS") todo-string 0)
+                 (re-search-forward " " nil nil 2)
+                 (insert " ")))
+          (backward-char)
+          (org-insert-jira-link)
+	  (insert ":")))))
+
   (major-mode-map org-mode
     :bindings
     ("a"  'org-agenda
@@ -118,7 +178,6 @@
      "ij" 'org-insert-jira-link
      "it" 'org-jira-link-todo
      "e"  'org-export-dispatch
-     "c"  'org-capture
      "mp" 'org-move-subtree-up
      "mn" 'org-move-subtree-down
      "mj" 'org-move-item-up
@@ -173,85 +232,46 @@
   :requires evil
   :config
   (evil-set-initial-state 'org-agenda-mode 'normal)
-   (evil-define-key 'normal org-agenda-mode-map
-     "q" 'org-agenda-quit
-     "r" 'org-agenda-redo
-     "s" 'org-save-all-buffers
-     "t" 'org-agenda-todo
-     "d" 'org-agenda-day-view
-     "w" 'org-agenda-week-view
-     "f" 'org-agenda-later
-     "b" 'org-agenda-earlier
-     "c" 'org-capture
-     (kbd "<RET>") 'org-agenda-goto
-     ">" 'org-agenda-date-prompt))
+  (evil-define-key 'normal org-agenda-mode-map
+    "q" 'org-agenda-quit
+    "r" 'org-agenda-redo
+    "s" 'org-save-all-buffers
+    "t" 'org-agenda-todo
+    "d" 'org-agenda-day-view
+    "w" 'org-agenda-week-view
+    "f" 'org-agenda-later
+    "b" 'org-agenda-earlier
+    "c" 'org-capture
+    (kbd "<RET>") 'org-agenda-goto
+    ">" 'org-agenda-date-prompt)
+  (setq org-agenda-overriding-columns-format
+	"%TODO %7EFFORT %PRIORITY     %100ITEM 100%TAGS"
+	holiday-bahai-holidays nil
+	holiday-hebrew-holidays nil
+	holiday-islamic-holidays nil))
 
-(module! cider				;
-  :ensure t
-  :requires evil
-  :config
-  (defun cider-show-cider-buffer ()
-    "Shows the nrepl buffer, but does not focus it."
-    (interactive)
-    (command-execute 'cider-switch-to-repl-buffer)
-    (command-execute 'cider-switch-to-last-clojure-buffer))
-  
-  (defun clojure-set-up-key-bindings ()
-    (define-key clojure-mode-map (kbd "C-c r") 'cider-repl))
-  ;; If necessary, add more calls to `define-key' here ...
-  (with-eval-after-load 'cider
-    (evil-define-key 'normal 'cider-repl-mode-map
-      (kbd "C-j") 'cider-repl-next-input
-      (kbd "C-k") 'cider-repl-previous-input))
-  (major-mode-map cider-repl-mode
-    :bindings
-    ("c" 'cider-repl-clear-buffer
-     "k" 'cider-repl-previous-input
-     "j" 'cider-repl-next-input))
-  (add-hook 'cider-repl-mode-hook 'clojure-set-up-key-bindings)
-  
-  
-  (setq cider-repl-pop-to-buffer-on-connect nil
-	cider-show-error-buffer nil))
 
-(module! python
-  :ensure t
-  :requires evil
-  :config
-  (major-mode-map python-mode
-    :bindings
-    ("sd" 'python-shell-send-defun
-     "sb" 'python-shell-send-buffer
-     "b"  'blacken-buffer)
-    :labels
-    ("s" "send"))
-  (evil-define-key 'normal 'evil-normal-state-map (kbd "C-j") 'comint-next-input)
-  (evil-define-key 'insert 'evil-insert-state-map (kbd "C-j") 'comint-next-input)
-  (evil-define-key 'normal 'evil-normal-state-map (kbd "C-k") 'comint-previous-input)
-  (evil-define-key 'insert 'evil-insert-state-map (kbd "C-k") 'comint-previous-input)
-  (setq
-    python-shell-interpreter "ipython"
-    python-shell-interpreter-args "--simple-prompt -i --InteractiveShell.display_page=True"
-    flycheck-display-errors-function #'flycheck-display-error-messages-unless-error-list))
-
-(module! blacken
-  :ensure t
-  :config
-  (setq blacken-line-length '79))
-
-(use-package lsp-pyright
+(module! magit
   :ensure t
   :config
   (setq
-   lsp-pyright-disable-language-services nil
-   lsp-pyright-disable-organize-imports  nil
-   lsp-pyright-auto-import-completions   nil
-   lsp-pyright-diagnostic-mode "openFilesOnly"
-   lsp-pyright-typechecking-mode "basic")
-  :hook (python-mode . (lambda ()
-                          (require 'lsp-pyright)
-                          (lsp))))
+   magit-display-buffer-function
+   #'magit-display-buffer-fullframe-status-v1
+   ediff-window-setup-function
+   #'ediff-setup-windows-plain)
 
+  (defun git-commit-message-setup ()
+    (insert (format "%s " (magit-get-current-branch))))
+
+  (add-hook 'git-commit-setup-hook 'git-commit-message-setup)
+
+  (major-mode-map magit-mode
+    :bindings
+    ("" 'magit-dispatch)))
+
+
+;;;;;;;
+;;; LSP
 (module! lsp-mode
   :ensure t
   :init
@@ -264,7 +284,7 @@
   :config
   ;; Clojure
   (require 'lsp-clojure)
-  
+
   (add-to-list 'lsp-language-id-configuration '(clojure-mode . "clojure"))
   (add-to-list 'lsp-language-id-configuration '(clojurec-mode . "clojure"))
   (add-to-list 'lsp-language-id-configuration '(clojurescript-mode . "clojurescript"))
@@ -310,12 +330,9 @@
   (defadvice lsp-ui-imenu (after hide-lsp-ui-imenu-mode-line activate)
     (setq mode-line-format nil)))
 
-(module! realgud
-  :ensure t)
-
 (module! flycheck
-  :ensure t 
-  :init 
+  :ensure t
+  :init
   (global-flycheck-mode)
   :config
   (flycheck-define-checker
@@ -333,25 +350,123 @@
   :ensure t
   :requires evil)
 
-(module! magit
+            ;;;
+;;;;;;;;;;;;;;;
+
+;;;;;;;;;;
+;;; python
+
+(module! sphinx-doc
+  :ensure t
+  ;; TODO: Consider writing a wrapper around
+  ;; sphinx-doc that goes to the beginning of
+  ;; the current fn.
+  )
+
+(module! python
+  :ensure t
+  :requires (evil sphinx-doc)
+  :init
+  (add-hook
+   'inferior-python-mode-hook
+   (lambda ()
+     (progn
+       (evil-define-key 'normal 'evil-normal-state-map (kbd "C-j") 'comint-next-input)
+       (evil-define-key 'insert 'evil-insert-state-map (kbd "C-j") 'comint-next-input)
+       (evil-define-key 'normal 'evil-normal-state-map (kbd "C-k") 'comint-previous-input)
+       (evil-define-key 'insert 'evil-insert-state-map (kbd "C-k") 'comint-previous-input)
+       )))
+  :config
+  (major-mode-map python-mode
+    :bindings
+    ("sd" 'python-shell-send-defun
+     "sb" 'python-shell-send-buffer
+     "b"  'blacken-buffer
+     "d"  'sphinx-doc
+     )
+    :labels
+    ("s" "send"))
+  (setq
+   python-shell-interpreter "ipython"
+   python-shell-interpreter-args "--simple-prompt -i --InteractiveShell.display_page=True"
+   flycheck-display-errors-function #'flycheck-display-error-messages-unless-error-list)
+  (add-hook 'python-mode-hook (lambda ()
+                                (require 'sphinx-doc)
+                                (sphinx-doc-mode t))))
+
+
+
+(module! blacken
+  :ensure t
+  :config
+  (setq blacken-line-length '79))
+
+(module! lsp-pyright
+  :ensure t
+  :config
+  (setq
+   lsp-pyright-disable-language-services nil
+   lsp-pyright-disable-organize-imports  nil
+   lsp-pyright-auto-import-completions   nil
+   lsp-pyright-diagnostic-mode "openFilesOnly"
+   lsp-pyright-typechecking-mode "basic")
+  :hook (python-mode . (lambda ()
+                          (require 'lsp-pyright)
+                          (lsp))))
+
+(module! conda
+  :ensure t
+  :requires evil
+  :init
+  (defun conda-env-switch ()
+    (interactive)
+    (conda-env-deactivate)
+    (conda-env-activate))
+  :config
+  (setq
+   conda-anaconda-home "/Users/andrewparisi/anaconda3"
+   conda-env-home-directory "/Users/andrewparisi/anaconda3")
+  (conda-env-initialize-eshell)
+  )
+
+
+
+                 ;;;
+;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;
+;;; clojure
+
+(module! cider
   :ensure t
   :requires evil
   :config
-  (setq
-   magit-display-buffer-function
-   #'magit-display-buffer-fullframe-status-v1
-   ediff-window-setup-function
-   #'ediff-setup-windows-plain)
+  (defun cider-show-cider-buffer ()
+    "Shows the nrepl buffer, but does not focus it."
+    (interactive)
+    (command-execute 'cider-switch-to-repl-buffer)
+    (command-execute 'cider-switch-to-last-clojure-buffer))
 
-  (defun git-commit-message-setup ()
-    (insert (format "%s " (magit-get-current-branch))))
-
-  (add-hook 'git-commit-setup-hook 'git-commit-message-setup)
-
-  (major-mode-map magit-mode
+  (defun clojure-set-up-key-bindings ()
+    (define-key clojure-mode-map (kbd "C-c r") 'cider-repl))
+  ;; If necessary, add more calls to `define-key' here ...
+  (with-eval-after-load 'cider
+    (evil-define-key 'normal 'cider-repl-mode-map
+      (kbd "C-j") 'cider-repl-next-input
+      (kbd "C-k") 'cider-repl-previous-input)
+    (evil-define-key 'insert 'cider-repl-mode-map
+      (kbd "C-j") 'cider-repl-next-input
+      (kbd "C-k") 'cider-repl-previous-input))
+  (major-mode-map cider-repl-mode
     :bindings
-    ("" 'magit-dispatch))
-  )
+    ("c" 'cider-repl-clear-buffer
+     "k" 'cider-repl-previous-input
+     "j" 'cider-repl-next-input))
+  (add-hook 'cider-repl-mode-hook 'clojure-set-up-key-bindings)
+
+
+  (setq cider-repl-pop-to-buffer-on-connect nil
+	cider-show-error-buffer nil))
 
 (module! clojure-mode
   :ensure t
@@ -372,37 +487,46 @@
   :config
   (setq lsp-clojure-server-command '("clojure-lsp")))
 
+           ;;;
+;;;;;;;;;;;;;;
+
+;;;;;;;;;;;
+;;; haskell
+
 (module! haskell-mode
   :ensure t
   :requires (evil which-key)
   :config
   (require 'ob-haskell))
 
+            ;;;
+;;;;;;;;;;;;;;;
+
+;;;;;
+;;; R
 
 (module! ess
   :ensure t
-  :init (require 'ess-site)
+  :init
+  (require 'ess-site)
+  (add-hook
+   'inferior-ess-r-mode-hook
+   (lambda ()
+     (progn
+       (evil-define-key 'normal 'evil-normal-state-map (kbd "C-j") 'comint-next-input)
+       (evil-define-key 'insert 'evil-insert-state-map (kbd "C-j") 'comint-next-input)
+       (evil-define-key 'normal 'evil-normal-state-map (kbd "C-k") 'comint-previous-input)
+       (evil-define-key 'insert 'evil-insert-state-map (kbd "C-k") 'comint-previous-input)
+       )))
   :config
   (setq ess-r-backend 'lsp))
 
-(module! conda
-  :ensure t
-  :requires evil
-  :config
-  (setq
-   conda-anaconda-home "/Users/andrewparisi/anaconda3"
-   conda-env-home-directory "/Users/andrewparisi/anaconda3")
-  (conda-env-initialize-eshell)
-  )
+            ;;;
+;;;;;;;;;;;;;;;
 
-(module! eshell
-  :init
-  (evil-define-key 'normal 'eshell-mode-map
-    (kbd "C-j") 'eshell-next-input
-    (kbd "C-k") 'eshell-previous-input)
-  (evil-define-key 'insert 'eshell-mode-map
-    (kbd "C-j") 'eshell-next-input
-    (kbd "C-k") 'eshell-previous-input))
+
+;;;;;;;;
+;;; mail
 
 (module! mu4e
   :load-path "/usr/local/share/emacs/site-lisp/mu/mu4e/"
@@ -444,9 +568,66 @@
   (add-hook 'mu4e-compose-mode-hook
             (defun timu/add-cc-and-bcc ()
               "My Function to automatically add Cc & Bcc: headers.
-    This is in the mu4e compose mode."
-              (save-excursion (message-add-header "Cc:\n"))
+    This is in the mu4e compose mode." (save-excursion (message-add-header "Cc:\n"))
               (save-excursion (message-add-header "Bcc:\n"))))
 
   ;; mu4e address completion
   (add-hook 'mu4e-compose-mode-hook 'company-mode))
+
+
+             ;;;;
+;;;;;;;;;;;;;;;;;
+
+;;;;;;;
+;;; SQL
+
+(module! sqlformat
+  :ensure t
+  :config
+  (setq sqlformat-command 'pgformatter
+	sqlformat-args '("-s2" "-g")))
+
+           ;;;
+;;;;;;;;;;;;;;
+
+;;;;;;;
+;;; CSV
+
+(module! csv-mode
+  :ensure t
+  :config
+  (setq csv-separators '("," "    "))
+  (add-hook 'csv-mode-hook
+            (lambda ()
+              (define-key csv-mode-map (kbd "C-c C-M-a")
+		(defun csv-align-visible (&optional arg)
+                  "Align visible fields"
+                  (interactive "P")
+                  (csv-align-fields
+		   nil
+		   (window-start)
+		   (window-end)))))))
+       ;;;
+;;;;;;;;;;
+
+(module! eshell
+  :init
+  (evil-define-key 'normal 'eshell-mode-map
+    (kbd "C-j") 'eshell-next-matching-input-from-input
+    (kbd "C-k") 'eshell-previous-matching-input-from-input)
+  (evil-define-key 'insert 'eshell-mode-map
+    (kbd "C-j") 'eshell-next-matching-input-from-input
+    (kbd "C-k") 'eshell-previous-matching-input-from-input)
+  (major-mode-map eshell-mode
+    (:bindings
+     "c" 'eshell/clear)))
+
+;;;;;;;;;;;;
+;;; Pomodoro
+
+(module! spinner
+  :ensure t)
+
+(module! redtick
+  :ensure t
+  :requires spinner)

@@ -1,5 +1,6 @@
 (tool-bar-mode -1)
 (menu-bar-mode -1)
+
 (when window-system
   (scroll-bar-mode -1))
 (display-time-mode 1)
@@ -83,3 +84,26 @@
 	))
     ;;(message (format "COLORS: %s" result))
     (cons 'progn result)))
+
+(defmacro modeline! (&rest mode-line-config)
+  ;; TODO: Ensure that users can specify the order
+  ;; of items in the mode-line
+  (let ((result '())
+	(file-status-format (plist-get mode-line-config :file-status))
+	(line-number?       (plist-get mode-line-config :line-number?))
+	(major-mode-format  (plist-get mode-line-config :major-mode-format))
+	(minor-modes?       (plist-get mode-line-config :minor-modes?))
+	(time-format        (plist-get mode-line-config :time-format)))
+    (when time-format
+      (push time-format result))
+    (when minor-modes?
+      (push minor-mode-alist result))
+    (when major-mode-format
+      (push "%m" result))
+      ;;(push major-mode-format result))
+    (when line-number?
+      (push "L%l" result))
+    (when  file-status-format
+      (push file-status-format result))
+    (push 'mode-line-format result)
+    (push 'setq-default result)))
