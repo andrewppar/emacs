@@ -3,6 +3,7 @@
                                ;; restore after startup
                                (setq gc-cons-threshold 800000)))
 (require 'package)
+(package-initialize)
 
 (add-to-list
  'package-archives
