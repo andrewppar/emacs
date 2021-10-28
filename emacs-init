@@ -22,6 +22,10 @@
 (load! "~/.emacs.d/splash.el")
 (load! "~/.emacs.d/eshell.el")
 
+;;; Custom Work Helpers
+(load! "~/emacs-files/timesheet.el")
+(load! "~/emacs-files/diary-helpers.el")
+
 ;; Custom Theme
 
 (colors!
@@ -69,6 +73,36 @@
   (interactive)
   (find-file "~/.emacs.d/keyboard.el"))
 
+(defun organizer-session()
+    (interactive)
+    (find-file "/Users/andrewparisi/org/status.org")
+    (refresh-calendar-items)
+    (evil-close-folds)
+    (let* ((status-buffer (current-buffer))
+           (year      (format-time-string "%Y"))
+           (month     (format-time-string "%B"))
+           (day       (format-time-string "%m-%d-%Y")))
+      (org-agenda-list)
+      (org-agenda-day-view)
+      (let ((agenda-buffer (current-buffer)))
+        (switch-to-buffer status-buffer)
+        (delete-other-windows)
+        (split-window-below)
+        (other-window 1)
+        (switch-to-buffer agenda-buffer)
+        (other-window 1)
+        (split-window-right)
+        (other-window 1)
+        (task-log)
+        (other-window 1)
+        (other-window 1)))
+    (window-configuration-to-register ?a))
+
+(defun email ()
+  (interactive)
+  (delete-other-windows)
+  (mu4e))
+
 (which-key-map evil-normal-state-map ","
 	       :labels
 	       ("i"  "init"
@@ -78,8 +112,7 @@
 		"p" "projectile"
 		"g"  "magit"
 		"s"  "s-expression"
-		"t"  "tools"
-		)
+		"t"  "tools")
 	       :default-bindings
 	       ("c"  'org-capture
 		;; ibuffer
@@ -99,13 +132,36 @@
 		"gb"  'magit-blame
 		"gl"  'magit-log-current
 		;; generic
-	  "x"  'counsel-M-x
-	  ;; s-expressions
+		"x"  'counsel-M-x
+		;; s-expressions
 		"sq"  'indent-pp-sexp
 		"sl"  'forward-sexp
 		"sh"  'backward-sexp
 		"st"  'transpose-sexps
+		;; ivy view
+		"vs"  'ivy-push-view
+		"vd"  'ivy-pop-view
+                ;; organizer
+                "os"  'organizer-session
+                "ol"  'task-log
+                "ot"  'log-task
+                "of"  'task-log-for-date
+		"og"  'get-tasks-in-range
+                "or"  'refresh-agenda
+		"oa"  'add-calendar-item-for-today
+		"oed" 'edit-task-description-at-point
+		"oes" 'edit-task-start-time-at-point
+		"oee" 'edit-task-end-time-at-point
+		"oeg" 'edit-task-group-at-point
+		;; projectile
+		"p" 'projectile-command-map
 		;; tools
+		"tm"  'email
+		"tca" 'conda-env-activate
+		"tcd" 'conda-env-deactivate
+		"tcs" 'conda-env-switch
+		"tii" 'lsp-ui-imenu ;It's a little hacky to have this here
+		"tiq" 'lsp-ui-imenu--kill
 		"te" 'eshell))
 
 ;; TODO
@@ -117,10 +173,28 @@
 (evil-define-key 'insert 'evil-insert-state-map (kbd "C-k") 'comint-previous-input)
 (evil-define-key 'normal 'evil-normal-state-map (kbd "C-j") 'comint-next-input)
 (evil-define-key 'insert 'evil-insert-state-map (kbd "C-j") 'comint-next-input)
+(evil-define-key 'normal 'org-mode-map (kbd "<tab>") #'org-cycle)
 
 ;; Hacks!
 (add-to-list 'exec-path "/usr/local/bin")
 (setenv "PATH" (mapconcat 'identity exec-path ":"))
+(put 'dired-find-alternate-file 'disabled nil)
+
 
 (setq *end* (float-time))
-(memacs-splash (- *end* *start*)) 
+(memacs-splash (- *end* *start*))
+
+
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(package-selected-packages
+   '(magit evil-collection counsel undo-tree which-key use-package evil)))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )
