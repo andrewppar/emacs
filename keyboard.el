@@ -132,9 +132,7 @@
    "w0" 'delete-window
    "w1" 'delete-other-windows
    "w2" 'split-window-below
-   "w3" 'split-window-right
-   "wr" 'window-configuration-to-register
-   "wj" 'jump-to-register))
+   "w3" 'split-window-right))
 
 
                               ;;;

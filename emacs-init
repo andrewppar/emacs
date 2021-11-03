@@ -73,6 +73,16 @@
   (interactive)
   (find-file "~/.emacs.d/keyboard.el"))
 
+(defun ivy-push-view-default-name ()
+  (let* ((view (ivy--get-view-config))
+         (view-name
+          (ivy-default-view-name)))
+    (when view-name
+      (let ((x (assoc view-name ivy-views)))
+        (if x
+            (setcdr x (list view))
+          (push (list view-name view) ivy-views))))))
+
 (defun organizer-session()
     (interactive)
     (find-file "/Users/andrewparisi/org/status.org")
@@ -96,7 +106,8 @@
         (task-log)
         (other-window 1)
         (other-window 1)))
-    (window-configuration-to-register ?a))
+    (ivy-push-view-default-name))
+
 
 (defun email ()
   (interactive)
@@ -117,7 +128,7 @@
 	       ("c"  'org-capture
 		;; ibuffer
 		"bi" 'ibuffer
-		"bb" 'counsel-switch-buffer
+		"bb" 'ivy-switch-buffer
 		"bm" 'messages-buffer
 		"bs" 'scratch-buffer
 		;; init
@@ -139,8 +150,9 @@
 		"sh"  'backward-sexp
 		"st"  'transpose-sexps
 		;; ivy view
-		"vs"  'ivy-push-view
+		"vr"  'ivy-push-view
 		"vd"  'ivy-pop-view
+		"vj"  'ivy-switch-view
                 ;; organizer
                 "os"  'organizer-session
                 "ol"  'task-log
