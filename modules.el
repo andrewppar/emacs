@@ -113,11 +113,11 @@
 (module! eshell
   :init
   (evil-define-key 'normal 'eshell-mode-map
-    (kbd "C-j") 'eshell-next-matching-input-from-input
-    (kbd "C-k") 'eshell-previous-matching-input-from-input)
+    (kbd "C-j") 'eshell-next-input
+    (kbd "C-k") 'eshell-previous-input)
   (evil-define-key 'insert 'eshell-mode-map
-    (kbd "C-j") 'eshell-next-matching-input-from-input
-    (kbd "C-k") 'eshell-previous-matching-input-from-input)
+    (kbd "C-j") 'eshell-next-input
+    (kbd "C-k") 'eshell-previous-input)
   (major-mode-map eshell-mode
     (:bindings
      "c" 'eshell/clear)))
