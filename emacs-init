@@ -75,8 +75,7 @@
 
 (defun ivy-push-view-default-name ()
   (let* ((view (ivy--get-view-config))
-         (view-name
-          (ivy-default-view-name)))
+         (view-name "{} organizer"))
     (when view-name
       (let ((x (assoc view-name ivy-views)))
         (if x
