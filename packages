@@ -1,6 +1,10 @@
-tex
+projectile
+eshell
 magit
 ibuffer
+evil-collection
+swiper
+ivy-rich
 ivy
 counsel
 undo-tree

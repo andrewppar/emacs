@@ -64,11 +64,22 @@
   (interactive)
   (find-file "~/.emacs.d/keyboard.el"))
 
+(defun ivy-push-view-default-name ()
+  (let* ((view (ivy--get-view-config))
+         (view-name "{} organizer"))
+    (when view-name
+      (let ((x (assoc view-name ivy-views)))
+        (if x
+            (setcdr x (list view))
+          (push (list view-name view) ivy-views))))))
+
 (which-key-map evil-normal-state-map ","
 	       :labels
 	       ("i"  "init"
 		"g"  "magit"
 		"s"  "s-expression"
+		"p"  "projectile"
+		"v"  "ivy-view"
 		"t"  "tools"
 		)
 	       :default-bindings
@@ -83,8 +94,17 @@
 		"ic"  'core-file
 		"id"  'display-file
 		"ik"  'keyboard-file
+		;; ivy view
+                "vr"  'ivy-push-view
+                "vd"  'ivy-pop-view
+                "vj"  'ivy-switch-view
 		;; magit
 		"gs"  'magit-status
+		"gc"  'magit-branch-checkout
+		"gb"  'magit-blame
+		"gl"  'magit-log-current
+		;; projectile
+		"p"   'projectile-command-map
 		;; generic
 	        "x"  'counsel-M-x
 	        ;; s-expressions
@@ -111,3 +131,16 @@
 
 (setq *end* (float-time))
 (memacs-splash (- *end* *start*)) 
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(package-selected-packages '(magit counsel undo-tree which-key use-package evil)))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )
+(put 'dired-find-alternate-file 'disabled nil)

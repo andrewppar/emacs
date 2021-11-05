@@ -22,7 +22,7 @@
 (module! counsel
   :ensure t
   :requires evil
-  )
+  :config (counsel-mode))
 
 (module! ivy
   :ensure t
@@ -30,11 +30,32 @@
   :config
   (setq ivy-height 10
 		 ivy-use-virtual-buffers t
-		 ivy-count-format ""
+		 ivy-count-format "(%d/%d) "
 		 ivy-initial-inputs-alist nil
 		 ivy-re-builders-alist
 		 '((t . ivy--regex-ignore-order)))
   (ivy-mode 1))
+
+(module! ivy-rich
+  :ensure t
+  :after (:all ivy counsel)
+  :config
+  (setq ivy-virtual-abbreviate 'full
+	ivy-rich-switch-buffer-align-virtual-buffer t
+	ivy-rich-path-style 'abbrev)
+  (ivy-rich-mode))
+
+(module! swiper
+  :ensure t
+  :after ivy)
+
+(module! evil-collection
+  :after evil
+  :ensure t
+  :init
+  :config
+  (evil-collection-init)
+  (setq evil-collection-magit-use-z-for-folds t))
 
                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -64,13 +85,16 @@
 	   (name . "\*info\*")))
       ("filesystem"
        (or (mode . dired-mode)
-	   (mode . shell-mode))))))
-
+	   (mode . shell-mode)))))
+   evil-emacs-state-modes (delq
+			   'ibuffer-mode
+			   evil-emacs-state-modes)
+   ibuffer-exper t
+   ibuffer-show-empty-filter-groups nil)
   (add-hook 'ibuffer-mode-hook
 	    '(lambda ()
-	       (ibuffer-switch-to-saved-filter-groups "default")))
-  (setq evil-emacs-state-modes
-	(delq 'ibuffer-mode evil-emacs-state-modes))) 
+	       (ibuffer-switch-to-saved-filter-groups
+		"default"))))
 
 (module! magit
   :ensure t
@@ -85,5 +109,27 @@
   (major-mode-map magit-mode
     :bindings
     ("" 'magit-dispatch)))
+
+(module! eshell
+  :init
+  (evil-define-key 'normal 'eshell-mode-map
+    (kbd "C-j") 'eshell-next-matching-input-from-input
+    (kbd "C-k") 'eshell-previous-matching-input-from-input)
+  (evil-define-key 'insert 'eshell-mode-map
+    (kbd "C-j") 'eshell-next-matching-input-from-input
+    (kbd "C-k") 'eshell-previous-matching-input-from-input)
+  (major-mode-map eshell-mode
+    (:bindings
+     "c" 'eshell/clear)))
+
+(module! projectile
+  :ensure t
+  :init
+  (projectile-mode +1)
+  :config
+  (setq projectile-completion-system 'ivy
+        projectile-switch-project-action 'projectile-dired
+	projectile-sort-order 'recentf))
+
                               ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
