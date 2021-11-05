@@ -4,9 +4,11 @@
 
 (use-package evil
   :ensure t
+  :demand t
+  :init
+  (setq evil-want-keybinding nil)
   :config
-  (evil-mode t)
-  )
+  (evil-mode t))
 
 (use-package which-key
   :ensure t
