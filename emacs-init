@@ -120,11 +120,6 @@
 (evil-define-key 'normal 'evil-normal-state-map "[" 'evil-jump-item)
 (evil-define-key 'visual 'evil-visual-state-map "[" 'evil-jump-item)
 
-(evil-define-key 'normal 'evil-normal-state-map (kbd "C-k") 'comint-previous-input)
-(evil-define-key 'insert 'evil-insert-state-map (kbd "C-k") 'comint-previous-input)
-(evil-define-key 'normal 'evil-normal-state-map (kbd "C-j") 'comint-next-input)
-(evil-define-key 'insert 'evil-insert-state-map (kbd "C-j") 'comint-next-input)
-
 ;; Hacks!
 (add-to-list 'exec-path "/usr/local/bin")
 (setenv "PATH" (mapconcat 'identity exec-path ":"))
