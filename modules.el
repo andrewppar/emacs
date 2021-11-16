@@ -311,6 +311,9 @@
    #'magit-display-buffer-fullframe-status-v1
    ediff-window-setup-function
    #'ediff-setup-windows-plain)
+  
+  (defun git-commit-message-setup ()
+    (insert (format "%s " (magit-get-current-branch))))
 
   (defun git-commit-message-setup ()
     (insert (format "%s " (magit-get-current-branch))))
@@ -398,6 +401,112 @@
 (setf epa-pinentry-mode 'loopback)
 
 
-(setq smtpmail-smtp-server "smtp.gmail.com"
-      smtpmail-stream-type 'starttls
-      smtpmail-smtp-service 587)
+                              ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(module! flycheck
+  :ensure t)
+
+(module! lsp-mode
+  :ensure t
+  :config
+  (add-hook 'clojure-mode-hook 'lsp)
+  (add-hook 'clojurescript-mode-hook 'lsp)
+  (add-hook 'clojurec-mode-hook 'lsp)
+  (setq lsp-lens-enable t
+	lsp-signature-auto-activate nil))
+
+(module! lsp-ui
+  :ensure t)
+
+(module! lsp-treemacs
+  :ensure t
+  :config
+  (setq treemacs-space-between-root-nodes nil))
+
+;;;;;;;;;;;
+;;; clojure
+
+(module! cider
+  :ensure t
+  :config
+  (epa-file-disable)
+  (major-mode-map
+    :bindings
+    ("c"  'cider-repl-clear-buffer))
+ ;; (evil-define-key 'insert 'cider-mode-map
+ ;;   (kbd "C-j") comint-next-input
+ ;;   (kbd "C-k") comint-previous-input)
+  )
+
+(module! clojure-mode
+  :ensure t
+  :config
+  (major-mode-map clojure-mode
+    :bindings
+    ("jc" 'cider-connect-clj
+     "jj" 'cider-jack-in
+     "tp" 'cider-test-run-project-tests
+     "a"  'lsp-execute-code-action
+     "n"  'cider-repl-set-ns
+     "s"  'cider-toggle-trace-var)
+    :labels
+    ("j" "cider"
+     "t" "test")))
+
+(module! org
+  :ensure t
+  :init
+  (setq org-babel-clojure-backend 'cider)
+  :config
+  (setq org-edit-src-content-indentation 0
+	org-src-tab-acts-natively t
+	org-src-fontify-natively t
+	org-confirm-babel-evaluate nil
+	org-support-shift-select 'always)
+  (org-babel-do-load-languages
+   'org-babel-load-languages
+   '((clojure . t)
+     (emacs-lisp . t)))
+  )
+
+
+;;;;;;;;
+;;; mail
+
+(module! mu4e
+  :load-path  "/usr/local/share/emacs/site-lisp/mu/mu4e/"
+  :config
+  (setq mu4e-mu-binary (executable-find "mu")
+	mu4e-maildir "~/.maildir"
+	mu4e-get-mail-command
+	(concat (executable-find "mbsync") " -a")
+	mu4e-update-interval 180
+	mu4e-attachment-dir "~/Desktop"
+	mu4e-change-filenames-when-moving t
+	user-mail-address "andrew.p.parisi@gmail.com"
+	mu4e-sent-messages-behavior 'delete
+	smtpmail-smtp-server "smtp.gmail.com"
+	smtpmail-stream-type 'starttls
+	smtpmail-smtp-service 587
+	user-full-name "Andrew Parisi"
+	mu4e-compose-signature
+	"Andrew Parisi"
+	mu4e-show-images t
+	mu4e-html2text-command "textutil -stdin -format html -convert txt -stdout")
+  
+  ;;Custom Bindings
+  (define-key mu4e-view-mode-map
+    (kbd "j") 'next-line)
+  (define-key mu4e-view-mode-map
+    (kbd "k") 'previous-line)
+  (define-key mu4e-headers-mode-map
+    (kbd "j") 'next-line)
+  (define-key mu4e-headers-mode-map
+    (kbd "k") 'previous-line)
+  (define-key mu4e-main-mode-map
+    (kbd "U") 'mu4e-update-index))
+    
+    
+
+  

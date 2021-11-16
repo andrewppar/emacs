@@ -16,9 +16,8 @@
 (load! "~/.emacs.d/display.el")
 (load! "~/.emacs.d/modules.el")
 (load! "~/.emacs.d/splash.el")
-(load! "~/emacs-files/timesheet.el")
-(load! "~/emacs-files/diary-helpers.el")
-(load! "~/emacs-files/eshell.el")
+(load! "~/.emacs.d/eshell.el")
+(load! "~/.emacs.d/workspace.el")
 
 ;; Custom Theme
 
@@ -32,7 +31,7 @@
  :keyword  (:foreground "#AFD75F" :weight 'bold)
  :type     (:foreground "#18aed4")
 ;; :fringe   (:background nil)
-;; :transparency ('alpha 90 90)
+ :transparency ('alpha 90 90)
  )
 ;; TODO add this to  colors!
 (set-face-attribute 'default nil :height 180)
@@ -118,14 +117,27 @@
   (org-map-entries 'org-archive-subtree-default "/DONE" 'file))
 
 
+(defun to-workspace-1 ()
+  (interactive)
+  (to-workspace-number 1))
+
+(defun to-workspace-2 ()
+  (interactive)
+  (to-workspace-number 2))
+
+(defun to-workspace-3 ()
+  (interactive)
+  (to-workspace-number 3))
+
 (which-key-map evil-normal-state-map ","
 	       :labels
 	       ("i"  "init"
 		"g"  "magit"
-		"s"  "paredit"
-                "o"  "organizer"
-		"oe" "edit"
-		"v"  "ivy view"
+		"s"  "s-expression"
+		"p"  "projectile"
+		"v"  "ivy-view"
+		"t"  "tools"
+		"wx" "workspaces"
 		)
 	       :default-bindings
 	       (;; ibuffer
@@ -137,6 +149,8 @@
 		"ii"  'init-file
 		"im"  'modules-file
 		"ic"  'core-file
+		"id"  'display-file
+		"ik"  'keyboard-file
 		;; magit
 		"gs"  'magit-status
 		;; generic
@@ -147,21 +161,15 @@
 		"sl"  'forward-sexp
 		"sh"  'backward-sexp
 		"st"  'transpose-sexps
-		;; ivy view
-		"vs"  'ivy-push-view
-		"vd"  'ivy-pop-view
-                ;; organizer 
-                "os"  'organizer-session 
-                "ol"  'task-log
-                "ot"  'log-task 
-                "of"  'task-log-for-date
-		"og"  'get-tasks-in-range
-                "or"  'refresh-agenda
-		"oa"  'add-calendar-item-for-today
-		"oed" 'edit-task-description-at-point
-		"oes" 'edit-task-start-time-at-point
-		"oee" 'edit-task-end-time-at-point
-		"oeg" 'edit-task-group-at-point))
+		;; workspaces
+		"wx1" 'to-workspace-1
+		"wx2" 'to-workspace-2
+		"wx3" 'to-workspace-3
+		"wxr"  'ivy-push-view
+                "wxd"  'ivy-pop-view
+                "wxj"  'ivy-switch-view
+		;; tools
+		"te" 'eshell))
 
 ;; TODO
 ;; Clean this up and put it in a macro
@@ -188,8 +196,7 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(package-selected-packages
-   '(esup lsp-clients evil-org which-key use-package python org evil-collection counsel conda cider))
+ '(package-selected-packages '(magit counsel undo-tree which-key use-package evil))
  '(send-mail-function 'smtpmail-send-it))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.

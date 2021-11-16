@@ -1,7 +1,13 @@
 mu4e
-conda
-haskell-mode
+org
 clojure-mode
+cider
+lsp-treemacs
+lsp-ui
+lsp-mode
+flycheck
+projectile
+eshell
 magit
 company
 flycheck
