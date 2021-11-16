@@ -1,0 +1,21 @@
+(require 'ivy)
+
+(defun switch-workspace (ws-name)
+  (interactive)
+  (ivy--switch-buffer-action ws-name))
+
+(defun list-workspaces ()
+  (interactive)
+  (let ((result '()))
+    (dolist (view ivy-views)
+      (push (car view) result))
+    result))
+
+(defun to-workspace-number (n)
+  (interactive)
+  (when (<= n 0)
+    (error "Workspace number must be at least 1."))
+  (if-let ((ws-name (->> (list-workspaces)
+			 (nth (- n 1)))))
+      (switch-workspace ws-name)
+    (ivy-push-view)))
