@@ -35,6 +35,30 @@
 ;; TODO add this to  colors!
 (set-face-attribute 'default nil :height 180)
 
+(defun mode-line-workspace ()
+  (let ((result ""))
+    (dolist (key (workspace-list-workspace-keys))
+      (if (equal key *current-workspace*)
+	  (setq
+	   result (concat
+		   result (format "[%s]" key)))
+	(setq
+	 result (concat
+		 result (format "<%s>" key)))))
+    result))
+
+(setq-default mode-line-format
+              (list
+	       ;; Current workspace
+	       '(:eval (mode-line-workspace))
+               ;; value of `mode-name'
+               " %m: "
+	       ;; modified
+	       "%*%+ "
+	       ;; buffer name
+	       "%b"
+               ))
+
 ;; Custom Bindings
 
 (defun messages-buffer ()
@@ -103,6 +127,13 @@
 		"ic"  'core-file
 		"id"  'display-file
 		"ik"  'keyboard-file
+		;; workspaces
+                "wxd" 'workspace-pop
+                "wxj" 'ivy-switch-view
+		"wx1" 'to-workspace-1
+		"wx2" 'to-workspace-2
+		"wx3" 'to-workspace-3
+		"wx4" 'to-workspace-4
 		;; magit
 		"gs"  'magit-status
 		"gc"  'magit-branch-checkout
