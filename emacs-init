@@ -65,26 +65,21 @@
   (interactive)
   (find-file "~/.emacs.d/keyboard.el"))
 
-(defun ivy-push-view-default-name ()
-  (let* ((view (ivy--get-view-config))
-         (view-name "{} organizer"))
-    (when view-name
-      (let ((x (assoc view-name ivy-views)))
-        (if x
-            (setcdr x (list view))
-          (push (list view-name view) ivy-views))))))
-
 (defun to-workspace-1 ()
   (interactive)
-  (to-workspace-number 1))
+  (workspace-to-workspace-number 1))
 
 (defun to-workspace-2 ()
   (interactive)
-  (to-workspace-number 2))
+  (workspace-to-workspace-number 2))
 
 (defun to-workspace-3 ()
   (interactive)
-  (to-workspace-number 3))
+  (workspace-to-workspace-number 3))
+
+(defun to-workspace-4 ()
+  (interactive)
+  (workspace-to-workspace-number 4))
 
 (which-key-map evil-normal-state-map ","
 	       :labels
@@ -126,8 +121,7 @@
 		"wx1" 'to-workspace-1
 		"wx2" 'to-workspace-2
 		"wx3" 'to-workspace-3
-		"wxr"  'ivy-push-view
-                "wxd"  'ivy-pop-view
+                "wxd"  'workspace-pop
                 "wxj"  'ivy-switch-view
 		;; tools
 		"te" 'eshell))
