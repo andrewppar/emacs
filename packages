@@ -1,3 +1,4 @@
+command-log-mode
 csv-mode
 sqlformat
 mu4e
@@ -18,6 +19,7 @@ org-agenda
 org
 envrc
 projectile
+quelpa
 eshell
 magit
 ibuffer

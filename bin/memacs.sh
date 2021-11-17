@@ -28,11 +28,13 @@ then
     PACKAGE_REFRESH="(package-refresh-contents)"
     SYNC_MESSAGE="(insert \"Syncing Modules\")"
     SYNC_PACKAGES="(sync-packages)"
+    BYTE_RECOMPILE="(byte-recompile-directory \"~/.emacs.d/elpa\")"
 
     SYNC="$START
           $PACKAGE_REFRESH
           $SYNC_MESSAGE
           $SYNC_PACKAGES
+          $BYTE_RECOMPILE
           $MESSAGE_DONE
           $KILL_EMACS
          $END"

@@ -21,6 +21,7 @@
 (load! "~/.emacs.d/modules.el")
 (load! "~/.emacs.d/splash.el")
 (load! "~/.emacs.d/eshell.el")
+(load! "~/.emacs.d/workspace.el")
 
 ;;; Custom Work Helpers
 (load! "~/emacs-files/timesheet.el")
@@ -82,6 +83,30 @@
             (setcdr x (list view))
           (push (list view-name view) ivy-views))))))
 
+(defun to-workspace-1 ()
+  (interactive)
+  (to-workspace-number 1))
+
+(defun to-workspace-2 ()
+  (interactive)
+  (to-workspace-number 2))
+
+(defun to-workspace-3 ()
+  (interactive)
+  (to-workspace-number 3))
+
+(defun to-workspace-4 ()
+  (interactive)
+  (to-workspace-number 4))
+
+(defun to-workspace-5 ()
+  (interactive)
+  (to-workspace-number 5))
+
+(defun to-workspace-6 ()
+  (interactive)
+  (to-workspace-number 6))
+
 (defun organizer-session()
     (interactive)
     (find-file "/Users/andrewparisi/org/status.org")
@@ -119,7 +144,9 @@
 		"t"  "tools"
 		"tc" "conda"
 		"ti" "lsp-ui-imenu"
+		"oe" "edit-task"
 		"p" "projectile"
+		"wx" "workspaces"
 		"g"  "magit"
 		"s"  "s-expression"
 		"t"  "tools")
@@ -130,6 +157,7 @@
 		"bb" 'ivy-switch-buffer
 		"bm" 'messages-buffer
 		"bs" 'scratch-buffer
+		"bw" 'save-buffer
 		;; init
 		"ii"  'init-file
 		"im"  'modules-file
@@ -148,10 +176,16 @@
 		"sl"  'forward-sexp
 		"sh"  'backward-sexp
 		"st"  'transpose-sexps
-		;; ivy view
-		"vr"  'ivy-push-view
-		"vd"  'ivy-pop-view
-		"vj"  'ivy-switch-view
+		;; workspaces
+		"wx1"  'to-workspace-1
+		"wx2"  'to-workspace-2
+		"wx3"  'to-workspace-3
+		"wx4"  'to-workspace-4
+		"wx5"  'to-workspace-5
+		"wx6"  'to-workspace-6
+		"wxr"  'ivy-push-view
+		"wxd"  'ivy-pop-view
+		"wxj"  'ivy-switch-view
                 ;; organizer
                 "os"  'organizer-session
                 "ol"  'task-log
@@ -202,7 +236,7 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(magit evil-collection counsel undo-tree which-key use-package evil)))
+   '(sparql-mode ttl-mode magit evil-collection counsel undo-tree which-key use-package evil)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
