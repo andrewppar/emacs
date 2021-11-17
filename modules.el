@@ -22,19 +22,32 @@
 (module! counsel
   :ensure t
   :requires evil
-  )
+  :config (counsel-mode))
 
 (module! ivy
   :ensure t
   :requires evil
   :config
   (setq ivy-height 10
-	ivy-use-virtual-buffers t
-	ivy-count-format ""
-	ivy-initial-inputs-alist nil
-	ivy-re-builders-alist
-	'((t . ivy--regex-ignore-order)))
+		 ivy-use-virtual-buffers t
+		 ivy-count-format "(%d/%d) "
+		 ivy-initial-inputs-alist nil
+		 ivy-re-builders-alist
+		 '((t . ivy--regex-ignore-order)))
   (ivy-mode 1))
+
+(module! ivy-rich
+  :ensure t
+  :after (:all ivy counsel)
+  :config
+  (setq ivy-virtual-abbreviate 'full
+	ivy-rich-switch-buffer-align-virtual-buffer t
+	ivy-rich-path-style 'abbrev)
+  (ivy-rich-mode))
+
+(module! swiper
+  :ensure t
+  :after ivy)
 
 (module! evil-collection
   :after evil
@@ -70,7 +83,8 @@
    ibuffer-show-empty-filter-groups nil)
   (add-hook 'ibuffer-mode-hook
 	    '(lambda ()
-	       (ibuffer-switch-to-saved-filter-groups "default"))))
+	       (ibuffer-switch-to-saved-filter-groups
+		"default"))))
 
 (module! magit
   :ensure t
@@ -90,5 +104,26 @@
     :bindings
     ("" 'magit-dispatch)))
 
-                       ;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;
+(module! eshell
+  :init
+  (evil-define-key 'normal 'eshell-mode-map
+    (kbd "C-j") 'eshell-next-input
+    (kbd "C-k") 'eshell-previous-input)
+  (evil-define-key 'insert 'eshell-mode-map
+    (kbd "C-j") 'eshell-next-input
+    (kbd "C-k") 'eshell-previous-input)
+  (major-mode-map eshell-mode
+    (:bindings
+     "c" 'eshell/clear)))
+
+(module! projectile
+  :ensure t
+  :init
+  (projectile-mode +1)
+  :config
+  (setq projectile-completion-system 'ivy
+        projectile-switch-project-action 'projectile-dired
+	projectile-sort-order 'recentf))
+
+                              ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

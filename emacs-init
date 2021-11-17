@@ -21,6 +21,7 @@
 (load! "~/.emacs.d/modules.el")
 (load! "~/.emacs.d/splash.el")
 (load! "~/.emacs.d/eshell.el")
+(load! "~/.emacs.d/workspace.el")
 
 ;; Custom Theme
 
@@ -38,6 +39,30 @@
  )
 ;; TODO add this to  colors!
 (set-face-attribute 'default nil :height 180)
+
+(defun mode-line-workspace ()
+  (let ((result ""))
+    (dolist (key (workspace-list-workspace-keys))
+      (if (equal key *current-workspace*)
+	  (setq
+	   result (concat
+		   result (format "[%s]" key)))
+	(setq
+	 result (concat
+		 result (format "<%s>" key)))))
+    result))
+
+(setq-default mode-line-format
+              (list
+	       ;; Current workspace
+	       '(:eval (mode-line-workspace))
+               ;; value of `mode-name'
+               " %m: "
+	       ;; modified
+	       "%*%+ "
+	       ;; buffer name
+	       "%b"
+               ))
 
 ;; Custom Bindings
 
@@ -69,6 +94,22 @@
   (interactive)
   (find-file "~/.emacs.d/keyboard.el"))
 
+(defun to-workspace-1 ()
+  (interactive)
+  (workspace-to-workspace-number 1))
+
+(defun to-workspace-2 ()
+  (interactive)
+  (workspace-to-workspace-number 2))
+
+(defun to-workspace-3 ()
+  (interactive)
+  (workspace-to-workspace-number 3))
+
+(defun to-workspace-4 ()
+  (interactive)
+  (workspace-to-workspace-number 4))
+
 (which-key-map evil-normal-state-map ","
 	       :labels
 	       ("i"  "init"
@@ -78,6 +119,8 @@
 		"p" "projectile"
 		"g"  "magit"
 		"s"  "s-expression"
+		"p"  "projectile"
+		"v"  "ivy-view"
 		"t"  "tools"
 		)
 	       :default-bindings
@@ -93,11 +136,20 @@
 		"ic"  'core-file
 		"id"  'display-file
 		"ik"  'keyboard-file
+		;; workspaces
+                "wxd" 'workspace-pop
+                "wxj" 'ivy-switch-view
+		"wx1" 'to-workspace-1
+		"wx2" 'to-workspace-2
+		"wx3" 'to-workspace-3
+		"wx4" 'to-workspace-4
 		;; magit
 		"gs"  'magit-status
 		"gc"  'magit-branch-checkout
 		"gb"  'magit-blame
 		"gl"  'magit-log-current
+		;; projectile
+		"p"   'projectile-command-map
 		;; generic
 	  "x"  'counsel-M-x
 	  ;; s-expressions
@@ -113,14 +165,9 @@
 (evil-define-key 'normal 'evil-normal-state-map "[" 'evil-jump-item)
 (evil-define-key 'visual 'evil-visual-state-map "[" 'evil-jump-item)
 
-(evil-define-key 'normal 'evil-normal-state-map (kbd "C-k") 'comint-previous-input)
-(evil-define-key 'insert 'evil-insert-state-map (kbd "C-k") 'comint-previous-input)
-(evil-define-key 'normal 'evil-normal-state-map (kbd "C-j") 'comint-next-input)
-(evil-define-key 'insert 'evil-insert-state-map (kbd "C-j") 'comint-next-input)
-
 ;; Hacks!
 (add-to-list 'exec-path "/usr/local/bin")
 (setenv "PATH" (mapconcat 'identity exec-path ":"))
 
 (setq *end* (float-time))
-(memacs-splash (- *end* *start*)) 
+(memacs-splash (- *end* *start*))
