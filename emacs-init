@@ -44,6 +44,30 @@
 ;; TODO add this to  colors!
 (set-face-attribute 'default nil :height 180)
 
+(defun mode-line-workspace ()
+  (let ((result ""))
+    (dolist (key (workspace-list-workspace-keys))
+      (if (equal key *current-workspace*)
+	  (setq
+	   result (concat
+		   result (format "[%s]" key)))
+	(setq
+	 result (concat
+		 result (format "<%s>" key)))))
+    result))
+
+(setq-default mode-line-format
+              (list
+	       ;; Current workspace
+	       '(:eval (mode-line-workspace))
+               ;; value of `mode-name'
+               " %m: "
+	       ;; modified
+	       "%*%+ "
+	       ;; buffer name
+	       "%b"
+               ))
+
 ;; Custom Bindings
 
 (defun messages-buffer ()
@@ -85,27 +109,27 @@
 
 (defun to-workspace-1 ()
   (interactive)
-  (to-workspace-number 1))
+  (workspace-to-workspace-number 1))
 
 (defun to-workspace-2 ()
   (interactive)
-  (to-workspace-number 2))
+  (workspace-to-workspace-number 2))
 
 (defun to-workspace-3 ()
   (interactive)
-  (to-workspace-number 3))
+  (workspace-to-workspace-number 3))
 
 (defun to-workspace-4 ()
   (interactive)
-  (to-workspace-number 4))
+  (workspace-to-workspace-number 4))
 
 (defun to-workspace-5 ()
   (interactive)
-  (to-workspace-number 5))
+  (workspace-to-workspace-number 5))
 
 (defun to-workspace-6 ()
   (interactive)
-  (to-workspace-number 6))
+  (workspace-to-workspace-number 6))
 
 (defun organizer-session()
     (interactive)
@@ -132,7 +156,6 @@
         (other-window 1)))
     (ivy-push-view-default-name))
 
-
 (defun email ()
   (interactive)
   (delete-other-windows)
@@ -149,6 +172,7 @@
 		"wx" "workspaces"
 		"g"  "magit"
 		"s"  "s-expression"
+		"p"  "projectile"
 		"t"  "tools")
 	       :default-bindings
 	       ("c"  'org-capture
@@ -164,11 +188,20 @@
 		"ic"  'core-file
 		"id"  'display-file
 		"ik"  'keyboard-file
+		;; workspaces
+                "wxd" 'workspace-pop
+                "wxj" 'ivy-switch-view
+		"wx1" 'to-workspace-1
+		"wx2" 'to-workspace-2
+		"wx3" 'to-workspace-3
+		"wx4" 'to-workspace-4
 		;; magit
 		"gs"  'magit-status
 		"gc"  'magit-branch-checkout
 		"gb"  'magit-blame
 		"gl"  'magit-log-current
+		;; projectile
+		"p"   'projectile-command-map
 		;; generic
 		"x"  'counsel-M-x
 		;; s-expressions
@@ -228,18 +261,3 @@
 
 (setq *end* (float-time))
 (memacs-splash (- *end* *start*))
-
-
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(package-selected-packages
-   '(sparql-mode ttl-mode magit evil-collection counsel undo-tree which-key use-package evil)))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
