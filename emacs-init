@@ -16,6 +16,7 @@
 (load! "~/.emacs.d/modules.el")
 (load! "~/.emacs.d/splash.el")
 (load! "~/.emacs.d/eshell.el")
+(load! "~/.emacs.d/workspace.el")
 
 ;; Custom Theme
 
@@ -64,14 +65,21 @@
   (interactive)
   (find-file "~/.emacs.d/keyboard.el"))
 
-(defun ivy-push-view-default-name ()
-  (let* ((view (ivy--get-view-config))
-         (view-name "{} organizer"))
-    (when view-name
-      (let ((x (assoc view-name ivy-views)))
-        (if x
-            (setcdr x (list view))
-          (push (list view-name view) ivy-views))))))
+(defun to-workspace-1 ()
+  (interactive)
+  (workspace-to-workspace-number 1))
+
+(defun to-workspace-2 ()
+  (interactive)
+  (workspace-to-workspace-number 2))
+
+(defun to-workspace-3 ()
+  (interactive)
+  (workspace-to-workspace-number 3))
+
+(defun to-workspace-4 ()
+  (interactive)
+  (workspace-to-workspace-number 4))
 
 (which-key-map evil-normal-state-map ","
 	       :labels
@@ -94,10 +102,13 @@
 		"ic"  'core-file
 		"id"  'display-file
 		"ik"  'keyboard-file
-		;; ivy view
-                "vr"  'ivy-push-view
-                "vd"  'ivy-pop-view
-                "vj"  'ivy-switch-view
+		;; workspaces
+                "wxd" 'workspace-pop
+                "wxj" 'ivy-switch-view
+		"wx1" 'to-workspace-1
+		"wx2" 'to-workspace-2
+		"wx3" 'to-workspace-3
+		"wx4" 'to-workspace-4
 		;; magit
 		"gs"  'magit-status
 		"gc"  'magit-branch-checkout
