@@ -35,6 +35,30 @@
 ;; TODO add this to  colors!
 (set-face-attribute 'default nil :height 180)
 
+(defun mode-line-workspace ()
+  (let ((result ""))
+    (dolist (key (workspace-list-workspace-keys))
+      (if (equal key *current-workspace*)
+	  (setq
+	   result (concat
+		   result (format "[%s]" key)))
+	(setq
+	 result (concat
+		 result (format "%s" key)))))
+    result))
+
+(setq-default mode-line-format
+              (list
+	       ;; Current workspace
+	       '(:eval (mode-line-workspace))
+               ;; value of `mode-name'
+               " %m: "
+	       ;; modified
+	       "%*%+ "
+	       ;; buffer name
+	       "%b"
+               ))
+
 ;; Custom Bindings
 
 (defun messages-buffer ()
