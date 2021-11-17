@@ -5,3 +5,5 @@ tramp
 transient/*
 eshell/*
 recentf
+.lsp-session*
+network-security.data
