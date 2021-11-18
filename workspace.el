@@ -11,14 +11,22 @@
         (setcdr x (list view))
       (push (list view-name view) ivy-views))))
 
-(defun workspace-switch-workspace (ws-name)
-  (when *current-workspace*
-    (let ((current-ws-name
-	   (cdr (assoc *current-workspace* *workspaces*))))
-      (workspace--add-ivy-view current-ws-name)))
+(defun workspace--set-workspace-and-switch! (ws-name)
   (setq
    *current-workspace* (workspace-key-from-name ws-name))
   (ivy--switch-buffer-action ws-name))
+
+(defun workspace-switch-workspace (ws-name)
+  (if (not *current-workspace*)
+      (workspace--set-workspace-and-switch! ws-name)
+    (let ((current-ws-name
+	   (cdr (assoc *current-workspace* *workspaces*))))
+      (if (equal ws-name current-ws-name)
+	  (ivy--switch-buffer-action current-ws-name)
+	(progn
+	  (workspace--add-ivy-view current-ws-name)
+	  (workspace--set-workspace-and-switch!
+	   ws-name))))))
 
 (defun workspace-list-workspace-names ()
   (let ((result '()))
