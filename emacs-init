@@ -41,10 +41,10 @@
       (if (equal key *current-workspace*)
 	  (setq
 	   result (concat
-		   result (format "[%s]" key)))
+		   result (format "<%s>" key)))
 	(setq
 	 result (concat
-		 result (format "<%s>" key)))))
+		 result (format "[%s]" key)))))
     result))
 
 (setq-default mode-line-format
