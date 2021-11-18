@@ -44,18 +44,22 @@
 ;; TODO add this to  colors!
 (set-face-attribute 'default nil :height 180)
 
+
 (defun mode-line-workspace ()
-  (let ((result ""))
-    (dolist (key (workspace-list-workspace-keys))
+  (let ((result "")
+	(keys (sort (workspace-list-workspace-keys) '<=)))
+    (dolist (key keys)
       (if (equal key *current-workspace*)
 	  (setq
 	   result (concat
-		   result (format "[%s]" key)))
+		   result (format "<%s>" key)))
 	(setq
 	 result (concat
-		 result (format "<%s>" key)))))
+		 result (format "[%s]" key)))))
     result))
 
+;;; TODO: Push this into display and
+;;; figure out a good macro for defining it here
 (setq-default mode-line-format
               (list
 	       ;; Current workspace
@@ -65,8 +69,19 @@
 	       ;; modified
 	       "%*%+ "
 	       ;; buffer name
-	       "%b"
-               ))
+	       "%b | "
+	       ;; envrc
+	       "envrc: "
+	       '(:eval (concat
+			(propertize
+			 (format  "%s" envrc--status)
+			 'face '(:foreground "#30648e"))
+			"  | " ))
+	       "conda: "
+	       '(:eval (concat
+			(propertize
+			 (format "%s" conda-env-current-name)
+			 'face '(:foreground "#30648e"))))))
 
 ;; Custom Bindings
 
@@ -154,7 +169,7 @@
         (task-log)
         (other-window 1)
         (other-window 1)))
-    (ivy-push-view-default-name))
+    (workspace--add-workspace-no-prompt 1 "{} organizer"))
 
 (defun email ()
   (interactive)
@@ -261,3 +276,16 @@
 
 (setq *end* (float-time))
 (memacs-splash (- *end* *start*))
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(package-selected-packages
+   '(sql-interactive-mode which-key use-package undo-tree ttl-mode sqlformat sphinx-doc sparql-mode quelpa projectile ox-ipynb magit lsp-ui lsp-pyright ivy-rich haskell-mode flycheck evil-collection ess envrc csv-mode counsel conda company command-log-mode cider blacken)))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )

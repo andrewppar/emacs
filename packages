@@ -1,3 +1,5 @@
+sparql-mode
+ttl-mode
 command-log-mode
 csv-mode
 sqlformat
@@ -17,6 +19,7 @@ lsp-ui
 lsp-mode
 org-agenda
 org
+exec-path-from-shell
 envrc
 projectile
 quelpa

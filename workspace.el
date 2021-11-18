@@ -43,6 +43,13 @@
 	 (car current-item)))
     nil))
 
+(defun workspace--add-workspace-no-prompt (number ws-name)
+  ;; NOTE: This function is not safe and needs some
+  ;; guard rails since I want to be able to call it from
+  ;; organizer-session
+  (push (cons number ws-name) *workspaces*)
+  (workspace--add-ivy-view ws-name))
+
 (defun workspace-add-workspace (n)
   (let ((name
 	 (ivy-read
@@ -50,8 +57,7 @@
 	  nil
 	  :initial-input (ivy-default-view-name))))
     (setq *current-workspace* n)
-    (push (cons n name) *workspaces*)
-    (workspace--add-ivy-view name)))
+    (workspace--add-workspace-no-prompt n name)))
 
 (defun workspace-to-workspace-number (n)
   (when (<= n 0)
