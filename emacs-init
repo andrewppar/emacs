@@ -166,6 +166,20 @@
 (add-to-list 'exec-path "/usr/local/bin")
 (setenv "PATH" (mapconcat 'identity exec-path ":"))
 
+(defun scroll-down-one ()
+  (interactive)
+  (scroll-down-command 2))
+
+(defun scroll-up-one ()
+  (interactive)
+  (scroll-up-command 2))
+
+;; Redefine M-n and M-p to scroll like an itty bitty mousewheel
+(setq scroll-preserve-screen-position 1)
+;;scroll window up/down by one line
+(global-set-key (kbd "M-n") 'scroll-up-one)
+(global-set-key (kbd "M-p") 'scroll-down-one)
+
 (setq *end* (float-time))
 (memacs-splash (- *end* *start*)) 
 (custom-set-variables
