@@ -40,10 +40,7 @@
       (if (equal key *current-workspace*)
 	  (setq
 	   result (concat
-		   result (propertize
-			   (format "<%s>" key)
-			   'face
-			   '(:foreground "#285e02"))))
+		   result (format "<%s>" key)))
 	(setq
 	 result (concat
 		 result (format "[%s]" key)))))
