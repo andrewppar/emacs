@@ -34,6 +34,15 @@
       (push (cdr entry) result))
     result))
 
+(defun workspace-list ()
+  (let ((result '()))
+    (dolist (entry *workspaces*)
+      (let ((idx     (car entry))
+	    (ws-name (-> entry cdr (substring 3))))
+	(push
+	 (format "%s: %s" idx ws-name) result)))
+    (sort result 'string-lessp)))
+
 (defun workspace-list-workspace-keys ()
   (let ((result '()))
     (dolist (entry *workspaces*)
@@ -63,7 +72,7 @@
 	 (ivy-read
 	  "Name workspace: "
 	  nil
-	  :initial-input (ivy-default-view-name))))
+	  :initial-input "{} ")))
     (setq *current-workspace* n)
     (workspace--add-workspace-no-prompt n name)))
 
@@ -80,10 +89,16 @@
 
 (defun workspace-pop ()
   (interactive)
-  (let* ((workspaces (workspace-list-workspace-names))
+  (let* ((workspaces (workspace-list))
 	 (to-remove  (ivy-read
 		      "Pop Workspace: "
 		      workspaces))
-	 (ws-number  (workspace-key-from-name to-remove)))
-    (workspace--remove-workspace ws-number)
-    (ivy-pop-view-action (assoc to-remove ivy-views))))
+	 (ws-number  (-> to-remove
+			 (split-string ":")
+			 car
+			 string-to-number)))
+    (if (equal ws-number *current-workspace*)
+	(message "Cannot delete the current workspace")
+      (progn
+	(workspace--remove-workspace ws-number)
+	(ivy-pop-view-action (assoc to-remove ivy-views))))))
