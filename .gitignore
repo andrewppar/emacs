@@ -4,4 +4,11 @@ projectile-bookmarks.eld
 tramp
 transient/*
 eshell/*
-recentf
+recentf*
+secrets.el
+.lsp-session*
+.cache*
+bookmarks
+image-dired/*
+projectile.cache
+quelpa/*
