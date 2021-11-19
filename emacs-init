@@ -1,4 +1,4 @@
-; -*- mode: emacs-lisp -*-
+;; -*- mode: emacs-lisp -*-
 
 (setq *start* (float-time))
 
@@ -31,60 +31,32 @@
 ;; Custom Theme
 
 (colors!
- :background "#3b3b3f"
- :foreground "#d0d0d0"
- :comment "#8a8a8a"
- :string "#ffc63f"
- :constant (:foreground "#ffc63f" :weight 'bold)
- :function (:foreground "#18aed4" :weight 'bold)
- :keyword  (:foreground "#AFD75F" :weight 'bold)
- :type     (:foreground "#18aed4")
- :font     (:height 180)
- :transparency ('alpha 90 90)
- :fringe   (:background "#d0d0d0"))
-
-(defun mode-line-workspace ()
-  (let ((result "")
-	(keys (sort (workspace-list-workspace-keys) '<=)))
-    (dolist (key keys)
-      (if (equal key *current-workspace*)
-	  (setq
-	   result (concat
-		   result (format "<%s>" key)))
-	(setq
-	 result (concat
-		 result (format "[%s]" key)))))
-    result))
+ :background            "#3b3b3f"
+ :foreground            "#d0d0d0"
+ :comment               "#8a8a8a"
+ :string                "#ffc63f"
+ :constant              (:foreground "#ffc63f" :weight 'bold)
+ :function              (:foreground "#18aed4" :weight 'bold)
+ :keyword               (:foreground "#AFD75F" :weight 'bold)
+ :type                  (:foreground "#18aed4")
+ :font                  (:height 230)
+ :transparency          ('alpha 90 90)
+ :mode-line             (:foreground "#3b3b3f" :background "#d0d0d0")
+ :mode-line-inactive    (:foreground "#3b3b3f" :background "#d0d0d0")
+ :fringe                (:background "#d0d0d0"))
 
 (mode-line!
-  ;;:color doesn't work yetl
+  (:text " ⚓ ")
   (:text  (mode-line-workspace))
-  (:text " %m:")
   (:text "%*%+ ")
-  (:text "%b"))
-
-
-;;; TODO: Push this into display and
-;;; figure out a good macro for defining it here
-(setq-default mode-line-format
-              (list
-	       ;; Current workspace
-	       '(:eval (mode-line-workspace))
-               ;; value of `mode-name'
-               " %m: "
-	       ;; modified
-	       "%*%+ "
-	       ;; buffer name
-	       "%b"
-	       ;; envrc
-	       "| envrc: "
-	       '(:eval (propertize
-			(format  "%s" envrc--status)
-			'face '(:foreground "#30648e")))
-	       "| conda: "
-	       '(:eval (propertize
-			(format "%s" conda-env-current-name)
-			'face '(:foreground "#30648e")))))
+  (:text " %m: ")
+  (:text "%b ")
+  (:text "| envrc: ")
+  (:text (format "%s" envrc--status)
+	 :color "#30648e")
+  (:text "| conda: ")
+  (:text (format "%s" conda-env-current-name)
+	 :color "#30648e"))
 
 ;; Custom Bindings
 
@@ -172,7 +144,7 @@
         (task-log)
         (other-window 1)
         (other-window 1)))
-    (workspace--add-workspace-no-prompt 1 "{} organizer"))
+    (workspace--add-workspace-no-prompt 1 "{} orgnizer"))
 
 (defun email ()
   (interactive)
@@ -187,7 +159,7 @@
 		"ti" "lsp-ui-imenu"
 		"oe" "edit-task"
 		"p" "projectile"
-		"wx" "workspaces"
+		"w" "workspaces"
 		"g"  "magit"
 		"s"  "s-expression"
 		"p"  "projectile"
@@ -221,15 +193,15 @@
 		"sh"  'backward-sexp
 		"st"  'transpose-sexps
 		;; workspaces
-		"wx1"  'to-workspace-1
-		"wx2"  'to-workspace-2
-		"wx3"  'to-workspace-3
-		"wx4"  'to-workspace-4
-		"wx5"  'to-workspace-5
-		"wx6"  'to-workspace-6
-		"wxr"  'ivy-push-view
-		"wxd"  'workspace-pop
-		"wxj"  'ivy-switch-view
+		"w1"  'to-workspace-1
+		"w2"  'to-workspace-2
+		"w3"  'to-workspace-3
+		"w4"  'to-workspace-4
+		"w5"  'to-workspace-5
+		"w6"  'to-workspace-6
+		"wr"  'ivy-push-view
+		"wd"  'workspace-pop
+		"wj"  'ivy-switch-view
                 ;; organizer
                 "os"  'organizer-session
                 "ol"  'task-log

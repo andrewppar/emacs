@@ -19,12 +19,14 @@
 
 (defvar *display/keyword-function-map*
   '(:constant font-lock-constant-face
-	      :function font-lock-function-name-face
-	      :keyword  font-lock-keyword-face
-	      :builtin  font-lock-builtin-face
-	      :type     font-lock-type-face
-	      :font     'default
-	      :fringe   'fringe))
+	      :function            font-lock-function-name-face
+	      :keyword             font-lock-keyword-face
+	      :builtin             font-lock-builtin-face
+	      :type                font-lock-type-face
+	      :mode-line          'mode-line
+	      :mode-line-inactive 'mode-line-inactive
+	      :font               'default
+	      :fringe             'fringe))
 
 (defun generate-face-attribute (type attribute-plist)
   (let ((result '())
@@ -51,18 +53,20 @@
 (defmacro colors! (&rest color-config)
   (declare (indent defun))
   (let ((result '())
-	(background   (plist-get color-config :background))
-	(foreground   (plist-get color-config :foreground))
-	(comment      (plist-get color-config :comment))
-	(string       (plist-get color-config :string))
-	(constant     (plist-get color-config :constant))
-	(fn           (plist-get color-config :function))
-	(keyword      (plist-get color-config :keyword))
-	(type         (plist-get color-config :type))
-	(builtin      (plist-get color-config :builtin))
-	(fringe       (plist-get color-config :fringe))
-	(font         (plist-get color-config :font))
-	(transparency (plist-get color-config :transparency)))
+	(background         (plist-get color-config :background))
+	(foreground         (plist-get color-config :foreground))
+	(comment            (plist-get color-config :comment))
+	(string             (plist-get color-config :string))
+	(constant           (plist-get color-config :constant))
+	(fn                 (plist-get color-config :function))
+	(keyword            (plist-get color-config :keyword))
+	(type               (plist-get color-config :type))
+	(builtin            (plist-get color-config :builtin))
+	(fringe             (plist-get color-config :fringe))
+	(font               (plist-get color-config :font))
+	(mode-line          (plist-get color-config :mode-line))
+	(mode-line-inactive (plist-get color-config :mode-line-inactive))
+	(transparency       (plist-get color-config :transparency)))
     (when background
       (push `(set-background-color ,background) result))
     (when foreground
@@ -81,6 +85,11 @@
       (push (generate-face-attribute :type type) result))
     (when builtin
       (push (generate-face-attribute :builtin builtin) result))
+    (when mode-line
+      (push (generate-face-attribute :mode-line mode-line) result))
+    (when mode-line-inactive
+      (push (generate-face-attribute :mode-line-inactive mode-line-inactive)
+	    result))
     (when fringe
       (push (generate-face-attribute :fringe fringe) result))
     (when transparency

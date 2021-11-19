@@ -25,8 +25,7 @@
 	  (ivy--switch-buffer-action current-ws-name)
 	(progn
 	  (workspace--add-ivy-view current-ws-name)
-	  (workspace--set-workspace-and-switch!
-	   ws-name))))))
+	  (workspace--set-workspace-and-switch! ws-name))))))
 
 (defun workspace-list-workspace-names ()
   (let ((result '()))
@@ -60,10 +59,24 @@
 	 (car current-item)))
     nil))
 
+(defun mode-line-workspace ()
+  (let ((result "")
+	(keys (sort (workspace-list-workspace-keys) '<=)))
+    (dolist (key keys)
+      (if (equal key *current-workspace*)
+	  (setq
+	   result (concat
+		   result (format "<%s>" key)))
+	(setq
+	 result (concat
+		 result (format "[%s]" key)))))
+    result))
+
 (defun workspace--add-workspace-no-prompt (number ws-name)
   ;; NOTE: This function is not safe and needs some
   ;; guard rails since I want to be able to call it from
   ;; organizer-session
+  (setq *current-workspace* number)
   (push (cons number ws-name) *workspaces*)
   (workspace--add-ivy-view ws-name))
 
@@ -73,7 +86,6 @@
 	  "Name workspace: "
 	  nil
 	  :initial-input "{} ")))
-    (setq *current-workspace* n)
     (workspace--add-workspace-no-prompt n name)))
 
 (defun workspace-to-workspace-number (n)
