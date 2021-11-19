@@ -26,13 +26,18 @@ then
 elif [ $ACTION == 'sync' ] 
 then
     PACKAGE_REFRESH="(package-refresh-contents)"
-    SYNC_MESSAGE="(insert \"Syncing Modules\")"
+    SWITCH_BUFFER="(switch-to-buffer \"*Messages*\")"
+    MESSAGE_RECOMPILE="(message \"byte-recompiling\")"
+    RECOMPILE_PACKAGES="(byte-recompile-directory \"~/.emacs.d\")"
+    SYNC_MESSAGE="(message \"Syncing Modules\")"
     SYNC_PACKAGES="(sync-packages)"
 
     SYNC="$START
-          $PACKAGE_REFRESH
+          $SWITCH_BUFFER 
           $SYNC_MESSAGE
           $SYNC_PACKAGES
+          $MESSAGE_RECOMPILE 
+          $RECOMPILE_PACKAGES
           $MESSAGE_DONE
           $KILL_EMACS
          $END"
