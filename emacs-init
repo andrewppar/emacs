@@ -1,4 +1,4 @@
-;; -*- mode: emacs-lisp -*-
+; -*- mode: emacs-lisp -*-
 
 (setq *start* (float-time))
 
@@ -8,7 +8,8 @@
 (add-hook 'write-file-functions 'delete-trailing-whitespace)
 
 (defmacro load! (load-string)
-  (declare (indent defun)) (let ((start (gensym "start")))
+  (declare (indent defun))
+  (let ((start (gensym "start")))
     `(let ((,start (float-time)))
        (load ,load-string)
        (message
@@ -34,11 +35,9 @@
  :function (:foreground "#18aed4" :weight 'bold)
  :keyword  (:foreground "#AFD75F" :weight 'bold)
  :type     (:foreground "#18aed4")
-;; :fringe   (:background nil)
+ :font     (:height 180)
  :transparency ('alpha 90 90)
- )
-;; TODO add this to  colors!
-(set-face-attribute 'default nil :height 180)
+ :fringe   (:background "#d0d0d0"))
 
 (defun mode-line-workspace ()
   (let ((result ""))
@@ -46,23 +45,20 @@
       (if (equal key *current-workspace*)
 	  (setq
 	   result (concat
-		   result (format "[%s]" key)))
+		   result (format "<%s>" key)))
 	(setq
 	 result (concat
-		 result (format "<%s>" key)))))
+		 result (format "[%s]" key)))))
     result))
 
-(setq-default mode-line-format
-              (list
-	       ;; Current workspace
-	       '(:eval (mode-line-workspace))
-               ;; value of `mode-name'
-               " %m: "
-	       ;; modified
-	       "%*%+ "
-	       ;; buffer name
-	       "%b"
-               ))
+(mode-line!
+  ;;:color doesn't work yetl
+  (:text  (mode-line-workspace))
+  (:text " %m:")
+  (:text "%*%+ ")
+  (:text "%b"))
+
+
 
 ;; Custom Bindings
 
