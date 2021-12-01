@@ -133,3 +133,103 @@
 
                               ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;
+;;; clojure
+
+(module! cider
+  :ensure t
+  :requires evil
+  :init
+  (epa-file-disable)
+  :config
+  
+  (defun cider-show-cider-buffer ()
+    "Shows the nrepl buffer, but does not focus it."
+    (interactive)
+    (command-execute 'cider-switch-to-repl-buffer)
+    (command-execute 'cider-switch-to-last-clojure-buffer))
+  
+  (defun clojure-set-up-key-bindings ()
+    (define-key
+      clojure-mode-map (kbd "C-c r") 'cider-repl))
+  
+  ;; If necessary, add more calls to `define-key' here ...
+  (with-eval-after-load 'cider
+    (evil-define-key 'insert cider-repl-mode-map
+      (kbd "C-j") 'cider-repl-next-input
+      (kbd "C-k") 'cider-repl-previous-input))
+  (major-mode-map cider-repl-mode
+    :bindings
+    ("c" 'cider-repl-clear-buffer
+     "k" 'cider-repl-previous-input
+     "j" 'cider-repl-next-input
+     ))
+  (add-hook 'cider-repl-mode-hook 'clojure-set-up-key-bindings)
+
+  (setq cider-repl-pop-to-buffer-on-connect nil
+	cider-show-error-buffer nil))
+
+(module! clojure-mode
+  :ensure t
+  :requires (evil which-key)
+  :init
+  (major-mode-map clojure-mode
+    :bindings
+    ("jj" 'cider-jack-in
+     "jc" 'cider-connect-clj
+     "jq" 'cider-quit
+     "jr" 'cider-show-cider-buffer
+     "e"  'cider-eval-bufer
+     "."  'cider-toggle-trace-var
+     "g"  'xref-find-definitions
+     "c"  'cider-eval-defun-at-point
+     "n"  'cider-repl-set-ns
+     "tt" 'cider-test-run-test
+     "ta" 'cider-test-run-project-tests
+     "a"  'lsp-execute-code-action)
+    :labels
+    (""  "major mode"
+     "t" "test"
+     "j"  "repl"))
+  :config
+  (evil-define-key 'normal 'cider-mode-map
+    (kbd "C-k") 'cider-repl-previous-input
+    (kbd "C-j") 'cider-repl-next-input)
+  (evil-define-key 'insert 'cider-mode-map
+    (kbd "C-k") 'cider-repl-previous-input
+    (kbd "C-j") 'cider-repl-next-input))
+
+             ;;;
+;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;
+;;; prolog
+
+(module! ediprolog
+  :ensure t
+  :config
+  (setq ediprolog-system 'swi
+	ediprolog-program "/usr/local/bin/swipl"))
+
+       ;;;
+;;;;;;;;;;
+
+;(module! quelpa
+;  :ensure t)
+;
+;(module! ox-ipynb
+;  ;; Error if quelpa
+;  ;; is not installed
+;  :source :quelpa
+;  ;; error if no fetcher
+;  :fetcher github-ssh
+;  ;; error if no repo
+;  ;; until we have other
+;  ;; cases
+;  :repo "jkitchin/ox-ipynb")
+;
+;(module! sql-mode
+;  :source :none
+;  :config
+;  (setq bro t))

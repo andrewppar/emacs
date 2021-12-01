@@ -94,32 +94,85 @@
 
 ;;; Mode Line
 
+(defun eval-spec? (object)
+  (when (listp object)
+    (equal (car object) :eval)))
+
 (defun parse-mode-line-spec (mode-line-spec)
+  (print (format "spec: %s" mode-line-spec))
   (let ((text   (plist-get mode-line-spec :text))
 	(color  (plist-get mode-line-spec :color))
+	(weight (plist-get mode-line-spec :weight))
+	(properties-list '())
 	(result nil))
-    (if (stringp text)
-	(if (not color)
-	    (setq result text)
-	  (setq result
-		`(propertize
-		  ,text
-		  'face '(:foreground ,color))))
-      (if (not color)
-	  (setq result `(:eval ,text))
-	(setq result
-	      `(:eval
-		(propertize
-		 ,text
-		 'face '(:foreground ,color))))))
-    (print result)
+    (when weight
+      (push weight properties-list)
+      (push :weight properties-list))
+    (when color
+      (push color properties-list)
+      (push :foreground properties-list))
+    (when properties-list
+      (push `',properties-list result)
+      (push ''face result))
+;;    (print "one")
+;;    (print result)
+    (push text result)
+    (when properties-list
+      (push 'propertize result))
+;;    (print "two")
+;;    (print result) 
+    (when (not (stringp text))
+      (push :eval result))
+;;    (print "three")
+;;    (print result)
+    (when (equal (length result) 1)
+      (setq result (car result)))
     result))
+	       
+ 
+;;   (if (stringp text)
+;;	(if result
+;;	    (progn
+;;	      (push text result)
+;;	      (push propertize result))
+;;	  (setq result text))
+;;      (if result
+;;	  (progn
+;;	    (push text result)
+;;	    (push propertize result)
+;;	    (push :eval result))
+;;	(setq result `(:eval ,text))))
+;;    result))
+;;	
+
+;; 
+;;   (if (stringp text)
+;;	(if (not color)
+;;	    (setq result text)
+;;	  (setq result
+;;		`(propertize
+;;		  ,text
+;;		  'face '(:foreground ,color))))
+;;      (if (not color)
+;;	  (setq result `(:eval ,text))
+;;	(setq result
+;;	      `(:eval
+;;		(propertize
+;;		 ,text
+;;		 'face '(:foreground ,color))))))
+;;;;    (print (format "%s" result))
+;;    result))
+
+
 
 (defmacro mode-line! (&rest mode-line-specs)
   (declare (indent defun))
   (let ((result '()))
     (dolist (spec mode-line-specs)
-      (push `',(parse-mode-line-spec spec) result))
+      (let ((parsed-spec (parse-mode-line-spec spec)))
+	(if (eval-spec? parsed-spec)
+	    (push `',parsed-spec result)
+	  (push parsed-spec result))))
     (setq result (reverse result))
     (push 'list result)
     (setq result

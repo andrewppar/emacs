@@ -1,5 +1,7 @@
 (require 'ivy)
 
+;; TODO: This needs to be organized its a little unkempt
+
 (defvar *workspaces* '())
 (defvar *current-workspace* nil)
 
@@ -50,6 +52,18 @@
        (when (equal (cdr current-item) ws-name)
 	 (car current-item)))
     nil))
+
+(defun mode-line-workspace ()
+  (let ((result ""))
+    (dolist (key (workspace-list-workspace-keys))
+      (if (equal key *current-workspace*)
+	  (setq
+	   result (concat
+		   result (format "<%s>" key)))
+	(setq
+	 result (concat
+		 result (format "[%s]" key)))))
+    result))
 
 (defun workspace-add-workspace (n)
   (let ((name

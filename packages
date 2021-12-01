@@ -1,3 +1,6 @@
+ediprolog
+clojure-mode
+cider
 projectile
 eshell
 magit

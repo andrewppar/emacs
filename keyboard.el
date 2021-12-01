@@ -46,22 +46,34 @@
 ;; Keybindings
 
 (defun generate-which-key-binding-sexp (map trigger binding item type)
-  ;;(message (format "KeyBinding: %s %s %s %s %s" map trigger binding item type))
-  (let ((binding-string (if (equal type :major-mode)
-			    (concat trigger "m" binding)
-			  (concat trigger binding)))
-	(result         nil))
+  (let ((binding-string
+	 (if (equal type :major-mode)
+	     (concat trigger "m" binding)
+	   (concat trigger binding)))
+	(result nil))
     (cond ((equal type :labels)
-	   (setq result
-		 `(which-key-add-keymap-based-replacements ,map ,binding-string ,item)))
+	   (setq
+	    result
+	    `(which-key-add-keymap-based-replacements
+	       ,map ,binding-string ,item)))
     	  ((equal type :default-bindings)
-    	   (setq result
-		 `(define-key ,map ,binding-string ,item)))
+    	   (setq
+	    result
+	    `(define-key
+	       ,map ,binding-string ,item)))
 	  ((equal type :major-mode)
 	   (setq result
 		 `(progn
-		    (evil-define-key 'normal ,map ,(concat "m" binding) ,item)
-		    (evil-define-key 'normal ,map ,binding-string ,item)))))
+		    (evil-define-key
+		      'normal
+		      ,map
+		      ,(concat "m" binding)
+		      ,item)
+		    (evil-define-key
+		      'normal
+		      ,map
+		      ,binding-string
+		      ,item)))))
     result))
 
 (defun get-which-key-item-internal (map trigger configuration-plist type)
@@ -111,7 +123,6 @@
 (which-key-map evil-normal-state-map ","
  :labels
  ("" "main menu"
-  "w" "window"
   "b" "buffer"
   "e" "eval"
   "r" "kill-ring"
@@ -127,14 +138,7 @@
    "bd" 'kill-buffer
    "bx" 'kill-buffer-and-window
    "ry" 'counsel-yank-pop
-   "a"  'other-window
-   "wd" 'delete-window
-   "w0" 'delete-window
-   "w1" 'delete-other-windows
-   "w2" 'split-window-below
-   "w3" 'split-window-right
-   "wr" 'window-configuration-to-register
-   "wj" 'jump-to-register))
+   "a"  'other-window))
 
 
                               ;;;
@@ -178,7 +182,6 @@
 	(result '()))
     (setq result `(progn ,bindings ,labels))
     result))
-
 
 (defmacro do-bindings (binding-list &rest body)
   (declare (indent defun))

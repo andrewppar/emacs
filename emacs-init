@@ -11,50 +11,38 @@
 	(format "done loading %s: %s"
 		,load-string (- (float-time) ,start))))))
 
-
-
 (load! "~/.emacs.d/display.el")
 (load! "~/.emacs.d/modules.el")
 (load! "~/.emacs.d/splash.el")
 (load! "~/.emacs.d/eshell.el")
 (load! "~/.emacs.d/workspace.el")
 
+;;;;;;;;;;;;;;;
 ;; Custom Theme
 
 (colors!
- :background "#3b3b3f"
- :foreground "#d0d0d0"
- :comment "#8a8a8a"
- :string "#ffc63f"
- :constant (:foreground "#ffc63f" :weight 'bold)
- :function (:foreground "#18aed4" :weight 'bold)
- :keyword  (:foreground "#AFD75F" :weight 'bold)
- :type     (:foreground "#18aed4")
- :font     (:height 180)
+ :background   "#3b3b3f"
+ :foreground   "#d0d0d0"
+ :comment      "#8a8a8a"
+ :string       "#ffc63f"
+ :constant     (:foreground "#ffc63f" :weight 'bold)
+ :function     (:foreground "#18aed4" :weight 'bold)
+ :keyword      (:foreground "#afd75f" :weight 'bold)
+ :type         (:foreground "#18aed4")
+ :font         (:height 180)
  :transparency ('alpha 100 100)
- :fringe   (:background "#d0d0d0"))
-
-(defun mode-line-workspace ()
-  (let ((result ""))
-    (dolist (key (workspace-list-workspace-keys))
-      (if (equal key *current-workspace*)
-	  (setq
-	   result (concat
-		   result (format "<%s>" key)))
-	(setq
-	 result (concat
-		 result (format "[%s]" key)))))
-    result))
+ :fringe       (:background "#d0d0d0"))
 
 (mode-line!
-  ;;:color doesn't work yetl
+  (:text  "☧ "
+	  :color "#000000"
+	  :weight 'bold)
   (:text  (mode-line-workspace))
-  (:text " %m:")
+  (:text " %m:" )
   (:text "%*%+ ")
-  (:text "%b"))
-  
+  (:text "%b"   ))
 
-
+;;;;;;;;;;;;;;;;;;
 ;; Custom Bindings
 
 (defun messages-buffer ()
@@ -105,11 +93,11 @@
 	       :labels
 	       ("i"  "init"
 		"g"  "magit"
+		"w"  "workspace"
 		"s"  "s-expression"
 		"p"  "projectile"
 		"v"  "ivy-view"
-		"t"  "tools"
-		)
+		"t"  "tools")
 	       :default-bindings
 	       (;; ibuffer
 		"bi" 'ibuffer
@@ -123,12 +111,12 @@
 		"id"  'display-file
 		"ik"  'keyboard-file
 		;; workspaces
-                "wxd" 'workspace-pop
-                "wxj" 'ivy-switch-view
-		"wx1" 'to-workspace-1
-		"wx2" 'to-workspace-2
-		"wx3" 'to-workspace-3
-		"wx4" 'to-workspace-4
+                "wd" 'workspace-pop
+                "wj" 'ivy-switch-view
+		"w1" 'to-workspace-1
+		"w2" 'to-workspace-2
+		"w3" 'to-workspace-3
+		"w4" 'to-workspace-4
 		;; magit
 		"gs"  'magit-status
 		"gc"  'magit-branch-checkout
