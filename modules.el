@@ -134,6 +134,39 @@
                               ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;;;;;;;
+;;; code
+
+(module! lsp-mode 
+  :ensure t
+  :config
+  (setq
+   lsp-clojure-server-command '("clojure-lsp")
+   lsp-lens-enable t
+   lsp-signature-auto-activate nil
+   lsp-enable-indentation nil 
+   lsp-enable-completion-at-point nil)
+  (add-hook 'clojure-mode-hook #'lsp)
+  (add-hook 'clojurec-mode-hook #'lsp)
+  (add-hook 'clojurescript-mode-hook #'lsp))
+
+(module! lsp-treemacs
+  :ensure t
+  :config
+  (setq treemacs-space-between-root-nodes nil))
+
+(module! flycheck
+  :ensure t)
+
+(module! company
+  :ensure t
+  :config
+  (setq company-minimum-prefix-length 1))
+
+
+     ;;;
+;;;;;;;;
+
 ;;;;;;;;;;;
 ;;; clojure
 

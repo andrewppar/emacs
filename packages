@@ -1,6 +1,10 @@
 ediprolog
 clojure-mode
 cider
+company
+flycheck
+lsp-treemacs
+lsp-mode
 projectile
 eshell
 magit
