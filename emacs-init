@@ -47,7 +47,8 @@
     result))
 
 (mode-line!
-  ;;:color doesn't work yetl
+  (:text " λ "
+	 :color "#167500")
   (:text  (mode-line-workspace))
   (:text " %m:")
   (:text "%*%+ ")
@@ -105,6 +106,7 @@
 	       :labels
 	       ("i"  "init"
 		"g"  "magit"
+		"w"  "workspace"
 		"s"  "s-expression"
 		"p"  "projectile"
 		"v"  "ivy-view"
@@ -123,12 +125,12 @@
 		"id"  'display-file
 		"ik"  'keyboard-file
 		;; workspaces
-                "wxd" 'workspace-pop
-                "wxj" 'ivy-switch-view
-		"wx1" 'to-workspace-1
-		"wx2" 'to-workspace-2
-		"wx3" 'to-workspace-3
-		"wx4" 'to-workspace-4
+                "wd" 'workspace-pop
+                "wj" 'ivy-switch-view
+		"w1" 'to-workspace-1
+		"w2" 'to-workspace-2
+		"w3" 'to-workspace-3
+		"w4" 'to-workspace-4
 		;; magit
 		"gs"  'magit-status
 		"gc"  'magit-branch-checkout

@@ -1,5 +1,6 @@
 (tool-bar-mode -1)
 (menu-bar-mode -1)
+
 (when window-system
   (scroll-bar-mode -1))
 (display-time-mode 1)
@@ -18,12 +19,14 @@
 
 (defvar *display/keyword-function-map*
   '(:constant font-lock-constant-face
-	      :function font-lock-function-name-face
-	      :keyword  font-lock-keyword-face
-	      :builtin  font-lock-builtin-face
-	      :type     font-lock-type-face
-	      :font     'default
-	      :fringe   'fringe))
+	      :function            font-lock-function-name-face
+	      :keyword             font-lock-keyword-face
+	      :builtin             font-lock-builtin-face
+	      :type                font-lock-type-face
+	      :mode-line          'mode-line
+	      :mode-line-inactive 'mode-line-inactive
+	      :font               'default
+	      :fringe             'fringe))
 
 (defun generate-face-attribute (type attribute-plist)
   (let ((result '())
@@ -61,6 +64,8 @@
 	(builtin      (plist-get color-config :builtin))
 	(fringe       (plist-get color-config :fringe))
 	(font         (plist-get color-config :font))
+	(mode-line    (plist-get color-config :mode-line))
+	(mode-line-inactive (plist-get color-config :mode-line-inactive))
 	(transparency (plist-get color-config :transparency)))
     (when background
       (push `(set-background-color ,background) result))
@@ -80,6 +85,11 @@
       (push (generate-face-attribute :type type) result))
     (when builtin
       (push (generate-face-attribute :builtin builtin) result))
+    (when mode-line
+      (push (generate-face-attribute :mode-line mode-line) result))
+    (when mode-line-inactive
+      (push (generate-face-attribute :mode-line-inactive mode-line-inactive)
+	    result))
     (when fringe
       (push (generate-face-attribute :fringe fringe) result))
     (when transparency
@@ -89,22 +99,28 @@
 	(push `(set-frame-parameter (selected-frame) ,letter '(,num1 ,num2)) result)))
     (when font
       (push (generate-face-attribute :font font) result))
-;;    (message (format "COLORS: %s" result))
+    ;;    (message (format "COLORS: %s" result))
     (cons 'progn result)))
 
 ;;; Mode Line
-
 (defun parse-mode-line-spec (mode-line-spec)
-  (let ((text   (plist-get mode-line-spec :text))
-	(color  (plist-get mode-line-spec :color))
-	(result nil))
+  (let ((text      (plist-get mode-line-spec :text))
+	(color     (plist-get mode-line-spec :color))
+	(condition (plist-get mode-line-spec :condition))
+	(result    nil))
+    (when condition
+      (setq text
+	    `(if ,condition
+		 ,text
+	       "")))
     (if (stringp text)
 	(if (not color)
 	    (setq result text)
 	  (setq result
-		`(propertize
-		  ,text
-		  'face '(:foreground ,color))))
+		`(:eval
+		  (propertize
+		   ,text
+		   'face '(:foreground ,color)))))
       (if (not color)
 	  (setq result `(:eval ,text))
 	(setq result
@@ -112,7 +128,7 @@
 		(propertize
 		 ,text
 		 'face '(:foreground ,color))))))
-    (print result)
+    ;; (print result)
     result))
 
 (defmacro mode-line! (&rest mode-line-specs)
