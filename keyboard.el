@@ -111,7 +111,6 @@
 (which-key-map evil-normal-state-map ","
  :labels
  ("" "main menu"
-  "w" "window"
   "b" "buffer"
   "e" "eval"
   "r" "kill-ring"
@@ -127,14 +126,7 @@
    "bd" 'kill-buffer
    "bx" 'kill-buffer-and-window
    "ry" 'counsel-yank-pop
-   "a"  'other-window
-   "wd" 'delete-window
-   "w0" 'delete-window
-   "w1" 'delete-other-windows
-   "w2" 'split-window-below
-   "w3" 'split-window-right
-   "wr" 'window-configuration-to-register
-   "wj" 'jump-to-register))
+   "a"  'other-window))
 
 
                               ;;;

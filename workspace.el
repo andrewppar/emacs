@@ -1,9 +1,32 @@
 (require 'ivy)
 
 (defvar *workspaces* '())
+(defvar *current-workspace* nil)
+
+(defun workspace--add-ivy-view (view-name)
+  ;;TODO: This should be named add-or-update...
+  (let ((view (ivy--get-view-config))
+	(x (assoc view-name ivy-views)))
+    (if x
+        (setcdr x (list view))
+      (push (list view-name view) ivy-views))))
+
+(defun workspace--set-workspace-and-switch! (ws-name)
+  (setq
+   *current-workspace* (workspace-key-from-name ws-name))
+  (ivy--switch-buffer-action ws-name))
 
 (defun workspace-switch-workspace (ws-name)
-  (ivy--switch-buffer-action ws-name))
+  (if (not *current-workspace*)
+      (workspace--set-workspace-and-switch! ws-name)
+    (let ((current-ws-name
+	   (cdr (assoc *current-workspace* *workspaces*))))
+      (if (equal ws-name current-ws-name)
+	  (ivy--switch-buffer-action current-ws-name)
+	(progn
+	  (workspace--add-ivy-view current-ws-name)
+	  (workspace--set-workspace-and-switch!
+	   ws-name))))))
 
 (defun workspace-list-workspace-names ()
   (let ((result '()))
@@ -28,19 +51,13 @@
 	 (car current-item)))
     nil))
 
-(defun workspace--add-ivy-view (view-name)
-  (let ((view (ivy--get-view-config))
-	(x (assoc view-name ivy-views)))
-    (if x
-        (setcdr x (list view))
-      (push (list view-name view) ivy-views))))
-
 (defun workspace-add-workspace (n)
   (let ((name
 	 (ivy-read
 	  "Name workspace: "
 	  nil
 	  :initial-input (ivy-default-view-name))))
+    (setq *current-workspace* n)
     (push (cons n name) *workspaces*)
     (workspace--add-ivy-view name)))
 
@@ -64,3 +81,5 @@
 	 (ws-number  (workspace-key-from-name to-remove)))
     (workspace--remove-workspace ws-number)
     (ivy-pop-view-action (assoc to-remove ivy-views))))
+    
+	
