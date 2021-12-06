@@ -81,5 +81,3 @@
 	 (ws-number  (workspace-key-from-name to-remove)))
     (workspace--remove-workspace ws-number)
     (ivy-pop-view-action (assoc to-remove ivy-views))))
-    
-	
