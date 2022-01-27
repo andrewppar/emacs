@@ -10,6 +10,7 @@ clojure-mode
 cider
 org-agenda
 org
+ag
 projectile
 eshell
 magit
