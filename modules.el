@@ -99,6 +99,7 @@
 (module! magit
   :ensure t
   :requires evil
+  :defer t
   :config
   (setq
    magit-display-buffer-function
@@ -111,7 +112,9 @@
 
   (major-mode-map magit-mode
     :bindings
-    ("" 'magit-dispatch)))
+    ("" 'magit-dispatch))
+
+  )
 
 (module! eshell
   :init
@@ -127,6 +130,7 @@
 
 (module! projectile
   :ensure t
+  :defer t 
   :init
   (projectile-mode +1)
   :config
@@ -142,6 +146,7 @@
 
 (module! org
   :ensure t
+  :defer t
   :requires evil
   :init
   (add-hook 'org-mode-hook 'turn-on-flyspell)
@@ -207,6 +212,7 @@
 
 (module! org-agenda
   :requires evil
+  :defer t
   :config
   (evil-set-initial-state 'org-agenda-mode 'normal)
    (evil-define-key 'normal org-agenda-mode-map
@@ -230,6 +236,7 @@
 (module! cider				;
   :ensure t
   :requires evil
+  :defer t
   :config
   (defun cider-show-cider-buffer ()
     "Shows the nrepl buffer, but does not focus it."
@@ -257,6 +264,7 @@
 
 (module! clojure-mode
   :ensure t
+  :defer t
   :requires (evil which-key)
   :init
   (major-mode-map clojure-mode
@@ -264,14 +272,17 @@
     ("jj" 'cider-jack-in
      "jc" 'cider-connect-clj
      "jq" 'cider-quit
+     "n"  'cider-repl-set-ns
+     "q"  'cider-quit
      "e"  'cider-eval-bufer
-     "."  'cider-toggle-trace-var
+     "s"  'cider-toggle-trace-var
      "g"  'xref-find-definitions
      "c"  'cider-eval-defun-at-point
      "a"  'lsp-execute-code-action)
     :labels
     (""  "major mode"
      "j"  "repl"))
+  (epa-file-disable)
   :config
   (evil-define-key 'normal 'cider-mode-map
     (kbd "C-k") 'cider-repl-previous-input
@@ -288,6 +299,7 @@
 
 (module! python
   :ensure t
+  :defer t
   :requires evil
   :config
   (major-mode-map python-mode
@@ -307,12 +319,14 @@
 
 (module! blacken
   :ensure t
+  :defer t
   :hook (python-mode . blacken-mode)
   :config
   (setq blacken-line-length '79))
 
 (module! conda
   :ensure t
+  :defer t
   :requires evil
   :config
   (setq
@@ -327,10 +341,13 @@
 
 (module! flycheck
   :ensure t
+  :defer t
   :config
   (global-flycheck-mode))
 
 (module! lsp-mode
+  :ensure t
+  :defer t
   :init
   (setq lsp-clojure-server-command '("clojure-lsp")
  	lsp-enable-indentation nil
@@ -348,6 +365,7 @@
 
 (module! lsp-ui
   :ensure t
+  :defer t
   :after (lsp-mode)
 
   :init (setq lsp-ui-doc-enable t
@@ -385,6 +403,7 @@
 
 (module! company
   :ensure t
+  :defer t
   :requires evil)
 
     ;;;
