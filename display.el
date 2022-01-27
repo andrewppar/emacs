@@ -68,7 +68,9 @@
 	(mode-line-inactive (plist-get color-config :mode-line-inactive))
 	(transparency (plist-get color-config :transparency)))
     (when background
-      (push `(set-background-color ,background) result))
+      (if (display-graphic-p)
+	  (push `(set-background-color ,background) result)
+	(push `(set-face-background 'default ,background) result)))
     (when foreground
       (push `(set-foreground-color ,foreground) result))
     (when comment
@@ -99,7 +101,6 @@
 	(push `(set-frame-parameter (selected-frame) ,letter '(,num1 ,num2)) result)))
     (when font
       (push (generate-face-attribute :font font) result))
-    ;;    (message (format "COLORS: %s" result))
     (cons 'progn result)))
 
 ;;; Mode Line
@@ -128,7 +129,6 @@
 		(propertize
 		 ,text
 		 'face '(:foreground ,color))))))
-    ;; (print result)
     result))
 
 (defmacro mode-line! (&rest mode-line-specs)
