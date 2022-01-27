@@ -1,5 +1,9 @@
 (load! "~/.emacs.d/keyboard.el")
 
+(add-to-list 'exec-path "/usr/local/bin")
+(add-to-list 'exec-path "/Library/TeX/texbin/")
+(setenv "PATH" (mapconcat 'identity exec-path ":"))
+
 ;; TODO: Create module! macro that is a thin wrapper around use-package
 ;; but that makes defining major mode and default bindings for a mode easy
 ;; TODO: Figure a way to auto configure lsp mode for a language
