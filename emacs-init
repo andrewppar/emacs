@@ -21,42 +21,64 @@
 (load! "~/.emacs.d/display.el")
 (load! "~/.emacs.d/modules.el")
 (load! "~/.emacs.d/splash.el")
-(load! "~/.emacs.d/eshell.el")
 (load! "~/.emacs.d/workspace.el")
+(load! "~/.emacs.d/project.el")
 
 ;;; Custom Work Helpers
 (load! "~/emacs-files/timesheet.el")
 (load! "~/emacs-files/diary-helpers.el")
+(load! "~/emacs-files/sql-session.el")
+
+;;; Clipboard (mac only)
+;; TODO: This is messy - find a good spot for this
+
+(defun to-clipboard ()
+  (interactive)
+  (let ((start (region-beginning))
+	(end   (region-end)))
+    (shell-command-on-region start end "pbcopy")))
+
+(evil-define-key 'visual 'evil-visual-state-map (kbd "C-y") 'to-clipboard)
 
 ;; Custom Theme
-
 (colors!
- :background            "#3b3b3f"
- :foreground            "#d0d0d0"
- :comment               "#8a8a8a"
- :string                "#ffc63f"
- :constant              (:foreground "#ffc63f" :weight 'bold)
- :function              (:foreground "#18aed4" :weight 'bold)
- :keyword               (:foreground "#AFD75F" :weight 'bold)
- :type                  (:foreground "#18aed4")
- :font                  (:height 230)
- :transparency          ('alpha 90 90)
- :mode-line             (:foreground "#3b3b3f" :background "#d0d0d0")
- :mode-line-inactive    (:foreground "#3b3b3f" :background "#d0d0d0")
- :fringe                (:background "#d0d0d0"))
+  :background            "#3b3b3f"
+  :foreground            "#d0d0d0"
+  :comment               "#8a8a8a"
+  :string                "#ffc63f"
+  :link                  (:foreground "red"     :weight 'bold)
+  :constant              (:foreground "#ffc63f" :weight 'bold)
+  :function              (:foreground "#18aed4" :weight 'bold)
+  :keyword               (:foreground "#AFD75F" :weight 'bold)
+  :type                  (:foreground "#18aed4")
+  :font                  (:height 230)
+  :transparency          ('alpha 90 90)
+  :mode-line             (:foreground "#3b3b3f" :background "#d0d0d0")
+  :mode-line-inactive    (:foreground "#3b3b3f" :background "#d0d0d0")
+  :fringe                (:background "#d0d0d0"))
 
 (mode-line!
   (:text " ⚓ ")
+  (:text (format-time-string "%H:%M ")
+	 :color "#c45651")
   (:text  (mode-line-workspace))
-  (:text "%*%+ ")
+  (:text " %*%+ ")
   (:text " %m: ")
   (:text "%b ")
-  (:text "| envrc: ")
-  (:text (format "%s" envrc--status)
-	 :color "#30648e")
-  (:text "| conda: ")
-  (:text (format "%s" conda-env-current-name)
-	 :color "#30648e"))
+
+  (:condition
+   conda-env-current-name
+   :text (format " |conda: %s" conda-env-current-name)
+   :color "#30648e")
+  (:condition
+   (not (equal envrc--status 'none))
+   :text (format " |envrc %s" envrc--status)
+   :color "#30648e")
+  (:condition
+   (vc-backend buffer-file-name)
+   :text (format " |%s " vc-mode)
+   :color "#30648e"))
+
 
 ;; Custom Bindings
 
@@ -144,7 +166,7 @@
         (task-log)
         (other-window 1)
         (other-window 1)))
-    (workspace--add-workspace-no-prompt 1 "{} orgnizer"))
+    (workspace--add-workspace-no-prompt 1 "{} organizer"))
 
 (defun email ()
   (interactive)
@@ -157,10 +179,14 @@
 		"t"  "tools"
 		"tc" "conda"
 		"ti" "lsp-ui-imenu"
+		"tp" "pomodoro"
+		"ts" "sql"
+		"o"  "organizer"
 		"oe" "edit-task"
-		"p" "projectile"
-		"w" "workspaces"
-		"g"  "magit"
+		"p"  "projectile"
+		"w"  "workspaces"
+		"g"  "git"
+		"gr" "github review"
 		"s"  "s-expression"
 		"p"  "projectile"
 		"t"  "tools")
@@ -183,6 +209,10 @@
 		"gc"  'magit-branch-checkout
 		"gb"  'magit-blame
 		"gl"  'magit-log-current
+		"grs" 'github-review-start
+		"grc" 'github-review-comment
+		"gra" 'github-review-approve
+		"gh"  'git-timemachine
 		;; projectile
 		"p"   'projectile-command-map
 		;; generic
@@ -223,17 +253,45 @@
 		"tcs" 'conda-env-switch
 		"tii" 'lsp-ui-imenu ;It's a little hacky to have this here
 		"tiq" 'lsp-ui-imenu--kill
-		"te" 'eshell))
+		"tps" 'pomodoro-start-work
+		"tpr" 'pomodoro-start-rest
+		"tpp" 'pomodoro
+		"tpx" 'pomodoro-stop-timer
+		"tss" 'sql-session
+		"tsw" 'sql-session-save-session
+		"tst" 'sql-session-toggle-tables-buffer
+		"tsl" 'sql-session-reset-window-layout
+		"te"  'eshell))
+
+;;;;;;;;;;;;
+;;; Projects
+
+(defproject emacs
+  :project-dir "~/.emacs.d")
+
+(defproject pyreify
+  :project-dir "~/scratch/project-scratch/concept-data"
+  :conda-env "pyreify_nlp")
+
+(defproject avicenna
+  :project-dir "~/Documents/projects/avicenna")
+
+(defproject zem
+  :project-dir "~/Documents/projects/prefect-enrollment-prediction"
+  :conda-env   "prefect-zem")
+
+
 
 ;; TODO
 ;; Clean this up and put it in a macro
-(evil-define-key 'normal 'evil-normal-state-map "[" 'evil-jump-item)
-(evil-define-key 'visual 'evil-visual-state-map "[" 'evil-jump-item)
+(evil-define-key 'normal 'evil-normal-state-map "'" 'evil-jump-item)
+(evil-define-key 'visual 'evil-visual-state-map "'" 'evil-jump-item)
 
 (evil-define-key 'normal 'evil-normal-state-map (kbd "C-k") 'comint-previous-input)
 (evil-define-key 'insert 'evil-insert-state-map (kbd "C-k") 'comint-previous-input)
 (evil-define-key 'normal 'evil-normal-state-map (kbd "C-j") 'comint-next-input)
 (evil-define-key 'insert 'evil-insert-state-map (kbd "C-j") 'comint-next-input)
+(evil-define-key 'normal 'evil-normal-state-map (kbd "C-c l") 'comint-clear-buffer)
 (evil-define-key 'normal 'org-mode-map (kbd "<tab>") #'org-cycle)
 
 ;; Hacks!
@@ -250,7 +308,7 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(sql-interactive-mode which-key use-package undo-tree ttl-mode sqlformat sphinx-doc sparql-mode quelpa projectile ox-ipynb magit lsp-ui lsp-pyright ivy-rich haskell-mode flycheck evil-collection ess envrc csv-mode counsel conda company command-log-mode cider blacken)))
+   '(sql-interactive-mode which-key use-package undo-tree ttl-mode sqlformat sphinx-doc sparql-mode quelpa projectile ox-ipynb magit lsp-ui ivy-rich flycheck evil-collection ess envrc csv-mode counsel conda company blacken)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

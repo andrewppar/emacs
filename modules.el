@@ -125,20 +125,43 @@
     :bindings
     ("" 'magit-dispatch)))
 
+(module! git-timemachine
+  :ensure t
+  :defer t)
+
+(module! github-review
+  :ensure t
+  :config
+  (setq github "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"))
+
 (module! eshell
   :init
+  (load! "~/.emacs.d/eshell.el")
   (evil-define-key 'normal 'eshell-mode-map
     (kbd "C-j") 'eshell-next-matching-input-from-input
-    (kbd "C-k") 'eshell-previous-matching-input-from-input)
+    (kbd "C-k") 'eshell-previous-matching-input-from-input
+    (kbd "RET") 'eshell/send-input)
   (evil-define-key 'insert 'eshell-mode-map
     (kbd "C-j") 'eshell-next-matching-input-from-input
-    (kbd "C-k") 'eshell-previous-matching-input-from-input)
+    (kbd "C-k") 'eshell-previous-matching-input-from-input
+    (kbd "RET") 'eshell/send-input)
   (major-mode-map eshell-mode
     (:bindings
      "c" 'eshell/clear)))
 
+(module! ag
+  :ensure t)
+
                        ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; TODO: Figure out a way
+;; to make module just a wrapper
+;; and not use use-pacage.
+
+(module! recentf-mode
+  :use-package nil
+  (recentf-mode))
 
 (module! quelpa
   :ensure t)
@@ -159,9 +182,23 @@
 
 (module! org
   :ensure t
+  :mode ("\\.org\\'" . org-mode)
   :init
   (setq *project* "DPS")
   :config
+
+  (defun org-generate-pr-url (number)
+    (interactive "sPR Number: ")
+    (let* ((project-map '(("ZEM" . "prefect-enrollment-prediction")))
+	   (projects    (mapcar 'car project-map))
+	   (project     (ido-completing-read
+			 "Select Project: " projects))
+	   (url (format
+		 "https://github.com/reifyhealth/%s/pull/%s"
+		 (alist-get project project-map nil nil #'equal)
+		 number)))
+      (insert url)))
+
   (defun org-insert-jira-link ()
     (interactive)
     (let ((project nil)
@@ -180,13 +217,15 @@
     (interactive)
     (org-map-entries 'org-archive-subtree "/DONE" 'file))
 
-  (defun org-insert-code-block (language results)
-    (interactive "sLanguage: \nsResults: ")
-    (when (equal results "")
-      (setq results "output"))
-    (insert (format "#+begin_src %s :results %s\n\n" language results))
+  (defun org-insert-code-block (name language results)
+    (interactive "sName: \nsLanguage: \nsResults: ")
+    (insert (format "#+NAME: %s\n" name))
+    ;; TODO: Make this more like a builder
+    (if (equal results "")
+	(insert (format "#+BEGIN_SRC %s\n\n" language))
+      (insert (format "#+BEGIN_SRC %s :results %s\n\n" language results)))
     (forward-line)
-    (insert (format "#+end_src\n"))
+    (insert (format "#+END_SRC\n"))
     (forward-line -2))
 
   (defun setup-org-file (title)
@@ -275,6 +314,7 @@
      "it"  'org-jira-link-todo
      "e"   'org-export-dispatch
      "s"   'org-schedule
+     "p"   'org-generate-pr-url
      "mp"  'org-move-subtree-up
      "mn"  'org-move-subtree-down
      "mj"  'org-move-item-up
@@ -312,16 +352,15 @@
   	   "*** TODO %?\nSCHEDULED: %^t")
 	  ("j" "jira" entry
   	   (file+function "~/org/status.org" org-task-goto-jira)
-	   "*** TODO [[https://reifyhealth.atlassian.net/browse/%^{Project}-%^{Issue}][%\\1-%\\2]]: %?\nSCHEDULED: %^t")
+	   "*** TODO [[https://reifyhealth.atlassian.net/browse/%^{Project}][%\\1]]: %?\nSCHEDULED: %^t")
   	  ("a" "avicenna" entry
   	   (file+function "~/org/status.org" org-task-goto-avicenna)
-	   "**** TODO [[https://reifyhealth.atlassian.net/browse/%^{Project}-%^{Issue}][%\\1-%\\2]]: %?\nSCHEDULED: %^t")
+	   "**** TODO [[https://reifyhealth.atlassian.net/browse/%^{Project}][%\\1]]: %?\nSCHEDULED: %^t")
 	  ("z" "zem" entry
   	   (file+function "~/org/status.org" org-task-goto-zem)
-	   "**** TODO [[https://reifyhealth.atlassian.net/browse/%^{Project}-%^{Issue}][%\\1-%\\2]]: %?\nSCHEDULED: %^t")
+	   "**** TODO [[https://reifyhealth.atlassian.net/browse/%^{Project}][%\\1]]: %?\nSCHEDULED: %^t")
 
 	  )
-  	  org-babel-clojure-backend 'cider
 	  org-plantuml-jar-path
 	  (expand-file-name "/Users/andrewparisi/Documents/java/jars/plantuml.jar"))
 
@@ -340,6 +379,7 @@
 
 (module! org-agenda
   :requires evil
+  :after org
   :config
   (evil-set-initial-state 'org-agenda-mode 'normal)
   (evil-define-key 'normal org-agenda-mode-map
@@ -362,41 +402,46 @@
    org-agenda-prefix-format '((agenda . " %i %-12:c%?-12t%-6e% s")
                               (todo . " %i %-12:c %-6e")
                               (tags . " %i %-12:c")
-                              (search . " %i %-12:c"))))
+                              (search . " %i %-12:c"))
+   calendar-latitude 42.2
+   calendar-longitude -71.0
+   calendar-location-name "Quincy, MA"))
 
 ;;;;;;;
 ;;; LSP
 
+
 (module! lsp-mode
   :ensure t
+  :hook (prog-mode . display-fill-column-indicator-mode)
   :init
   (setq lsp-enable-indentation nil
-	lsp-enable-completion-at-point nil)
+	lsp-enable-completion-at-point nil
+	lsp-lens-enable t
+	lsp-signature-auto-activate nil)
+
+  ;; TODO: Add these to the :hook section
+
+  ;; clojure
   (add-hook 'clojure-mode-hook #'lsp)
   (add-hook 'clojurec-mode-hook #'lsp)
   (add-hook 'clojurescript-mode-hook #'lsp)
-  (add-hook 'python-mode-hook #'lsp)
-  :config
-  ;; Clojure
-  (require 'lsp-clojure)
 
-  ;;clojure
-  (add-to-list 'lsp-language-id-configuration '(clojure-mode . "clojure"))
-  (add-to-list 'lsp-language-id-configuration '(clojurec-mode . "clojure"))
-  (add-to-list 'lsp-language-id-configuration '(clojurescript-mode . "clojurescript"))
-  (add-to-list 'lsp-language-id-configuration '(python-mode . "python"))
+  ;; R
+  (add-hook 'ess-r-mode-hook #'lsp)
+
+  ;;yaml
+  (add-hook 'yaml-mode-hook #'lsp)
 
   ;; python
+  (add-hook 'python-mode-hook #'lsp)
+  :config
   (lsp-register-custom-settings
    '(("pyls.plugins.pyls_mypy.enabled" t t)
      ("pyls.plugins.pyls_mypy.live_mode" nil t)
      ("pyls.plugins.pyls_black.enabled" t t)
      ("pyls.plugins.pyls_isort.enabled" t t)))
-
-  :hook
-  ((clojure-mode . lsp)
-   (ess-r-mode . lsp)
-   (python-mode . lsp)))
+  )
 
 (module! lsp-ui
   :ensure t
@@ -436,6 +481,7 @@
 
 (module! flycheck
   :ensure t
+  :defer t
   :init
   (global-flycheck-mode)
   :config
@@ -452,6 +498,7 @@
 
 (module! company
   :ensure t
+  :defer t
   :requires evil)
 
             ;;;
@@ -462,6 +509,7 @@
 
 (module! sphinx-doc
   :ensure t
+  :mode ("\\.py\\'" . python-mode)
   ;; TODO: Consider writing a wrapper around
   ;; sphinx-doc that goes to the beginning of
   ;; the current fn.
@@ -469,7 +517,7 @@
 
 (module! python
   :ensure t
-  :requires (evil sphinx-doc)
+  :mode ("\\.py\\'" . python-mode)
   :init
   (add-hook
    'inferior-python-mode-hook
@@ -479,25 +527,29 @@
        (evil-define-key 'insert 'evil-insert-state-map (kbd "C-j") 'comint-next-input)
        (evil-define-key 'normal 'evil-normal-state-map (kbd "C-k") 'comint-previous-input)
        (evil-define-key 'insert 'evil-insert-state-map (kbd "C-k") 'comint-previous-input))))
-  :config
-  (major-mode-map python-mode
-    :bindings
-    ("sd" 'python-shell-send-defun
-     "sb" 'python-shell-send-buffer
-     "b"  'blacken-buffer
-     "d"  'sphinx-doc)
-    :labels
-    ("s" "send"))
   (setq
    python-shell-interpreter "ipython"
    python-shell-interpreter-args "--simple-prompt -i --InteractiveShell.display_page=True"
    flycheck-display-errors-function #'flycheck-display-error-messages-unless-error-list)
+
   (add-hook 'python-mode-hook (lambda ()
                                 (require 'sphinx-doc)
-                                (sphinx-doc-mode t))))
+                                (sphinx-doc-mode t)))
+  (major-mode-map python-mode
+    :labels
+    ("d" "doc"
+     "s" "send")
+    :bindings
+    ("dg" 'google-doc
+     "ds" 'sphinx-doc
+     "b"  'blacken-buffer
+     "g"  'lsp-find-definition
+     "sb" 'python-shell-send-buffer
+     "sd" 'python-shell-send-defun)))
 
 (module! blacken
   :ensure t
+  :mode ("\\.py\\'" . python-mode)
   :config
   (setq blacken-line-length '79))
 
@@ -506,18 +558,17 @@
   :requires evil
   :init
   (conda-env-initialize-eshell)
-
+  :config
   (defun conda-env-switch ()
     (interactive)
     (conda-env-deactivate)
     (conda-env-activate))
 
-  :config
   (setq
    conda-anaconda-home "/Users/andrewparisi/anaconda3"
    conda-env-home-directory "/Users/andrewparisi/anaconda3"))
 
-(quelpa '(ox-ipynb :fetcher github-ssh :repo "jkitchin/ox-ipynb"))
+;; (quelpa '(ox-ipynb :fetcher github-ssh :repo "jkitchin/ox-ipynb"))
 
                  ;;;
 ;;;;;;;;;;;;;;;;;;;;
@@ -527,43 +578,42 @@
 
 (module! cider
   :ensure t
+  :mode ("\\.clj\\'" . clojure-mode)
   :requires evil
-  :config
-  (defun cider-show-cider-buffer ()
-    "Shows the nrepl buffer, but does not focus it."
-    (interactive)
-    (command-execute 'cider-switch-to-repl-buffer)
-    (command-execute 'cider-switch-to-last-clojure-buffer))
-
-  (defun clojure-set-up-key-bindings ()
-    (define-key clojure-mode-map (kbd "C-c r") 'cider-repl))
+  :init
   ;; If necessary, add more calls to `define-key' here ...
-  (with-eval-after-load 'cider
-    (evil-define-key 'normal 'cider-repl-mode-map
-      (kbd "C-j") 'cider-repl-next-input
-      (kbd "C-k") 'cider-repl-previous-input)
-    (evil-define-key 'insert 'cider-repl-mode-map
-      (kbd "C-j") 'cider-repl-next-input
-      (kbd "C-k") 'cider-repl-previous-input))
-  (major-mode-map cider-repl-mode
-    :bindings
-    ("c" 'cider-repl-clear-buffer
-     "k" 'cider-repl-previous-input
-     "j" 'cider-repl-next-input))
-  (add-hook 'cider-repl-mode-hook 'clojure-set-up-key-bindings)
-
+  :config
   (setq cider-repl-pop-to-buffer-on-connect nil
 	cider-test-show-report-on-success t
 	cider-show-error-buffer nil))
 
 (module! clojure-mode
   :ensure t
+  :mode ("\\.clj\\'" . clojure-mode)
   :requires (evil which-key)
   :init
+  (defun my-cider-jack-in ()
+    (interactive)
+    (my-cider-op 'cider-jack-in '()))
+
+  (defun my-cider-connect ()
+    (interactive)
+    (my-cider-op 'cider-connect-clj '()))
+
+  (defun my-cider-op (op &rest args)
+    (apply op args)
+    (major-mode-map cider-repl-mode
+      :bindings
+      ("c" 'cider-repl-clear-buffer
+       "k" 'cider-repl-previous-input
+       "j" 'cider-repl-next-input)
+      :labels
+      ("" "major mode")))
+
   (major-mode-map clojure-mode
     :bindings
-    ("jj" 'cider-jack-in
-     "jc" 'cider-connect-clj
+    ("jj" 'my-cider-jack-in
+     "jc" 'my-cider-connect
      "jq" 'cider-quit
      "ld" 'cider-eval-defun-at-point
      "lb" 'cider-load-buffer
@@ -575,13 +625,15 @@
      "r"  'lsp-find-references
      "d"  'lsp-describe-thing-at-point
      "tt" 'cider-test-run-project-tests
+     "tn" 'cider-test-run-ns-tests
      "a"  'lsp-execute-code-action)
     :labels
     (""  "major mode"
      "l" "cider load"
      "j"  "repl"))
   :config
-  (setq lsp-clojure-server-command '("clojure-lsp")))
+  (setq lsp-clojure-server-command '("clojure-lsp")
+	org-babel-clojure-backend 'cider))
 
            ;;;
 ;;;;;;;;;;;;;;
@@ -592,6 +644,8 @@
 (module! haskell-mode
   :ensure t
   :requires (evil which-key)
+
+  :mode ("\\.hs\\'" . haskell-mode)
   :config
   (require 'ob-haskell))
 
@@ -628,6 +682,9 @@
   :config
   (setq mu4e-mu-binary (executable-find "mu")
 	mu4e-maildir "~/.maildir"
+	mu4e-drafts-folder "/Users/andrewparisi/.maildir/drafts"
+	mu4e-sent-folder   "/Users/andrewparisi/.maildir/sent"
+	mu4e-trash-folder  "/Users/andrewparisi/.maildir/trash"
 	mu4e-get-mail-command (concat
 			       (executable-find "mbsync")
 			       " -a")
@@ -667,7 +724,13 @@
               (save-excursion (message-add-header "Bcc:\n"))))
 
   ;; mu4e address completion
-  (add-hook 'mu4e-compose-mode-hook 'company-mode))
+  (add-hook 'mu4e-compose-mode-hook 'company-mode)
+
+  ;; For some reason this is throwing an error
+ ;; (major-mode-map mu4e-view-mode
+ ;;   :bindings
+ ;;   ("c" 'mu4e-org-store-and-capture))
+  )
 
              ;;;;
 ;;;;;;;;;;;;;;;;;
@@ -677,14 +740,25 @@
 
 (module! sqlformat
   :ensure t
-  :init (load "~/.emacs.d/secrets.el")
   :config
   (setq sqlformat-command 'pgformatter
-	sqlformat-args '("-s2" "-g")
-	sql-postgres-login-params nil
+	sqlformat-args '("-s2" "-g")))
+
+(module! sql
+  :defer t
+  :init
+  (defun sql-get-password (key account)
+    (let ((command (concat  "security "
+			    "find-generic-password "
+			    "-s '"
+			    key
+			    "' -a '"
+			    account
+			    "' -w")))
+      (->> command shell-command-to-string split-string car)))
+
+  (setq sql-postgres-login-params nil
 	sql-connection-alist
-	;; @todo don't commit this, keep this data in
-	;; an uncommitable envvar (or something like it)
 	'((psql-prod-concept-data
 	   (sql-product 'postgres)
 	   (sql-database
@@ -692,7 +766,9 @@
 	     "postgresql://"
 	     "postgres"
 	     ":"
-	     *prod-password*
+	     (sql-get-password
+	      "postgresql://concept-data-production.cxyq5v2k4dfd.us-east-1.rds.amazonaws.com"
+	      "postgres")
 	     "@concept-data-production.cxyq5v2k4dfd.us-east-1.rds.amazonaws.com"
 	     ":5432"
 	     "/concept_data")))
@@ -703,7 +779,9 @@
 	     "postgresql://"
 	     "postgres"
 	     ":"
-	     *prod-password*
+	     (sql-get-password
+	      "postgresql://concept-data-production.cxyq5v2k4dfd.us-east-1.rds.amazonaws.com"
+	      "postgres")
 	     "@concept-data-production.cxyq5v2k4dfd.us-east-1.rds.amazonaws.com"
 	     ":5432"
 	     "/development")))
@@ -714,15 +792,56 @@
 	     "postgresql://"
 	     "postgres"
 	     ":"
-	     *test-password*
+	     (sql-get-password
+	      "postgresql://concept-data-testing.cncpevj1rbhb.us-east-1.rds.amazonaws.com"
+	      "postgres")
 	     "@concept-data-testing.cncpevj1rbhb.us-east-1.rds.amazonaws.com"
 	     ":5432"
-	     "/concept_data"))))))
+	     "/concept_data")))
+	  (psql-aact
+	   (sql-product 'postgres)
+	   (sql-database
+	    (concat
+	     "postgresql://"
+	     "aparisi"
+	     ":"
+	     ;; TODO: put this in the secrets
+	     (url-hexify-string "JYM@wcd_gkp.aug0adb")
+	     "@aact-db.ctti-clinicaltrials.org"
+	     ":5432"
+	     "/aact")))
+	  (redshift-dw-dev
+	   (sql-product 'postgres)
+	   (sql-database
+	    (concat
+	     "postgresql://"
+	     "dev"
+	     ":"
+	     (sql-get-password
+	      "postgresql://localhost:5439"
+	      "dev")
+	     "@localhost"
+	     ":5439"
+	     "/development")))))
+  (add-hook 'sql-interactive-mode-hook
+            (lambda ()
+              (toggle-truncate-lines t)))
 
-;;;;;;;;
-;; TODO: update module! so we can choose to NOT use quelpa or use-package
-;; The above sqlformat package isnt' really the right place for the sql-connect
-;; information but, it's the best so far.
+
+  (defun sql-add-newline-first (output)
+    "Add newline to beginning of OUTPUT for `comint-preoutput-filter-functions'"
+    (concat "\n" output))
+
+  (evil-define-key 'insert sql-mode-map (kbd "C-c p") 'autocomplete-table)
+
+  ;;(defun sqli-add-hooks ()
+  ;;  "Add hooks to `sql-interactive-mode-hook'."
+  ;;  (add-hook 'comint-preoutput-filter-functions
+  ;;            'sql-add-newline-first))
+
+  ;;(add-hook 'sql-interactive-mode-hook 'sqli-add-hooks)
+  )
+
 
 
            ;;;
@@ -754,8 +873,8 @@
 ;;;;;;;;;;;;;
 ;;; Utilities
 
-(module! command-log-mode
-  :ensure t)
+(module! yaml-mode
+   :ensure t)
 
 ;;;;;;;;;;;;;
 ;;; Semantics

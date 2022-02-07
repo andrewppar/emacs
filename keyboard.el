@@ -135,11 +135,12 @@
 
 (defun generate-mm-bindings (mode bindings-plist)
   (let ((bindings (plist-get bindings-plist :bindings))
-	(mode-map (intern-soft (concat
-				(symbol-name mode)
-				"-map")))
+	(mode-map (intern
+		   (concat
+		    (symbol-name mode)
+		    "-map")))
 	(result '()))
-    (when (and mode-map bindings)
+    (when bindings
       (do-bindings (key function bindings)
 	(setq result
 	      (append (list
@@ -162,6 +163,7 @@
 	 ',mode . ,result))))
 
 (defmacro major-mode-map (mode &rest bindings-plist)
+  ;; TODO: Maybe incorporate insert mode somehow...
   (declare (indent defun))
   (let ((bindings
 	 (generate-mm-bindings mode bindings-plist))

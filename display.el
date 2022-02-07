@@ -1,5 +1,6 @@
 (tool-bar-mode -1)
 (menu-bar-mode -1)
+(setq base16-theme-use-shell-colors t)
 
 (when window-system
   (scroll-bar-mode -1))
@@ -23,6 +24,7 @@
 	      :keyword             font-lock-keyword-face
 	      :builtin             font-lock-builtin-face
 	      :type                font-lock-type-face
+	      :link                link
 	      :mode-line          'mode-line
 	      :mode-line-inactive 'mode-line-inactive
 	      :font               'default
@@ -67,10 +69,16 @@
 	(mode-line          (plist-get color-config :mode-line))
 	(mode-line-inactive (plist-get color-config :mode-line-inactive))
 	(transparency       (plist-get color-config :transparency)))
+    ;; TODO Do something different to set-x-color when in terminal
+
     (when background
-      (push `(set-background-color ,background) result))
+      (if (display-graphic-p)
+	  (push `(set-background-color ,background) result)
+	(push `(set-face-background 'default ,background) result)))
     (when foreground
-      (push `(set-foreground-color ,foreground) result))
+      (if (display-graphic-p)
+	  (push `(set-foreground-color ,foreground) result)
+	(push `(set-face-foreground 'default ,foreground) result)))
     (when comment
       (push `(set-face-foreground font-lock-comment-face ,comment) result))
     (when string
@@ -105,16 +113,23 @@
 ;;; Mode Line
 
 (defun parse-mode-line-spec (mode-line-spec)
-  (let ((text   (plist-get mode-line-spec :text))
-	(color  (plist-get mode-line-spec :color))
-	(result nil))
+  (let ((text      (plist-get mode-line-spec :text))
+	(color     (plist-get mode-line-spec :color))
+	(condition (plist-get mode-line-spec :condition))
+	(result    nil))
+    (when condition
+      (setq text
+	    `(if ,condition
+		 ,text
+	       "")))
     (if (stringp text)
 	(if (not color)
 	    (setq result text)
 	  (setq result
-		`(propertize
-		  ,text
-		  'face '(:foreground ,color))))
+		`(:eval
+		  (propertize
+		   ,text
+		   'face '(:foreground ,color)))))
       (if (not color)
 	  (setq result `(:eval ,text))
 	(setq result
@@ -122,7 +137,7 @@
 		(propertize
 		 ,text
 		 'face '(:foreground ,color))))))
-    (print result)
+    ;; (print result)
     result))
 
 (defmacro mode-line! (&rest mode-line-specs)

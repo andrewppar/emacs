@@ -1,5 +1,12 @@
 (defvar *eshell-prompt-icon* "⚓")
 
+(defvar *last-command-time* nil)
+
+(defun eshell/send-input ()
+  (interactive)
+  (setq *last-command-time* (float-time))
+  (eshell-send-input))
+
 (defun contract-eshell-pwd ()
   (let* ((cwd  (eshell/pwd))
 	 (dirs (split-string cwd "/"))
@@ -70,9 +77,19 @@
 	(let ((git   (git-prompt-branch-name)))
 	  (concat
 	   (eshell/prompt-start)
+	   (eshell/prompt-section
+	    ;; maybe pull this into its own function bro
+	    "" (when *last-command-time*
+		 (let* ((total-time (/ (- (float-time)
+					  *last-command-time*)
+				       60))
+			(minutes (truncate total-time)))
+		   (format "%s:%s"
+			   minutes
+			   (truncate (* (- total-time minutes)
+				60))))))
 	   (eshell/prompt-section "ⓖ" (git-prompt-status))
 	   (eshell/prompt-section "ⓒ" conda-env-current-name)
-	   (eshell/prompt-end)
-	   ))))
+	   (eshell/prompt-end)))))
 
 (setq eshell-prompt-regexp (format "^[^%s]+ %s " *eshell-prompt-icon* *eshell-prompt-icon*))

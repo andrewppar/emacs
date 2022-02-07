@@ -1,7 +1,8 @@
 sparql-mode
 ttl-mode
-command-log-mode
+yaml-mode
 csv-mode
+sql
 sqlformat
 mu4e
 ess
@@ -9,7 +10,6 @@ haskell-mode
 clojure-mode
 cider
 conda
-lsp-pyright
 blacken
 python
 sphinx-doc
@@ -19,11 +19,13 @@ lsp-ui
 lsp-mode
 org-agenda
 org
-exec-path-from-shell
 envrc
 projectile
 quelpa
+ag
 eshell
+github-review
+git-timemachine
 magit
 ibuffer
 evil-collection

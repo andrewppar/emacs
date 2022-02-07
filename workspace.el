@@ -65,27 +65,40 @@
     (dolist (key keys)
       (if (equal key *current-workspace*)
 	  (setq
-	   result (concat
-		   result (format "<%s>" key)))
+	   result
+	   (->> 3
+	     (substring (alist-get key *workspaces*))
+	     (format "<%s>")
+	     (concat result)))
 	(setq
 	 result (concat
 		 result (format "[%s]" key)))))
     result))
 
+(defun workspace--workspace-name-exists (ws-name)
+  (member ws-name (workspace-list-workspace-names)))
+
 (defun workspace--add-workspace-no-prompt (number ws-name)
   ;; NOTE: This function is not safe and needs some
   ;; guard rails since I want to be able to call it from
   ;; organizer-session
-  (setq *current-workspace* number)
-  (push (cons number ws-name) *workspaces*)
-  (workspace--add-ivy-view ws-name))
+  (if (workspace--workspace-name-exists ws-name)
+      (message
+       (format "Workspace with name %s already exists" ws-name))
+    (progn
+      (setq *current-workspace* number)
+      (push (cons number ws-name) *workspaces*)
+      (workspace--add-ivy-view ws-name))))
+
 
 (defun workspace-add-workspace (n)
   (let ((name
 	 (ivy-read
 	  "Name workspace: "
 	  nil
-	  :initial-input "{} ")))
+	  :initial-input "{} "
+	  ;; (ivy-default-view-name)
+	  )))
     (workspace--add-workspace-no-prompt n name)))
 
 (defun workspace-to-workspace-number (n)
