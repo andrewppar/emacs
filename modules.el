@@ -130,9 +130,7 @@
   :defer t)
 
 (module! github-review
-  :ensure t
-  :config
-  (setq github "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"))
+  :ensure t)
 
 (module! eshell
   :init

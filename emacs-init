@@ -179,11 +179,11 @@
 		"t"  "tools"
 		"tc" "conda"
 		"ti" "lsp-ui-imenu"
-		"tp" "pomodoro"
+		"tt" "pomodoro"
 		"ts" "sql"
+		"tpp" "project" ;; TODO find a better name
 		"o"  "organizer"
 		"oe" "edit-task"
-		"p"  "projectile"
 		"w"  "workspaces"
 		"g"  "git"
 		"gr" "github review"
@@ -244,8 +244,6 @@
 		"oes" 'edit-task-start-time-at-point
 		"oee" 'edit-task-end-time-at-point
 		"oeg" 'edit-task-group-at-point
-		;; projectile
-		"p" 'projectile-command-map
 		;; tools
 		"tm"  'email
 		"tca" 'conda-env-activate
@@ -253,10 +251,11 @@
 		"tcs" 'conda-env-switch
 		"tii" 'lsp-ui-imenu ;It's a little hacky to have this here
 		"tiq" 'lsp-ui-imenu--kill
-		"tps" 'pomodoro-start-work
-		"tpr" 'pomodoro-start-rest
-		"tpp" 'pomodoro
-		"tpx" 'pomodoro-stop-timer
+		"tpp" 'project-switch-project
+		"tts" 'pomodoro-start-work
+		"ttr" 'pomodoro-start-rest
+		"ttp" 'pomodoro
+		;; Not working "ttx" 'pomodoro-stop-timer
 		"tss" 'sql-session
 		"tsw" 'sql-session-save-session
 		"tst" 'sql-session-toggle-tables-buffer
