@@ -82,7 +82,7 @@
 
 (defun make-labels (map trigger configuration-plist)
   (get-which-key-item-internal map trigger configuration-plist :labels))
-      
+
 (defun make-default-bindings (map trigger configuration-plist)
   (get-which-key-item-internal map trigger configuration-plist :default-bindings))
 
@@ -97,7 +97,7 @@
 		       major-map trigger configuration-plist :major-mode)
 		      result))))
     result))
-					
+
 (defmacro which-key-map (map trigger &rest configuration)
   (let ((labels              (make-labels map trigger configuration))
 	(bindings            (make-default-bindings map trigger configuration))

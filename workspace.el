@@ -25,14 +25,22 @@
 	  (ivy--switch-buffer-action current-ws-name)
 	(progn
 	  (workspace--add-ivy-view current-ws-name)
-	  (workspace--set-workspace-and-switch!
-	   ws-name))))))
+	  (workspace--set-workspace-and-switch! ws-name))))))
 
 (defun workspace-list-workspace-names ()
   (let ((result '()))
     (dolist (entry *workspaces*)
       (push (cdr entry) result))
     result))
+
+(defun workspace-list ()
+  (let ((result '()))
+    (dolist (entry *workspaces*)
+      (let ((idx     (car entry))
+	    (ws-name (-> entry cdr (substring 3))))
+	(push
+	 (format "%s: %s" idx ws-name) result)))
+    (sort result 'string-lessp)))
 
 (defun workspace-list-workspace-keys ()
   (let ((result '()))
@@ -51,15 +59,47 @@
 	 (car current-item)))
     nil))
 
+(defun mode-line-workspace ()
+  (let ((result "")
+	(keys (sort (workspace-list-workspace-keys) '<=)))
+    (dolist (key keys)
+      (if (equal key *current-workspace*)
+	  (setq
+	   result
+	   (->> 3
+	     (substring (alist-get key *workspaces*))
+	     (format "<%s>")
+	     (concat result)))
+	(setq
+	 result (concat
+		 result (format "[%s]" key)))))
+    result))
+
+(defun workspace--workspace-name-exists (ws-name)
+  (member ws-name (workspace-list-workspace-names)))
+
+(defun workspace--add-workspace-no-prompt (number ws-name)
+  ;; NOTE: This function is not safe and needs some
+  ;; guard rails since I want to be able to call it from
+  ;; organizer-session
+  (if (workspace--workspace-name-exists ws-name)
+      (message
+       (format "Workspace with name %s already exists" ws-name))
+    (progn
+      (setq *current-workspace* number)
+      (push (cons number ws-name) *workspaces*)
+      (workspace--add-ivy-view ws-name))))
+
+
 (defun workspace-add-workspace (n)
   (let ((name
 	 (ivy-read
 	  "Name workspace: "
 	  nil
-	  :initial-input (ivy-default-view-name))))
-    (setq *current-workspace* n)
-    (push (cons n name) *workspaces*)
-    (workspace--add-ivy-view name)))
+	  :initial-input "{} "
+	  ;; (ivy-default-view-name)
+	  )))
+    (workspace--add-workspace-no-prompt n name)))
 
 (defun workspace-to-workspace-number (n)
   (when (<= n 0)
@@ -74,12 +114,16 @@
 
 (defun workspace-pop ()
   (interactive)
-  (let* ((workspaces (workspace-list-workspace-names))
+  (let* ((workspaces (workspace-list))
 	 (to-remove  (ivy-read
 		      "Pop Workspace: "
 		      workspaces))
-	 (ws-number  (workspace-key-from-name to-remove)))
-    (workspace--remove-workspace ws-number)
-    (ivy-pop-view-action (assoc to-remove ivy-views))))
-    
-	
+	 (ws-number  (-> to-remove
+			 (split-string ":")
+			 car
+			 string-to-number)))
+    (if (equal ws-number *current-workspace*)
+	(message "Cannot delete the current workspace")
+      (progn
+	(workspace--remove-workspace ws-number)
+	(ivy-pop-view-action (assoc to-remove ivy-views))))))

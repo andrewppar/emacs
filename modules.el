@@ -5,12 +5,12 @@
 ;; TODO: Figure a way to auto configure lsp mode for a language
 ;;;;;;;;;;;;;;;;;;;;
 ;; Required Packages
-
 ;; TODO See whether or not these can be paired down
 
 (module! undo-tree
   :ensure t
   :requires evil
+  :diminish
   :config
   (global-undo-tree-mode)
   (evil-set-undo-system 'undo-tree))
@@ -65,27 +65,17 @@
   (setq
    ibuffer-saved-filter-groups
    '(("default"
-      ("python"
-       (or (mode . pyhton-mode)
-	   (directory . "/Users/andrewparisi/Documents/python")
-	   (name . "\*Python\*")))
-      ("clojure"
-       (or (mode . clojure-mode)
-	   (directory . "/Users/andrewparisi/Documents/clojure")
-	   (name . "\*cider\*")))
-      ("magit"
-       (name . "\*magit"))
       ("help"
        (or (name . "\*Help\*")
 	   (name . "\*Apropos\*")
 	   (name . "\*info\*")))
+      ("emacs"
+       (or (mode . emacs-lisp-mode)))
       ("filesystem"
        (or (mode . dired-mode)
-	   (mode . shell-mode)))))
-   evil-emacs-state-modes (delq
-			   'ibuffer-mode
-			   evil-emacs-state-modes)
-   ibuffer-exper t
+	   (mode . eshell-mode)))))
+   evil-emacs-state-modes (delq 'ibuffer-mode evil-emacs-state-modes)
+   ibuffer-expert t
    ibuffer-show-empty-filter-groups nil)
   (add-hook 'ibuffer-mode-hook
 	    '(lambda ()
@@ -94,13 +84,17 @@
 
 (module! magit
   :ensure t
-  :requires evil
   :config
   (setq
    magit-display-buffer-function
    #'magit-display-buffer-fullframe-status-v1
    ediff-window-setup-function
    #'ediff-setup-windows-plain)
+
+  (defun git-commit-message-setup ()
+    (insert (format "%s " (magit-get-current-branch))))
+
+  (add-hook 'git-commit-setup-hook 'git-commit-message-setup)
 
   (major-mode-map magit-mode
     :bindings
