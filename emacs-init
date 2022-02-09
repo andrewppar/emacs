@@ -15,7 +15,7 @@
 	(format "done loading %s: %s"
 		,load-string (- (float-time) ,start))))))
 
-(setq user-mail-address "")
+(setq user-mail-address "andrew.parisi@reifyhealth.com")
 
 (load! "~/.emacs.d/display.el")
 (load! "~/.emacs.d/modules.el")
@@ -201,6 +201,8 @@
 		"ic"  'core-file
 		"id"  'display-file
 		"ik"  'keyboard-file
+		;; org
+		"c"   'org-capture
   		;; magit
 		"gs"  'magit-status
 		"gc"  'magit-branch-checkout

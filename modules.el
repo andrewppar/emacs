@@ -133,7 +133,11 @@
 
 (module! github-review
   :defer t
-  :ensure t)
+  :ensure t
+  :init
+  (setq github-review-host "api.git.reifyhealth.com"
+	github-review-view-comments-in-code-lines t
+	github-review-reply-inline-comments t))
 
 (module! eshell
   :init
@@ -571,8 +575,6 @@
   (setq
    conda-anaconda-home "/Users/andrewparisi/anaconda3"
    conda-env-home-directory "/Users/andrewparisi/anaconda3"))
-
-;; (quelpa '(ox-ipynb :fetcher github-ssh :repo "jkitchin/ox-ipynb"))
 
                  ;;;
 ;;;;;;;;;;;;;;;;;;;;
