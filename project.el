@@ -1,4 +1,4 @@
-(require 'projectile)
+;;(require 'workspace)
 
 (defvar *projects* '())
 
@@ -15,5 +15,16 @@
 	 (dired ,project-dir)
 	 (workspace--add-workspace-no-prompt
 	  ws-num (format "{} %s" ,(symbol-name project-name)))
+	 (conda-env-deactivate)
 	 ,(when conda-env
 	    `(conda-env-activate ,conda-env))))))
+
+(defun project--all-projects ()
+  (mapcar #'car  *projects*))
+
+(defun project-switch-project (workspace-number)
+  (interactive "sWorkspace Number: ")
+  (let* ((project-name (ivy-read "Project: " (project--all-projects)))
+	 (project-function
+	  (alist-get project-name *projects* nil nil #'equal)))
+    (funcall project-function workspace-number)))

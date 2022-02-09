@@ -109,6 +109,7 @@
 
 (module! magit
   :ensure t
+  :defer t
   :config
   (setq
    magit-display-buffer-function
@@ -127,9 +128,11 @@
 
 (module! git-timemachine
   :ensure t
+  :defer t
   :defer t)
 
 (module! github-review
+  :defer t
   :ensure t)
 
 (module! eshell
@@ -148,6 +151,7 @@
      "c" 'eshell/clear)))
 
 (module! ag
+  :defer t
   :ensure t)
 
                        ;;;
@@ -547,12 +551,14 @@
 
 (module! blacken
   :ensure t
+  :defer t
   :mode ("\\.py\\'" . python-mode)
   :config
   (setq blacken-line-length '79))
 
 (module! conda
   :ensure t
+  :defer t
   :requires evil
   :init
   (conda-env-initialize-eshell)
@@ -576,6 +582,7 @@
 
 (module! cider
   :ensure t
+  :defer t
   :mode ("\\.clj\\'" . clojure-mode)
   :requires evil
   :init
@@ -587,6 +594,7 @@
 
 (module! clojure-mode
   :ensure t
+  :defer t
   :mode ("\\.clj\\'" . clojure-mode)
   :requires (evil which-key)
   :init
@@ -641,6 +649,7 @@
 
 (module! haskell-mode
   :ensure t
+  :defer t
   :requires (evil which-key)
 
   :mode ("\\.hs\\'" . haskell-mode)
@@ -655,6 +664,7 @@
 
 (module! ess
   :ensure t
+  :defer t
   :init
   (require 'ess-site)
   (add-hook
@@ -738,6 +748,7 @@
 
 (module! sqlformat
   :ensure t
+  :defer t
   :config
   (setq sqlformat-command 'pgformatter
 	sqlformat-args '("-s2" "-g")))
@@ -850,6 +861,7 @@
 
 (module! csv-mode
   :ensure t
+  :defer t
   :config
   (setq csv-separators '("," "    "))
   (add-hook 'csv-mode-hook
@@ -872,15 +884,18 @@
 ;;; Utilities
 
 (module! yaml-mode
-   :ensure t)
+  :defer t
+  :ensure t)
 
 ;;;;;;;;;;;;;
 ;;; Semantics
 
 (module! ttl-mode
+  :defer t
   :ensure t)
 
 (module! sparql-mode
+  :defer t
   :ensure t)
 
 ;;;

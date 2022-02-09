@@ -10,14 +10,11 @@
     (insert "\n")))
 
 (defun display-projects ()
-  (let ((projects '()))
-    (dolist (alist *projects*)
-      (push (car alist) projects))
     (insert "Projects: \n\n")
     (let ((index 1))
-      (dolist (project projects)
+      (dolist (project (project--all-projects))
 	(insert (format "%s - %s \n" index project))
-	(setq index (+ index 1))))))
+	(setq index (+ index 1)))))
 
 (defun memacs-splash (load-time)
   (switch-to-buffer "*MeMacs Splash*")
