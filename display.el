@@ -1,5 +1,6 @@
 (tool-bar-mode -1)
 (menu-bar-mode -1)
+(setq base16-theme-use-shell-colors t)
 
 (when window-system
   (scroll-bar-mode -1))
@@ -23,6 +24,7 @@
 	      :keyword             font-lock-keyword-face
 	      :builtin             font-lock-builtin-face
 	      :type                font-lock-type-face
+	      :link                link
 	      :mode-line          'mode-line
 	      :mode-line-inactive 'mode-line-inactive
 	      :font               'default
@@ -53,26 +55,30 @@
 (defmacro colors! (&rest color-config)
   (declare (indent defun))
   (let ((result '())
-	(background   (plist-get color-config :background))
-	(foreground   (plist-get color-config :foreground))
-	(comment      (plist-get color-config :comment))
-	(string       (plist-get color-config :string))
-	(constant     (plist-get color-config :constant))
-	(fn           (plist-get color-config :function))
-	(keyword      (plist-get color-config :keyword))
-	(type         (plist-get color-config :type))
-	(builtin      (plist-get color-config :builtin))
-	(fringe       (plist-get color-config :fringe))
-	(font         (plist-get color-config :font))
-	(mode-line    (plist-get color-config :mode-line))
+	(background         (plist-get color-config :background))
+	(foreground         (plist-get color-config :foreground))
+	(comment            (plist-get color-config :comment))
+	(string             (plist-get color-config :string))
+	(constant           (plist-get color-config :constant))
+	(fn                 (plist-get color-config :function))
+	(keyword            (plist-get color-config :keyword))
+	(type               (plist-get color-config :type))
+	(builtin            (plist-get color-config :builtin))
+	(fringe             (plist-get color-config :fringe))
+	(font               (plist-get color-config :font))
+	(mode-line          (plist-get color-config :mode-line))
 	(mode-line-inactive (plist-get color-config :mode-line-inactive))
-	(transparency (plist-get color-config :transparency)))
+	(transparency       (plist-get color-config :transparency)))
+    ;; TODO Do something different to set-x-color when in terminal
+
     (when background
       (if (display-graphic-p)
 	  (push `(set-background-color ,background) result)
 	(push `(set-face-background 'default ,background) result)))
     (when foreground
-      (push `(set-foreground-color ,foreground) result))
+      (if (display-graphic-p)
+	  (push `(set-foreground-color ,foreground) result)
+	(push `(set-face-foreground 'default ,foreground) result)))
     (when comment
       (push `(set-face-foreground font-lock-comment-face ,comment) result))
     (when string

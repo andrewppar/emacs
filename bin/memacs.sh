@@ -42,7 +42,7 @@ then
           $KILL_EMACS
          $END"
   emacs --eval "$SYNC"
-else
+  else
     echo "${ACTION} is not a recognized command."
     echo ""
     echo "Please enter one of \"install\" or \"sync\""
