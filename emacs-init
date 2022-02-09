@@ -2,7 +2,6 @@
 
 (setq *start* (float-time))
 
-
 ;; TODO: Find a better place for this maybe we need a general settings
 ;; section
 (add-hook 'write-file-functions 'delete-trailing-whitespace)
@@ -16,7 +15,7 @@
 	(format "done loading %s: %s"
 		,load-string (- (float-time) ,start))))))
 
-(setq user-mail-address "andrew.parisi@reifyhealth.com")
+(setq user-mail-address "")
 
 (load! "~/.emacs.d/display.el")
 (load! "~/.emacs.d/modules.el")
@@ -78,7 +77,6 @@
    (vc-backend buffer-file-name)
    :text (format " |%s " vc-mode)
    :color "#30648e"))
-
 
 ;; Custom Bindings
 
@@ -189,10 +187,9 @@
 		"gr" "github review"
 		"s"  "s-expression"
 		"p"  "projectile"
-		"t"  "tools")
+		"v"  "ivy-view")
 	       :default-bindings
-	       ("c"  'org-capture
-		;; ibuffer
+	       (;; ibuffer
 		"bi" 'ibuffer
 		"bb" 'ivy-switch-buffer
 		"bm" 'messages-buffer
@@ -300,17 +297,4 @@
 
 
 (setq *end* (float-time))
-(memacs-splash (- *end* *start*))
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(package-selected-packages
-   '(sql-interactive-mode which-key use-package undo-tree ttl-mode sqlformat sphinx-doc sparql-mode quelpa projectile ox-ipynb magit lsp-ui ivy-rich flycheck evil-collection ess envrc csv-mode counsel conda company blacken)))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
+(eirene-splash (- *end* *start*))

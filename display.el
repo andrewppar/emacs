@@ -107,11 +107,9 @@
 	(push `(set-frame-parameter (selected-frame) ,letter '(,num1 ,num2)) result)))
     (when font
       (push (generate-face-attribute :font font) result))
-;;    (message (format "COLORS: %s" result))
     (cons 'progn result)))
 
 ;;; Mode Line
-
 (defun parse-mode-line-spec (mode-line-spec)
   (let ((text      (plist-get mode-line-spec :text))
 	(color     (plist-get mode-line-spec :color))
@@ -137,7 +135,6 @@
 		(propertize
 		 ,text
 		 'face '(:foreground ,color))))))
-    ;; (print result)
     result))
 
 (defmacro mode-line! (&rest mode-line-specs)

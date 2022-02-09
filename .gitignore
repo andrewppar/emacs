@@ -1,6 +1,9 @@
 auto-save-list/*
 elpa/*
 projectile-bookmarks.eld
+projectile.cache
+network-security.data
+.lsp-session*
 tramp
 transient/*
 eshell/*
