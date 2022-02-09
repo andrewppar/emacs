@@ -21,18 +21,18 @@
 
 (defun install-core ()
   (setq package-list '(evil use-package))
-  
- ; activate all the packages (in particular autoloads)
+
+  ;; activate all the packages (in particular autoloads)
   (package-initialize)
 
-; fetch the list of packages available 
-(unless package-archive-contents
-  (package-refresh-contents))
+  ;; fetch the list of packages available
+  (unless package-archive-contents
+    (package-refresh-contents))
 
-; install the missing packages
-(dolist (package package-list)
-  (unless (package-installed-p package)
-    (package-install package))))
+  ;; install the missing packages
+  (dolist (package package-list)
+    (unless (package-installed-p package)
+      (package-install package))))
 
 (defvar *packages* '())
 
@@ -79,6 +79,6 @@
     (setq *packages* (cons (symbol-name module-name) *packages*))
     `(progn
        (let ((,start (float-time)))
-	 (message (format "Loading %s..." ',module-name)) 
+	 (message (format "Loading %s..." ',module-name))
 	 (use-package ,module-name ,@args)
 	 (message (format "Done loading %s ... %s" ',module-name (- (float-time) ,start)))))))

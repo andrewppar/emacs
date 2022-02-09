@@ -2,7 +2,6 @@
 
 (setq *start* (float-time))
 
-
 ;; TODO: Find a better place for this maybe we need a general settings
 ;; section
 (add-hook 'write-file-functions 'delete-trailing-whitespace)
@@ -16,7 +15,7 @@
 	(format "done loading %s: %s"
 		,load-string (- (float-time) ,start))))))
 
-(setq user-mail-address "andrew.parisi@reifyhealth.com")
+(setq user-mail-address "")
 
 (load! "~/.emacs.d/display.el")
 (load! "~/.emacs.d/modules.el")
@@ -37,28 +36,22 @@
  :type     (:foreground "#18aed4")
  :font     (:height 180)
  :transparency ('alpha 90 90)
+ :mode-line             (:foreground "#3b3b3f" :background "#d0d0d0")
+ :mode-line-inactive    (:foreground "#3b3b3f" :background "#d0d0d0")
  :fringe   (:background "#d0d0d0"))
 
-(defun mode-line-workspace ()
-  (let ((result ""))
-    (dolist (key (workspace-list-workspace-keys))
-      (if (equal key *current-workspace*)
-	  (setq
-	   result (concat
-		   result (format "<%s>" key)))
-	(setq
-	 result (concat
-		 result (format "[%s]" key)))))
-    result))
-
 (mode-line!
-  ;;:color doesn't work yetl
+  (:text " ⚓ ")
+  (:text (format-time-string "%H:%M ")
+	 :color "#c45651")
   (:text  (mode-line-workspace))
-  (:text " %m:")
   (:text "%*%+ ")
-  (:text "%b"))
-
-
+  (:text " %m:")
+  (:text "%b")
+  (:condition
+   (vc-backend buffer-file-name)
+   :text (format " |%s " vc-mode)
+   :color "#30648e"))
 
 ;; Custom Bindings
 
@@ -110,18 +103,14 @@
 	       :labels
 	       ("i"  "init"
 		"t"  "tools"
-		"tc" "conda"
-		"ti" "lsp-ui-imenu"
 		"p" "projectile"
 		"g"  "magit"
+		"w"  "workspace"
 		"s"  "s-expression"
 		"p"  "projectile"
-		"v"  "ivy-view"
-		"t"  "tools"
-		)
+		"v"  "ivy-view")
 	       :default-bindings
-	       ("c"  'org-capture
-		;; ibuffer
+	       (;; ibuffer
 		"bi" 'ibuffer
 		"bb" 'counsel-switch-buffer
 		"bm" 'messages-buffer
@@ -133,12 +122,12 @@
 		"id"  'display-file
 		"ik"  'keyboard-file
 		;; workspaces
-                "wxd" 'workspace-pop
-                "wxj" 'ivy-switch-view
-		"wx1" 'to-workspace-1
-		"wx2" 'to-workspace-2
-		"wx3" 'to-workspace-3
-		"wx4" 'to-workspace-4
+                "wd" 'workspace-pop
+                "wj" 'ivy-switch-view
+		"w1" 'to-workspace-1
+		"w2" 'to-workspace-2
+		"w3" 'to-workspace-3
+		"w4" 'to-workspace-4
 		;; magit
 		"gs"  'magit-status
 		"gc"  'magit-branch-checkout
@@ -147,8 +136,8 @@
 		;; projectile
 		"p"   'projectile-command-map
 		;; generic
-	  "x"  'counsel-M-x
-	  ;; s-expressions
+		"x"  'counsel-M-x
+		;; s-expressions
 		"sq"  'indent-pp-sexp
 		"sl"  'forward-sexp
 		"sh"  'backward-sexp
@@ -166,4 +155,4 @@
 (setenv "PATH" (mapconcat 'identity exec-path ":"))
 
 (setq *end* (float-time))
-(memacs-splash (- *end* *start*))
+(eirene-splash (- *end* *start*))
