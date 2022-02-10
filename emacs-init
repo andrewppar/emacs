@@ -178,3 +178,4 @@
 
 (setq *end* (float-time))
 (eirene-splash (- *end* *start*))
+(put 'dired-find-alternate-file 'disabled nil)
