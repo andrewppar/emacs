@@ -103,7 +103,8 @@
 	       :labels
 	       ("i"  "init"
 		"t"  "tools"
-		"p" "projectile"
+		"tp" "project"
+		"p"  "projectile"
 		"g"  "magit"
 		"w"  "workspace"
 		"s"  "s-expression"
@@ -143,6 +144,7 @@
 		"sh"  'backward-sexp
 		"st"  'transpose-sexps
 		;; tools
+		"tp" 'project-switch-project
 		"te" 'eshell))
 
 ;; TODO
