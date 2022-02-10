@@ -109,8 +109,6 @@
 		"s"  "s-expression"
 		"p"  "projectile"
 		"v"  "ivy-view"
-		"t"  "tools"
-		"wx" "workspaces"
 		)
 	       :default-bindings
 	       (;; ibuffer
@@ -145,14 +143,13 @@
 		"sl"  'forward-sexp
 		"sh"  'backward-sexp
 		"st"  'transpose-sexps
-		;; workspaces
-		"wx1" 'to-workspace-1
-		"wx2" 'to-workspace-2
-		"wx3" 'to-workspace-3
-                "wxd"  'workspace-pop
-                "wxj"  'ivy-switch-view
 		;; tools
-		"te" 'eshell))
+		"te" 'eshell
+		"tm" 'mu4e
+		))
+
+(defproject logos
+  :project-dir "/Users/andrew/Documents/clojure/logos")
 
 ;; TODO
 ;; Clean this up and put it in a macro
