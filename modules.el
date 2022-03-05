@@ -123,3 +123,132 @@
 
                               ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;
+;;; LSP
+
+(module! lsp-mode
+  :ensure t
+  :hook (prog-mode . display-fill-column-indicator-mode)
+  :init
+  (setq lsp-enable-indentation nil
+	lsp-enable-completion-at-point nil
+	lsp-lens-enable t
+	lsp-signature-auto-activate nil)
+
+  ;; TODO: Add these to the :hook section
+  (add-hook 'clojure-mode-hook #'lsp)
+  (add-hook 'clojurec-mode-hook #'lsp)
+  (add-hook 'clojurescript-mode-hook #'lsp))
+
+(module! lsp-ui
+  :ensure t
+  :after (lsp-mode)
+  :init (setq lsp-ui-doc-enable t
+              lsp-ui-doc-use-webkit t
+              lsp-ui-doc-header t
+              lsp-ui-doc-delay 0.2
+              lsp-ui-doc-include-signature t
+              lsp-ui-doc-alignment 'at-point
+              lsp-ui-doc-use-childframe t
+              lsp-ui-doc-border (face-foreground 'default)
+              lsp-ui-peek-enable t
+              lsp-ui-peek-show-directory t
+	      lsp-ui-sideline-show-diagnostics t
+              lsp-ui-sideline-enable t
+              lsp-ui-sideline-show-code-actions t
+              lsp-ui-sideline-show-hover t
+              lsp-ui-sideline-ignore-duplicate t)
+  :config
+  (add-to-list 'lsp-ui-doc-frame-parameters '(right-fringe . 8))
+
+  ;; `C-g'to close doc
+  (advice-add #'keyboard-quit :before #'lsp-ui-doc-hide)
+
+  ;; Reset `lsp-ui-doc-background' after loading theme
+  (add-hook 'after-load-theme-hook
+	    (lambda ()
+              (setq lsp-ui-doc-border (face-foreground 'default))
+              (set-face-background 'lsp-ui-doc-background
+				   (face-background 'tooltip))))
+
+  ;; WORKAROUND Hide mode-line of the lsp-ui-imenu buffer
+  ;; @see https://github.com/emacs-lsp/lsp-ui/issues/243
+  (defadvice lsp-ui-imenu (after hide-lsp-ui-imenu-mode-line activate)
+    (setq mode-line-format nil)))
+
+     ;;;
+;;;;;;;;
+
+;;;;;;;;;;;
+;;; Clojure
+
+
+(module! cider
+  :ensure t
+  :defer t
+  :mode ("\\.clj\\'" . clojure-mode)
+  :requires evil
+  :init
+  ;; If necessary, add more calls to `define-key' here ...
+  :config
+  (setq cider-repl-pop-to-buffer-on-connect nil
+	cider-test-show-report-on-success t
+	cider-repl-display-help-banner nil
+	cider-show-error-buffer nil))
+
+(module! clojure-mode
+  :ensure t
+  :defer t
+  :mode ("\\.clj\\'" . clojure-mode)
+  :requires (evil which-key)
+  :init
+  (defun my-cider-jack-in ()
+    (interactive)
+    (my-cider-op 'cider-jack-in '()))
+
+  (defun my-cider-connect ()
+    (interactive)
+    (my-cider-op 'cider-connect-clj '()))
+
+  (defun my-cider-op (op &rest args)
+    (apply op args)
+    (major-mode-map cider-repl-mode
+      :bindings
+      ("c" 'cider-repl-clear-buffer
+       "k" 'cider-repl-previous-input
+       "j" 'cider-repl-next-input)
+      :labels
+      ("" "major mode")))
+
+  (major-mode-map clojure-mode
+    :bindings
+    ("jj" 'my-cider-jack-in
+     "jc" 'my-cider-connect
+     "jq" 'cider-quit
+     "fd" 'cider-format-defun
+     "fb" 'cider-format-buffer
+     "ld" 'cider-eval-defun-at-point
+     "lb" 'cider-load-buffer
+     "q"  'cider-quit
+     "s"  'cider-toggle-trace-var
+     "n"  'cider-repl-set-ns
+     "g"  'xref-find-definitions
+     "c"  'cider-eval-defun-at-point
+     "r"  'lsp-find-references
+     "d"  'lsp-describe-thing-at-point
+     "tt" 'cider-test-run-project-tests
+     "tn" 'cider-test-run-ns-tests
+     "a"  'lsp-execute-code-action)
+    :labels
+    (""  "major mode"
+     "f" "format"
+     "t" "test"
+     "l" "cider load"
+     "j"  "repl"))
+  :config
+  (setq lsp-clojure-server-command '("clojure-lsp")
+	org-babel-clojure-backend 'cider))
+
+      ;;;
+;;;;;;;;;
