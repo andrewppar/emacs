@@ -69,9 +69,10 @@
 
    User specifies the PROJECT, the highest workspace available is used."
   (interactive)
-  (let* ((workspace-number (+ 1
-			      (apply #'max
-				     (workspace-list-workspace-keys))))
+  (let* ((workspace-keys   (workspace-list-workspace-keys))
+	 (workspace-number (if workspace-keys
+			       (+ 1 (apply #'max workspace-keys))
+			     1))
 	 (project-name (ivy-read "Project: " (project--all-projects)))
 	 (project-function
 	  (alist-get project-name *projects* nil nil #'equal)))
