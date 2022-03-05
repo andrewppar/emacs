@@ -147,6 +147,9 @@
 		"tp" 'project-switch-project
 		"te" 'eshell))
 
+(defproject emacs
+  :project-dir "~/.emacs.d")
+
 (defproject logos
   :project-dir "/home/ubuntu/projects/clojure/logos"
   )
