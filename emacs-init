@@ -147,6 +147,11 @@
 		"tp" 'project-switch-project
 		"te" 'eshell))
 
+(defproject logos
+  :project-dir "/home/ubuntu/projects/clojure/logos"
+  )
+
+
 ;; TODO
 ;; Clean this up and put it in a macro
 (evil-define-key 'normal 'evil-normal-state-map "[" 'evil-jump-item)
