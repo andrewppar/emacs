@@ -81,9 +81,6 @@
 
 ;; Custom Bindings
 
-
-
-
 (defun messages-buffer ()
   (interactive)
   (switch-to-buffer "*Messages*"))
@@ -278,22 +275,27 @@
 ;;; Projects
 
 (defproject avicenna
-  :project-dir "~/Documents/projects/avicenna")
+  :project-dir "~/Documents/projects/avicenna"
+  :website
+  "https://github.com/reifyhealth/concept-data/tree/develop/avicenna")
 
 (defproject data-drawings
   :project-dir "~/Documents/projects/data-diagrams"
+  :website "https://github.com/reifyhealth/data-diagrams"
   :init
   (find-file
    "~/Documents/projects/data-diagrams/architecture_data_inference.org"))
 
 (defproject data-warehouse
-  :project-dir "~/Documents/projects/data-warehouse")
+  :project-dir "~/Documents/projects/data-warehouse"
+  :website "https://github.com/reifyhealth/data-diagrams"
 
 (defproject emacs
   :project-dir "~/.emacs.d")
 
 (defproject pyreify
   :project-dir "~/scratch/project-scratch/concept-data"
+  :website   "https://github.com/reifyhealth/concept-data/"
   :conda-env "pyreify_nlp")
 
 (defproject sql
@@ -301,6 +303,8 @@
 
 (defproject zem
   :project-dir "~/Documents/projects/prefect-enrollment-prediction"
+  :website
+  "https://github.com/reifyhealth/prefect-enrollment-prediction"
   :conda-env   "prefect-zem")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
