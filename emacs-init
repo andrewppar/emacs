@@ -27,6 +27,7 @@
 (load! "~/emacs-files/timesheet.el")
 (load! "~/emacs-files/diary-helpers.el")
 (load! "~/emacs-files/sql-session.el")
+(load! "~/emacs-files/jira.el")
 
 ;;; Clipboard (mac only)
 ;; TODO: This is messy - find a good spot for this
@@ -79,6 +80,9 @@
    :color "#30648e"))
 
 ;; Custom Bindings
+
+
+
 
 (defun messages-buffer ()
   (interactive)
@@ -172,97 +176,118 @@
   (mu4e))
 
 (which-key-map evil-normal-state-map ","
-	       :labels
-	       ("i"  "init"
-		"t"  "tools"
-		"tc" "conda"
-		"ti" "lsp-ui-imenu"
-		"tt" "pomodoro"
-		"ts" "sql"
-		"tpp" "project" ;; TODO find a better name
-		"o"  "organizer"
-		"oe" "edit-task"
-		"w"  "workspaces"
-		"g"  "git"
-		"gr" "github review"
-		"s"  "s-expression"
-		"p"  "projectile"
-		"v"  "ivy-view")
-	       :default-bindings
-	       (;; ibuffer
-		"bi" 'ibuffer
-		"bb" 'ivy-switch-buffer
-		"bm" 'messages-buffer
-		"bs" 'scratch-buffer
-		"bw" 'save-buffer
-		;; init
-		"ii"  'init-file
-		"im"  'modules-file
-		"ic"  'core-file
-		"id"  'display-file
-		"ik"  'keyboard-file
-		;; org
-		"c"   'org-capture
-  		;; magit
-		"gs"  'magit-status
-		"gc"  'magit-branch-checkout
-		"gb"  'magit-blame
-		"gl"  'magit-log-current
-		"grs" 'github-review-start
-		"grc" 'github-review-comment
-		"gra" 'github-review-approve
-		"gh"  'git-timemachine
-		;; projectile
-		"p"   'projectile-command-map
-		;; generic
-		"x"  'counsel-M-x
-		;; s-expressions
-		"sq"  'indent-pp-sexp
-		"sl"  'forward-sexp
-		"sh"  'backward-sexp
-		"st"  'transpose-sexps
-		;; workspaces
-		"w1"  'to-workspace-1
-		"w2"  'to-workspace-2
-		"w3"  'to-workspace-3
-		"w4"  'to-workspace-4
-		"w5"  'to-workspace-5
-		"w6"  'to-workspace-6
-		"wr"  'ivy-push-view
-		"wd"  'workspace-pop
-		"wj"  'ivy-switch-view
-                ;; organizer
-                "os"  'organizer-session
-                "ol"  'task-log
-                "ot"  'log-task
-                "of"  'task-log-for-date
-		"og"  'get-tasks-in-range
-                "or"  'refresh-agenda
-		"oa"  'add-calendar-item-for-today
-		"oed" 'edit-task-description-at-point
-		"oes" 'edit-task-start-time-at-point
-		"oee" 'edit-task-end-time-at-point
-		"oeg" 'edit-task-group-at-point
-		;; tools
-		"tm"  'email
-		"tca" 'conda-env-activate
-		"tcd" 'conda-env-deactivate
-		"tcs" 'conda-env-switch
-		"tii" 'lsp-ui-imenu ;It's a little hacky to have this here
-		"tiq" 'lsp-ui-imenu--kill
-		"tpp" 'project-switch-project
-		"tts" 'pomodoro-start-work
-		"ttr" 'pomodoro-start-rest
-		"ttp" 'pomodoro
-		;; Not working "ttx" 'pomodoro-stop-timer
-		"tss" 'sql-session
-		"tsw" 'sql-session-save-session
-		"tst" 'sql-session-toggle-tables-buffer
-		"tsl" 'sql-session-reset-window-layout
-		"te"  'eshell))
+  :labels
+  ( "g"  "git"
+    "gr" "github review"
+    "i"  "init"
+    "n"  "notes"
+    "o"  "organizer"
+    "oe" "edit-task"
+    "p"  "projectile"
+    "s"  "s-expression"
+    "t"  "tools"
+    "tc" "conda"
+    "ti" "lsp-ui-imenu"
+    "tj" "jira"
+    "ts" "sql"
+    "tt" "pomodoro"
+    "v"  "ivy-view"
+    "w"  "workspaces"
+    )
+  :default-bindings
+  (;; ibuffer
+   "bi" 'ibuffer
+   "bb" 'ivy-switch-buffer
+   "bm" 'messages-buffer
+   "bs" 'scratch-buffer
+   "bw" 'save-buffer
+   ;; init
+   "ii"  'init-file
+   "im"  'modules-file
+   "ic"  'core-file
+   "id"  'display-file
+   "ik"  'keyboard-file
+   ;; org
+   "c"   'org-capture
+   ;; magit
+   "gs"  'magit-status
+   "gc"  'magit-branch-checkout
+   "gb"  'magit-blame
+   "gl"  'magit-log-current
+   "grs" 'github-review-start
+   "grc" 'github-review-comment
+   "gra" 'github-review-approve
+   "gh"  'git-timemachine
+   ;; Roam Notes
+   "nf"  'org-roam-find-note
+   "nc"  'org-roam-cycle-db
+   ;; projectile
+   "p"   'projectile-command-map
+   ;; generic
+   "x"  'counsel-M-x
+   ;; s-expressions
+   "sq"  'indent-pp-sexp
+   "sl"  'forward-sexp
+   "sh"  'backward-sexp
+   "st"  'transpose-sexps
+   ;; workspaces
+   "w1"  'to-workspace-1
+   "w2"  'to-workspace-2
+   "w3"  'to-workspace-3
+   "w4"  'to-workspace-4
+   "w5"  'to-workspace-5
+   "w6"  'to-workspace-6
+   "wr"  'ivy-push-view
+   "wd"  'workspace-pop
+   "wj"  'ivy-switch-view
+   ;; organizer
+   "os"  'organizer-session
+   "ol"  'task-log
+   "ot"  'log-task
+   "of"  'task-log-for-date
+   "og"  'get-tasks-in-range
+   "or"  'refresh-agenda
+   "oa"  'add-calendar-item-for-today
+   "oed" 'edit-task-description-at-point
+   "oes" 'edit-task-start-time-at-point
+   "oee" 'edit-task-end-time-at-point
+   "oeg" 'edit-task-group-at-point
+   ;; tools
+   "tm"  'email
+   "tca" 'conda-env-activate
+   "tcd" 'conda-env-deactivate
+   "tcs" 'conda-env-switch
+   "tii" 'lsp-ui-imenu		;It's a little hacky to have this here
+   "tiq" 'lsp-ui-imenu--kill
+   "tp" 'project-switch-project
+   "tts" 'pomodoro-start-work
+   "ttr" 'pomodoro-start-rest
+   "ttp" 'pomodoro
+   ;; Not working "ttx" 'pomodoro-stop-timer
+   "tss" 'sql-session-start-session
+   "tsw" 'sql-session-save-session
+   "tst" 'sql-session-toggle-tables-buffer
+   "tsl" 'sql-session-reset-window-layout
+   "tsq" 'sql-session-quit-session
+   "tjv" 'jira-ticket-summary-window
+   "tjl" 'jira-my-issues-window
+   "tjm" 'jira-move-issue
+   "te"  'eshell))
 
 ;;;;;;;;;;;;
 ;;; Projects
+
+(defproject avicenna
+  :project-dir "~/Documents/projects/avicenna")
+
+(defproject data-drawings
+  :project-dir "~/Documents/projects/data-diagrams"
+  :init
+  (find-file
+   "~/Documents/projects/data-diagrams/architecture_data_inference.org"))
+
+(defproject data-warehouse
+  :project-dir "~/Documents/projects/data-warehouse")
 
 (defproject emacs
   :project-dir "~/.emacs.d")
@@ -271,19 +296,29 @@
   :project-dir "~/scratch/project-scratch/concept-data"
   :conda-env "pyreify_nlp")
 
-(defproject avicenna
-  :project-dir "~/Documents/projects/avicenna")
+(defproject sql
+   :init (sql-session-start-session))
 
 (defproject zem
   :project-dir "~/Documents/projects/prefect-enrollment-prediction"
   :conda-env   "prefect-zem")
 
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Scratch and Miscellany
 
 ;; TODO
 ;; Clean this up and put it in a macro
 (evil-define-key 'normal 'evil-normal-state-map "'" 'evil-jump-item)
 (evil-define-key 'visual 'evil-visual-state-map "'" 'evil-jump-item)
+
+;; If you want to change parens
+;;(progn (define-key key-translation-map (kbd "[") (kbd "("))
+;;	      (define-key key-translation-map (kbd "(") (kbd "["))
+;;	      (define-key key-translation-map (kbd ")") (kbd "]"))
+;;	      (define-key key-translation-map (kbd "]") (kbd ")")))
+
+
+
 
 (evil-define-key 'normal 'evil-normal-state-map (kbd "C-k") 'comint-previous-input)
 (evil-define-key 'insert 'evil-insert-state-map (kbd "C-k") 'comint-previous-input)
@@ -300,3 +335,16 @@
 
 (setq *end* (float-time))
 (eirene-splash (- *end* *start*))
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(package-selected-packages
+   '(yaml-mode which-key use-package undo-tree ttl-mode sqlformat sphinx-doc sparql-mode quelpa projectile ox-ipynb magit lsp-ui ivy-rich haskell-mode github-review git-timemachine flycheck evil-collection ess envrc csv-mode counsel conda company cider blacken ag)))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )

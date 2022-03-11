@@ -2,6 +2,7 @@ sparql-mode
 ttl-mode
 yaml-mode
 csv-mode
+restclient
 sql
 sqlformat
 mu4e
@@ -17,6 +18,7 @@ company
 flycheck
 lsp-ui
 lsp-mode
+org-roam
 org-agenda
 org
 envrc

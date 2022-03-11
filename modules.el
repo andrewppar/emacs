@@ -118,7 +118,21 @@
    #'ediff-setup-windows-plain)
 
   (defun git-commit-message-setup ()
-    (insert (format "%s " (magit-get-current-branch))))
+    (insert (format "%s \n" (magit-get-current-branch)))
+    (insert
+     "# Ensure these items have been done before committing code: \n")
+    (insert
+     (concat "# [ ] Tests have been written to record the before "
+	     "and after behavior \n"))
+    (insert
+     "# [ ] The README has been updated according to the changes \n")
+    (insert
+     (concat "# [ ] Any benchmarks/other things that need to be"
+	     " recorded or updated \n")))
+
+
+  (defun pr-checklist ()
+    '(tests readme))
 
   (add-hook 'git-commit-setup-hook 'git-commit-message-setup)
 
@@ -135,8 +149,7 @@
   :defer t
   :ensure t
   :init
-  (setq github-review-host "api.git.reifyhealth.com"
-	github-review-view-comments-in-code-lines t
+  (setq github-review-view-comments-in-code-lines t
 	github-review-reply-inline-comments t))
 
 (module! eshell
@@ -219,9 +232,12 @@
                project number project number)) ))
 
 
-  (defun my-org-archive-done-tasks ()
+  (defun org-archive-finished-tasks ()
     (interactive)
-    (org-map-entries 'org-archive-subtree "/DONE" 'file))
+    (mapcar
+     (lambda (tag)
+       (org-map-entries 'org-archive-subtree tag 'file))
+     '("TODO=\"DONE\"" "TODO=\"WONT DO\"")))
 
   (defun org-insert-code-block (name language results)
     (interactive "sName: \nsLanguage: \nsResults: ")
@@ -229,7 +245,8 @@
     ;; TODO: Make this more like a builder
     (if (equal results "")
 	(insert (format "#+BEGIN_SRC %s\n\n" language))
-      (insert (format "#+BEGIN_SRC %s :results %s\n\n" language results)))
+      (insert (format
+	       "#+BEGIN_SRC %s :results %s\n\n" language results)))
     (forward-line)
     (insert (format "#+END_SRC\n"))
     (forward-line -2))
@@ -275,11 +292,15 @@
 
   (defun org-task-goto-avicenna ()
     (interactive)
-    (goto-char (org-goto-heading "Avicenna" '("Tasks" "JIRA"))))
+    (->> '("Tasks" "JIRA")
+	 (org-goto-heading "Avicenna")
+	 goto-char))
 
   (defun org-task-goto-zem ()
     (interactive)
-    (goto-char (org-goto-heading "Zero Enroller Model" '("Tasks" "JIRA"))))
+    (->> '("Tasks" "JIRA")
+	 (org-goto-heading "Zero Enroller Model")
+	 goto-char))
 
   (defun org-jira-link-todo ()
     (interactive)
@@ -293,7 +314,8 @@
           (cond ((string-match (regexp-quote "TODO") todo-string 0)
                  (re-search-forward " ")
                  (insert " "))
-                ((string-match (regexp-quote "IN PROGRESS") todo-string 0)
+                ((string-match
+		  (regexp-quote "IN PROGRESS") todo-string 0)
                  (re-search-forward " " nil nil 2)
                  (insert " ")))
           (backward-char)
@@ -301,15 +323,18 @@
 	  (insert ":")))))
 
   (defun org-meeting-insert-speaker (speaker)
-  (interactive "sSpeaker: ")
-  (let ((time (format-time-string "%H:%M")))
-    (insert (format "** %s %s\n\n" speaker time))))
+    (interactive "sSpeaker: ")
+    (let ((time (format-time-string "%H:%M")))
+      (insert (format "** %s %s\n\n" speaker time))))
 
   (major-mode-map org-mode
     :bindings
     ("a"   'org-agenda
-     "t"   'org-todo
-     "ct"  'my-org-archive-done-tasks
+     "tt"  'org-todo
+     "ts"  'org-schedule
+     "te"  'org-set-effort
+     "tp"  'org-priority
+     "ct"  'org-archive-finished-tasks
      "cs"  'org-archive-subtree
      "jo"  'org-open-at-point
      "fi"  'setup-org-file
@@ -319,7 +344,6 @@
      "ij"  'org-insert-jira-link
      "it"  'org-jira-link-todo
      "e"   'org-export-dispatch
-     "s"   'org-schedule
      "p"   'org-generate-pr-url
      "mp"  'org-move-subtree-up
      "mn"  'org-move-subtree-down
@@ -334,11 +358,11 @@
      "m"  "move"
      "d"  "dial"
      "c"  "clear"
-     "fm" "org-meeting-file"
-     "f"  "org-file"))
+     "fm" "meeting-file"
+     "f"  "file"
+     "t"  "task"))
   (evil-define-key 'normal org-mode-map
     (kbd "<tab>") 'org-cycle)
-  ;;SLOW
   (require 'ox-md)
   (require 'ox-ipynb)
   (setq org-startup-indented t
@@ -346,6 +370,7 @@
   	org-hide-leading-stars nil
   	org-directory "~/org"
   	org-log-done t
+	org-enforce-todo-dependencies t
   	org-todo-keywords
   	'((sequence "TODO" "IN PROGRESS" "|" "DONE" "WONT DO(@)"))
   	org-hide-leading-stars t
@@ -364,13 +389,12 @@
 	   "**** TODO [[https://reifyhealth.atlassian.net/browse/%^{Project}][%\\1]]: %?\nSCHEDULED: %^t")
 	  ("z" "zem" entry
   	   (file+function "~/org/status.org" org-task-goto-zem)
-	   "**** TODO [[https://reifyhealth.atlassian.net/browse/%^{Project}][%\\1]]: %?\nSCHEDULED: %^t")
+	   "**** TODO [[https://reifyhealth.atlassian.net/browse/%^{Project}][%\\1]]: %?\nSCHEDULED: %^t"))
+	org-plantuml-jar-path
+	(expand-file-name
+	 "/Users/andrewparisi/Documents/java/jars/plantuml.jar")
+	nrepl-sync-request-timeout nil)
 
-	  )
-	  org-plantuml-jar-path
-	  (expand-file-name "/Users/andrewparisi/Documents/java/jars/plantuml.jar"))
-
-	;; SLOW
 	(org-babel-do-load-languages
 	 'org-babel-load-languages
 	 '((python . t)
@@ -403,6 +427,7 @@
     (kbd "<RET>") 'org-agenda-goto
     ">" 'org-agenda-date-prompt)
   (setq
+   org-agenda-dim-blocked-tasks 'invisible
    org-agenda-overriding-columns-format
    "%TODO %7EFFORT %PRIORITY     %100ITEM 100%TAGS"
    org-agenda-prefix-format '((agenda . " %i %-12:c%?-12t%-6e% s")
@@ -412,6 +437,69 @@
    calendar-latitude 42.2
    calendar-longitude -71.0
    calendar-location-name "Quincy, MA"))
+
+(module! org-roam
+  :ensure t
+  :defer t
+  :init
+  (org-roam-db-autosync-mode)
+  (defvar *org-roam-db-cycled?* nil)
+
+  (defun org-roam-cycle-db ()
+    (interactive)
+    (org-roam-db-clear-all)
+    (org-roam-db-sync))
+
+  (defun org-roam-link-current-file ()
+    (interactive)
+    (save-excursion
+      (goto-char (point-min))
+      (org-set-property
+       "ID" (format-time-string "%Y%m%dT%H%M%SZ" (current-time) t)))
+    (let* ((filepath (buffer-file-name))
+	   (file-name (file-name-nondirectory filepath)))
+      (shell-command-to-string
+       (format
+	"ln -s %s /Users/andrewparisi/Documents/notes/roam/%s"
+	filepath file-name)))
+    (org-roam-cycle-db))
+
+  (defun org-roam-find-note ()
+    (interactive)
+    (unless *org-roam-db-cycled?*
+      (org-roam-cycle-db)
+      (setq *org-roam-db-cycled?* t))
+    (org-roam-node-find))
+
+  :config
+
+;;  (org-roam-setup)
+  (setq org-roam-v2-ack t)
+
+  (setq org-roam-directory (file-truename "~/Documents/notes/roam")
+	find-file-visit-truename t
+	org-roam-node-display-template "${title} ${tags}")
+
+  (major-mode-map org-mode
+    :labels
+    ("r"  "roam"
+     "rt" "roam tag")
+    :bindings
+    ("rf" 'org-roam-find-note
+     "rl" 'org-roam-node-insert
+     "rta" 'org-roam-tag-add
+     "rtr" 'org-roam-tag-remove
+     "rb"  'org-roam-buffer-toggle
+     "ri"  'org-roam-link-current-file)
+    (setq org-roam-capture-templates
+	  '(("d" "default" plain "%?"
+	     :if-new
+	     (file+head "${slug}.org"
+                        "#+title: ${title}\n#+date: %u\n#+lastmod: \n\n")
+	     :immediate-finish t))
+          time-stamp-start "#\\+lastmod: [\t]*")))
+
+
 
 ;;;;;;;
 ;;; LSP
@@ -579,6 +667,18 @@
                  ;;;
 ;;;;;;;;;;;;;;;;;;;;
 
+;;;;;;;;;;;;;;
+;;; emacs lisp
+
+(module! emacs
+  :use-package nil
+  (major-mode-map emacs-lisp-mode
+    :bindings
+    ("g" 'xref-find-definitions
+     "." 'xref-prompt-find-definitions
+     "," 'xref-pop-marker-stack)))
+
+
 ;;;;;;;;;;;
 ;;; clojure
 
@@ -592,6 +692,7 @@
   :config
   (setq cider-repl-pop-to-buffer-on-connect nil
 	cider-test-show-report-on-success t
+	cider-repl-display-help-banner nil
 	cider-show-error-buffer nil))
 
 (module! clojure-mode
@@ -618,17 +719,36 @@
       :labels
       ("" "major mode")))
 
+  (defun xref-prompt-find-definitions ()
+  (interactive)
+  (let* ((backend (xref-find-backend))
+         (completion-ignore-case
+          (xref-backend-identifier-completion-ignore-case backend))
+	 (id
+          (completing-read
+	   "Find Definitions: "
+	   (xref-backend-identifier-completion-table backend)
+           nil nil nil
+           'xref--read-identifier-history)))
+    (if (equal id "")
+        (user-error "There is no default identifier")
+      (xref--find-definitions id nil))))
+
   (major-mode-map clojure-mode
     :bindings
     ("jj" 'my-cider-jack-in
      "jc" 'my-cider-connect
      "jq" 'cider-quit
+     "fd" 'cider-format-defun
+     "fb" 'cider-format-buffer
      "ld" 'cider-eval-defun-at-point
      "lb" 'cider-load-buffer
      "q"  'cider-quit
      "s"  'cider-toggle-trace-var
      "n"  'cider-repl-set-ns
-     "g"  'xref-find-definitions
+     "g"  'xref-prompt-find-definitions
+     "."  'xref-find-definitions
+     ","  'xref-pop-marker-stack
      "c"  'cider-eval-defun-at-point
      "r"  'lsp-find-references
      "d"  'lsp-describe-thing-at-point
@@ -637,6 +757,8 @@
      "a"  'lsp-execute-code-action)
     :labels
     (""  "major mode"
+     "f" "format"
+     "t" "test"
      "l" "cider load"
      "j"  "repl"))
   :config
@@ -844,6 +966,7 @@
     (concat "\n" output))
 
   (evil-define-key 'insert sql-mode-map (kbd "C-c p") 'autocomplete-table)
+  (evil-define-key 'normal sql-mode-map (kbd "C-c p") 'autocomplete-table)
 
   ;;(defun sqli-add-hooks ()
   ;;  "Add hooks to `sql-interactive-mode-hook'."
@@ -853,6 +976,10 @@
   ;;(add-hook 'sql-interactive-mode-hook 'sqli-add-hooks)
   )
 
+
+(module! restclient
+  :ensure t
+  :defer t)
 
 
            ;;;

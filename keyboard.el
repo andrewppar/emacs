@@ -45,6 +45,8 @@
 ;;;;;;;;;;;;;;
 ;; Keybindings
 
+(defvar *keybinding-map* nil)
+
 (defun generate-which-key-binding-sexp (map trigger binding item type)
   ;;(message (format "KeyBinding: %s %s %s %s %s" map trigger binding item type))
   (let ((binding-string (if (equal type :major-mode)
@@ -99,6 +101,7 @@
     result))
 
 (defmacro which-key-map (map trigger &rest configuration)
+  (declare (indent defun))
   (let ((labels              (make-labels map trigger configuration))
 	(bindings            (make-default-bindings map trigger configuration))
 	(major-mode-bindings (make-major-mode-bindings trigger configuration)))

@@ -39,31 +39,40 @@
    :conda-env   -- a specification of a conda environment
      associated with the project."
   (let* ((project-dir  (plist-get args :project-dir))
-	 (conda-env     (plist-get args :conda-env))
+	 (conda-env    (plist-get args :conda-env))
+	 (init         (plist-get args :init))
 	 (function-name (intern (->> project-name
 				     (format "%s-session")))))
     (push `(,(symbol-name project-name) . ,function-name) *projects*)
     `(defun ,function-name (ws-num)
        (interactive "nWorkspace Number: ")
        (delete-other-windows)
-       (dired ,project-dir)
        (workspace--add-workspace-no-prompt
 	ws-num (format "{} %s" ,(symbol-name project-name)))
+       ,(when project-dir
+	  `(progn
+	     (dired ,project-dir)))
        ,(when conda-env
 	  `(progn
 	     (conda-env-deactivate)
-	     (conda-env-activate ,conda-env))))))
+	     (conda-env-activate ,conda-env)))
+       ,(when init
+	  `(progn
+	     ,init)))))
 
 (defun project--all-projects ()
   "Gather all project names."
   (mapcar #'car  *projects*))
 
-(defun project-switch-project (workspace-number)
+(defun project-switch-project ()
   "Allow user to switch to a project.
 
-   User specifies the WORKSPACE-NUMBER and project."
-  (interactive "nWorkspace Number: ")
-  (let* ((project-name (ivy-read "Project: " (project--all-projects)))
+   User specifies the PROJECT, the highest workspace available is used."
+  (interactive)
+  (let* ((workspace-number (inc
+			    (apply #'max
+				   (workspace-list-workspace-keys))))
+	 (project-name (ivy-read "Project: " (project--all-projects)))
 	 (project-function
 	  (alist-get project-name *projects* nil nil #'equal)))
     (funcall project-function workspace-number)))

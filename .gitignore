@@ -15,3 +15,5 @@ bookmarks
 image-dired/*
 projectile.cache
 quelpa/*
+.org-id-locations
+org-roam.db
