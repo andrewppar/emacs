@@ -32,7 +32,7 @@
 
 (defun display-projects ()
   (let ((projects '()))
-    (dolist (alist *projects*)
+    (dolist (alist *project-projects*)
       (push (car alist) projects))
     (when projects
       (insert "Projects: \n\n")

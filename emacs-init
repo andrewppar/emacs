@@ -198,12 +198,6 @@
    "bm" 'messages-buffer
    "bs" 'scratch-buffer
    "bw" 'save-buffer
-   ;; init
-   "ii"  'init-file
-   "im"  'modules-file
-   "ic"  'core-file
-   "id"  'display-file
-   "ik"  'keyboard-file
    ;; org
    "c"   'org-capture
    ;; magit
@@ -215,28 +209,15 @@
    "grc" 'github-review-comment
    "gra" 'github-review-approve
    "gh"  'git-timemachine
+   ;; init
+   "ii"  'init-file
+   "im"  'modules-file
+   "ic"  'core-file
+   "id"  'display-file
+   "ik"  'keyboard-file
    ;; Roam Notes
    "nf"  'org-roam-find-note
    "nc"  'org-roam-cycle-db
-   ;; projectile
-   "p"   'projectile-command-map
-   ;; generic
-   "x"  'counsel-M-x
-   ;; s-expressions
-   "sq"  'indent-pp-sexp
-   "sl"  'forward-sexp
-   "sh"  'backward-sexp
-   "st"  'transpose-sexps
-   ;; workspaces
-   "w1"  'to-workspace-1
-   "w2"  'to-workspace-2
-   "w3"  'to-workspace-3
-   "w4"  'to-workspace-4
-   "w5"  'to-workspace-5
-   "w6"  'to-workspace-6
-   "wr"  'ivy-push-view
-   "wd"  'workspace-pop
-   "wj"  'ivy-switch-view
    ;; organizer
    "os"  'organizer-session
    "ol"  'task-log
@@ -249,27 +230,45 @@
    "oes" 'edit-task-start-time-at-point
    "oee" 'edit-task-end-time-at-point
    "oeg" 'edit-task-group-at-point
+   ;; projectile
+   "p"   'projectile-command-map
+   ;; s-expressions
+   "sq"  'indent-pp-sexp
+   "sl"  'forward-sexp
+   "sh"  'backward-sexp
+   "st"  'transpose-sexps
    ;; tools
-   "tm"  'email
+   "tb"  'project-browse-website
    "tca" 'conda-env-activate
    "tcd" 'conda-env-deactivate
    "tcs" 'conda-env-switch
-   "tii" 'lsp-ui-imenu		;It's a little hacky to have this here
-   "tiq" 'lsp-ui-imenu--kill
-   "tp" 'project-switch-project
+   "te"  'eshell
+   "tjl" 'jira-my-issues-window
+   "tjm" 'jira-move-issue
+   "tjv" 'jira-ticket-summary-window
+   "tm"  'email
+   "tp"  'project-switch-project
+   "tsl" 'sql-session-reset-window-layout
+   "tsq" 'sql-session-quit-session
+   "tss" 'sql-session-start-session
+   "tst" 'sql-session-toggle-tables-buffer
+   "tsw" 'sql-session-save-session
    "tts" 'pomodoro-start-work
    "ttr" 'pomodoro-start-rest
    "ttp" 'pomodoro
    ;; Not working "ttx" 'pomodoro-stop-timer
-   "tss" 'sql-session-start-session
-   "tsw" 'sql-session-save-session
-   "tst" 'sql-session-toggle-tables-buffer
-   "tsl" 'sql-session-reset-window-layout
-   "tsq" 'sql-session-quit-session
-   "tjv" 'jira-ticket-summary-window
-   "tjl" 'jira-my-issues-window
-   "tjm" 'jira-move-issue
-   "te"  'eshell))
+   ;; workspaces
+   "w1"  'to-workspace-1
+   "w2"  'to-workspace-2
+   "w3"  'to-workspace-3
+   "w4"  'to-workspace-4
+   "w5"  'to-workspace-5
+   "w6"  'to-workspace-6
+   "wr"  'ivy-push-view
+   "wd"  'workspace-pop
+   "wj"  'ivy-switch-view
+   ;; generic
+   "x"  'counsel-M-x))
 
 ;;;;;;;;;;;;
 ;;; Projects
@@ -288,7 +287,7 @@
 
 (defproject data-warehouse
   :project-dir "~/Documents/projects/data-warehouse"
-  :website "https://github.com/reifyhealth/data-diagrams"
+  :website "https://github.com/reifyhealth/data-diagrams")
 
 (defproject emacs
   :project-dir "~/.emacs.d")

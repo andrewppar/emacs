@@ -27,7 +27,8 @@
 ;;; Code:
 
 ;;(require 'workspace)
-(defvar *projects* '())
+(defvar *project-projects* '())
+(defvar *project-website-map* '())
 
 (defmacro defproject (project-name &rest args)
   "Macro for project declaration.
@@ -41,9 +42,11 @@
   (let* ((project-dir  (plist-get args :project-dir))
 	 (conda-env    (plist-get args :conda-env))
 	 (init         (plist-get args :init))
+	 (website      (plist-get args :website))
 	 (function-name (intern (->> project-name
 				     (format "%s-session")))))
-    (push `(,(symbol-name project-name) . ,function-name) *projects*)
+    (push `(,(symbol-name project-name) . ,function-name)
+	  *project-projects*)
     `(defun ,function-name (ws-num)
        (interactive "nWorkspace Number: ")
        (delete-other-windows)
@@ -56,13 +59,16 @@
 	  `(progn
 	     (conda-env-deactivate)
 	     (conda-env-activate ,conda-env)))
+       ,(when website
+	  (push `(,(format "%s" project-name) . ,website)
+		*project-website-map*))
        ,(when init
 	  `(progn
 	     ,init)))))
 
 (defun project--all-projects ()
   "Gather all project names."
-  (mapcar #'car  *projects*))
+  (mapcar #'car *project-projects*))
 
 (defun project-switch-project ()
   "Allow user to switch to a project.
@@ -74,8 +80,26 @@
 				   (workspace-list-workspace-keys))))
 	 (project-name (ivy-read "Project: " (project--all-projects)))
 	 (project-function
-	  (alist-get project-name *projects* nil nil #'equal)))
+	  (alist-get project-name *project-projects* nil nil #'equal)))
     (funcall project-function workspace-number)))
+
+(defun project-browse-website ()
+  "Select a project website to visit.
+
+  Options are selected from the projects
+  that specify a :website keyword."
+  (interactive)
+  (let* ((websites (mapcar #'car *project-website-map*))
+	 (to-visit (ido-completing-read
+		    "Select a website: "
+		    websites
+		    nil
+		    t))
+	 (url      (alist-get
+		    to-visit *project-website-map* nil nil #'equal)))
+    (browse-url url)))
+
+
 
 (provide 'eirene-project)
 ;;; project.el ends here
