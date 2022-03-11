@@ -51,6 +51,26 @@
       (setq index (+ index 1)))
     (insert "\n")))
 
+(defun display-keybindings ()
+  (let ((bindings '()))
+    (push
+     `("find-file" . ,(substitute-command-keys "\\[counsel-find-file]"))
+     bindings)
+    (push
+     `("M-x" . ,(substitute-command-keys "\\[counsel-M-x]"))
+     bindings)
+    (insert "Key Bindings: \n\n")
+    (insert "| key | binding |\n")
+    (insert "|-----+---------|\n")
+    (dolist (key bindings)
+      (insert (format "|%s| \"%s\"|\n" (car key) (cdr key))))
+    (insert "|-----+--------|")
+    (org-table-align)
+    (insert "\n\n")))
+
+
+
+
 (defun eirene-splash (load-time)
   (switch-to-buffer "*Eirene Splash*")
   (let ((start (point-min))
@@ -62,6 +82,8 @@
     (insert "\n\n\n")
     (insert (format "Load time: %s" load-time))
     (insert "\n\n\n")
+    (display-keybindings)
+    (insert "\n")
     (display-projects)
     (insert "\n")
     (display-recent-files)
