@@ -62,6 +62,11 @@
   (evil-collection-init)
   (setq evil-collection-magit-use-z-for-folds t))
 
+(module! dired
+  :use-package nil
+  :init
+  (setq dired-dwim-target t))
+
                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;
 

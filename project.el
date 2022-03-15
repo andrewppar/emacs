@@ -60,8 +60,9 @@
 	     (conda-env-deactivate)
 	     (conda-env-activate ,conda-env)))
        ,(when website
-	  (push `(,(format "%s" project-name) . ,website)
-		*project-website-map*))
+	  (push '`(,(format "%s" project-name) . ,website)
+		*project-website-map*)
+	  nil)
        ,(when init
 	  `(progn
 	     ,init)))))
@@ -75,9 +76,10 @@
 
    User specifies the PROJECT, the highest workspace available is used."
   (interactive)
-  (let* ((workspace-number (inc
-			    (apply #'max
-				   (workspace-list-workspace-keys))))
+  (let* ((workspace-numbers (workspace-list-workspace-keys))
+	 (workspace-number (if workspace-numbers
+			       (inc (apply #'max workspace-numbers))
+			     1))
 	 (project-name (ivy-read "Project: " (project--all-projects)))
 	 (project-function
 	  (alist-get project-name *project-projects* nil nil #'equal)))
