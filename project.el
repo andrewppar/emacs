@@ -53,14 +53,13 @@
        (workspace--add-workspace-no-prompt
 	ws-num (format "{} %s" ,(symbol-name project-name)))
        ,(when project-dir
-	  `(progn
-	     (dired ,project-dir)))
+	    `(dired ,project-dir))
        ,(when conda-env
 	  `(progn
 	     (conda-env-deactivate)
 	     (conda-env-activate ,conda-env)))
        ,(when website
-	  (push '`(,(format "%s" project-name) . ,website)
+	  (push `(,(format "%s" project-name) . ,website)
 		*project-website-map*)
 	  nil)
        ,(when init

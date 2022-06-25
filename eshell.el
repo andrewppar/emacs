@@ -1,6 +1,7 @@
 (defvar *eshell-prompt-icon* "⚓")
 
-(defvar *last-command-time* nil)
+(make-variable-buffer-local
+ (defvar *last-command-time* nil))
 
 (defun eshell/send-input ()
   (interactive)

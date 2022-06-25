@@ -64,8 +64,27 @@
 
 (module! dired
   :use-package nil
+  (setq dired-dwim-target t)
+  (when (string= system-type "darwin")
+    (setq dired-use-ls-dired nil)))
+
+(module! pbcopy
+  :ensure t
   :init
-  (setq dired-dwim-target t))
+  (turn-on-pbcopy))
+
+;;(module! sexpressions
+;;  :use-package nil
+;;  (defun move-sexp-back ()
+;;    (interactive)
+;;    (transpose-sexps 0))
+;;
+;;  (defun move-sexp-forward ()
+;;    (interactive)
+;;    (forward-sexp)
+;;    (transpose-sexps 0)
+;;    (backward-sexp))
+;;  )
 
                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -188,6 +207,7 @@
   (recentf-mode))
 
 (module! quelpa
+  :defer t
   :ensure t)
 
 (module! projectile
@@ -476,15 +496,6 @@
       (setq *org-roam-db-cycled?* t))
     (org-roam-node-find))
 
-  :config
-
-;;  (org-roam-setup)
-  (setq org-roam-v2-ack t)
-
-  (setq org-roam-directory (file-truename "~/Documents/notes/roam")
-	find-file-visit-truename t
-	org-roam-node-display-template "${title} ${tags}")
-
   (major-mode-map org-mode
     :labels
     ("r"  "roam"
@@ -600,6 +611,13 @@
   :defer t
   :requires evil)
 
+(module! highlight-indentation
+  :ensure t
+  :defer t
+  :config
+  (set-face-background 'highlight-indentation-face "#30648e")
+  (set-face-background
+   'highlight-indentation-current-column-face "#c3b3b3"))
             ;;;
 ;;;;;;;;;;;;;;;
 
@@ -634,6 +652,7 @@
   (add-hook 'python-mode-hook (lambda ()
                                 (require 'sphinx-doc)
                                 (sphinx-doc-mode t)))
+  (add-hook 'python-mode-hook 'highlight-indentation-mode)
   (major-mode-map python-mode
     :labels
     ("d" "doc"
@@ -642,7 +661,9 @@
     ("dg" 'google-doc
      "ds" 'sphinx-doc
      "b"  'blacken-buffer
-     "g"  'lsp-find-definition
+     "."  'xref-find-definitions
+     ","  'xref-pop-marker-stack
+     "g"  'xref-prompt-find-definitions
      "sb" 'python-shell-send-buffer
      "sd" 'python-shell-send-defun)))
 

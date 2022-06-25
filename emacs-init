@@ -1,6 +1,7 @@
 ;; -*- mode: emacs-lisp -*-
 
 (setq *start* (float-time))
+(setq x-select-enable-clipboard t)
 
 ;; TODO: Find a better place for this maybe we need a general settings
 ;; section
