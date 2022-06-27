@@ -16,7 +16,7 @@
 	(format "done loading %s: %s"
 		,load-string (- (float-time) ,start))))))
 
-(setq user-mail-address "andrew.parisi@reifyhealth.com")
+(setq user-mail-address  "")
 
 (load! "~/.emacs.d/display.el")
 (load! "~/.emacs.d/modules.el")
