@@ -139,8 +139,6 @@
    "bm" 'messages-buffer
    "bs" 'scratch-buffer
    "bw" 'save-buffer
-   ;; org
-   "c"   'org-capture
    ;; (ma)git
    "gs" 'magit-status
    "gc" 'magit-branch-checkout
@@ -195,7 +193,6 @@
 (evil-define-key 'normal 'evil-normal-state-map (kbd "C-j") 'comint-next-input)
 (evil-define-key 'insert 'evil-insert-state-map (kbd "C-j") 'comint-next-input)
 (evil-define-key 'normal 'evil-normal-state-map (kbd "C-c l") 'comint-clear-buffer)
-(evil-define-key 'normal 'org-mode-map (kbd "<tab>") #'org-cycle)
 
 ;; Hacks!
 (add-to-list 'exec-path "/usr/local/bin")

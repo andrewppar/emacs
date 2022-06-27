@@ -90,7 +90,6 @@
 			   (truncate (* (- total-time minutes)
 				60))))))
 	   (eshell/prompt-section "ⓖ" (git-prompt-status))
-	   (eshell/prompt-section "ⓒ" conda-env-current-name)
 	   (eshell/prompt-end)))))
 
 (setq eshell-prompt-regexp (format "^[^%s]+ %s " *eshell-prompt-icon* *eshell-prompt-icon*))
