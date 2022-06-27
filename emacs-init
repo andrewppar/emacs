@@ -30,17 +30,6 @@
 (load! "~/emacs-files/sql-session.el")
 (load! "~/emacs-files/jira.el")
 
-;;; Clipboard (mac only)
-;; TODO: This is messy - find a good spot for this
-
-(defun to-clipboard ()
-  (interactive)
-  (let ((start (region-beginning))
-	(end   (region-end)))
-    (shell-command-on-region start end "pbcopy")))
-
-(evil-define-key 'visual 'evil-visual-state-map (kbd "C-y") 'to-clipboard)
-
 ;; Custom Theme
 (colors!
   :background            "#3b3b3f"
@@ -66,15 +55,6 @@
   (:text " %*%+ ")
   (:text " %m: ")
   (:text "%b ")
-
-  (:condition
-   conda-env-current-name
-   :text (format " |conda: %s" conda-env-current-name)
-   :color "#30648e")
-  (:condition
-   (not (equal envrc--status 'none))
-   :text (format " |envrc %s" envrc--status)
-   :color "#30648e")
   (:condition
    (vc-backend buffer-file-name)
    :text (format " |%s " vc-mode)
@@ -143,52 +123,13 @@
   (interactive)
   (workspace-to-workspace-number 6))
 
-(defun organizer-session()
-  (interactive)
-  (find-file "/Users/andrewparisi/org/status.org")
-  (refresh-calendar-items)
-  (evil-close-folds)
-  (let* ((status-buffer (current-buffer))
-         (year      (format-time-string "%Y"))
-         (month     (format-time-string "%B"))
-         (day       (format-time-string "%m-%d-%Y")))
-    (org-agenda-list)
-    (let ((agenda-buffer (current-buffer)))
-      (switch-to-buffer status-buffer)
-      (delete-other-windows)
-      (let ((status-window (selected-window))
-	    (agenda-window (split-window-below)))
-	(select-window agenda-window)
-	(switch-to-buffer agenda-buffer)
-	(select-window status-window)
-	(let ((task-window (split-window-right)))
-	  (select-window task-window)
-	  (task-log)
-	  (select-window agenda-window)))))
-  (workspace--add-workspace-no-prompt 1 "{} organizer")
-  (org-agenda-day-view))
-
-(defun email ()
-  (interactive)
-  (delete-other-windows)
-  (mu4e))
-
 (which-key-map evil-normal-state-map ","
   :labels
   ( "g"  "git"
     "gr" "code review"
     "i"  "init"
-    "n"  "notes"
-    "o"  "organizer"
-    "oe" "edit-task"
     "p"  "projectile"
     "s"  "s-expression"
-    "t"  "tools"
-    "tc" "conda"
-    "tj" "jira"
-    "ts" "sql"
-    "tt" "pomodoro"
-    "v"  "ivy-view"
     "w"  "workspaces"
     )
   :default-bindings
@@ -213,21 +154,6 @@
    "ic"  'core-file
    "id"  'display-file
    "ik"  'keyboard-file
-   ;; Roam Notes
-   "nf"  'org-roam-find-note
-   "nc"  'org-roam-cycle-db
-   ;; organizer
-   "os"  'organizer-session
-   "ol"  'task-log
-   "ot"  'log-task
-   "of"  'task-log-for-date
-   "og"  'get-tasks-in-range
-   "or"  'refresh-agenda
-   "oa"  'add-calendar-item-for-today
-   "oed" 'edit-task-description-at-point
-   "oes" 'edit-task-start-time-at-point
-   "oee" 'edit-task-end-time-at-point
-   "oeg" 'edit-task-group-at-point
    ;; projectile
    "p"   'projectile-command-map
    ;; s-expressions
@@ -238,88 +164,23 @@
    "sf"  'move-sexp-forward
    "sb"  'move-sexp-back
    ;; tools
-   "tb"  'project-browse-website
-   "tca" 'conda-env-activate
-   "tcd" 'conda-env-deactivate
-   "tcs" 'conda-env-switch
    "te"  'eshell
-   "tjc" 'jira-comment-on-ticket
-   "tjl" 'jira-my-issues-window
-   "tjm" 'jira-move-issue
-   "tjq" 'jira-run-jql-query
-   "tjs" 'jira-current-sprint
-   "tjv" 'jira-ticket-summary-window
-   "tm"  'email
    "tp"  'project-switch-project
-   "tsl" 'sql-session-reset-window-layout
-   "tso" 'sql-session-toggle-orientation
-   "tsq" 'sql-session-quit-session
-   "tss" 'sql-session-start-session
-   "tst" 'sql-session-toggle-tables-buffer
-   "tsw" 'sql-session-save-session
-   "tts" 'pomodoro-start-work
-   "ttr" 'pomodoro-start-rest
-   "ttp" 'pomodoro
-   ;; Not working "ttx" 'pomodoro-stop-timer
-   ;; workspaces
    "w1"  'to-workspace-1
    "w2"  'to-workspace-2
    "w3"  'to-workspace-3
    "w4"  'to-workspace-4
    "w5"  'to-workspace-5
    "w6"  'to-workspace-6
-   "wr"  'ivy-push-view
    "wd"  'workspace-pop
-   "wj"  'ivy-switch-view
    ;; generic
    "x"  'counsel-M-x))
 
 ;;;;;;;;;;;;
 ;;; Projects
 
-(defproject avicenna
-  :project-dir  "~/Documents/projects/avicenna"
-  :website "https://github.com/reifyhealth/concept-data/tree/develop/avicenna")
-
-(defproject ri-match
-  :project-dir "~/Documents/projects/concept-data/ri-match"
-  :website      "https://github.com/reifyhealth/concept-data/tree/develop/ri-match")
-
-(defproject data-drawings
-  :project-dir "~/Documents/projects/data-diagrams"
-  :website "https://github.com/reifyhealth/data-diagrams"
-  :init
-  (find-file
-   "~/Documents/projects/data-diagrams/architecture_data_inference.org"))
-
-(defproject retool
-  :project-dir "~/Documents/projects/retool-admin"
-  :init (magit-status))
-
-(defproject data-warehouse
-  :project-dir "~/Documents/projects/data-warehouse"
-  :website "https://github.com/reifyhealth/data-diagrams")
-
 (defproject emacs
   :project-dir "~/.emacs.d")
-
-(defproject pyreify
-  :project-dir "~/scratch/project-scratch/concept-data"
-  :website   "https://github.com/reifyhealth/concept-data/"
-  :conda-env "pyreify")
-
-(defproject sql
-   :init (sql-session-start-session))
-
-(defproject zem
-  :project-dir "~/Documents/projects/prefect-enrollment-prediction"
-  :website
-  "https://github.com/reifyhealth/prefect-enrollment-prediction"
-  :conda-env   "prefect-zem")
-
-(defproject knowledge-base
-  :project-dir "~/Documents/projects/data-daze-spring-2022/knowledge-base"
-  :website "http://github.com/reifyhealth/data-date-spring-2022")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Scratch and Miscellany
@@ -328,15 +189,6 @@
 ;; Clean this up and put it in a macro
 (evil-define-key 'normal 'evil-normal-state-map "'" 'evil-jump-item)
 (evil-define-key 'visual 'evil-visual-state-map "'" 'evil-jump-item)
-
-;; If you want to change parens
-;;(progn (define-key key-translation-map (kbd "[") (kbd "("))
-;;	      (define-key key-translation-map (kbd "(") (kbd "["))
-;;	      (define-key key-translation-map (kbd ")") (kbd "]"))
-;;	      (define-key key-translation-map (kbd "]") (kbd ")")))
-
-
-
 
 (evil-define-key 'normal 'evil-normal-state-map (kbd "C-k") 'comint-previous-input)
 (evil-define-key 'insert 'evil-insert-state-map (kbd "C-k") 'comint-previous-input)
@@ -353,16 +205,3 @@
 
 (setq *end* (float-time))
 (eirene-splash (- *end* *start*))
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(package-selected-packages
-   '(yaml-mode which-key use-package undo-tree ttl-mode sqlformat sphinx-doc sparql-mode quelpa projectile ox-ipynb magit ivy-rich haskell-mode git-timemachine flycheck evil-collection ess envrc csv-mode counsel conda company cider blacken ag)))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
