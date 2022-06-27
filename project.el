@@ -62,7 +62,7 @@
 	  (push `(,(format "%s" project-name) . ,website)
 		*project-website-map*)
 	  nil)
-       ,(when init
+   ,(when init
 	  `(progn
 	     ,init)))))
 
@@ -99,8 +99,6 @@
 	 (url      (alist-get
 		    to-visit *project-website-map* nil nil #'equal)))
     (browse-url url)))
-
-
 
 (provide 'eirene-project)
 ;;; project.el ends here
