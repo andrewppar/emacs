@@ -1,6 +1,7 @@
-; -*- mode: emacs-lisp -*-
+;; -*- mode: emacs-lisp -*-
 
 (setq *start* (float-time))
+(setq x-select-enable-clipboard t)
 
 ;; TODO: Find a better place for this maybe we need a general settings
 ;; section
@@ -15,39 +16,45 @@
 	(format "done loading %s: %s"
 		,load-string (- (float-time) ,start))))))
 
-(setq user-mail-address "")
+(setq user-mail-address  "")
 
 (load! "~/.emacs.d/display.el")
 (load! "~/.emacs.d/modules.el")
 (load! "~/.emacs.d/splash.el")
-(load! "~/.emacs.d/eshell.el")
 (load! "~/.emacs.d/workspace.el")
+(load! "~/.emacs.d/project.el")
+
+;;; Custom Work Helpers
+(load! "~/emacs-files/timesheet.el")
+(load! "~/emacs-files/diary-helpers.el")
+(load! "~/emacs-files/sql-session.el")
+(load! "~/emacs-files/jira.el")
 
 ;; Custom Theme
-
 (colors!
- :background "#3b3b3f"
- :foreground "#d0d0d0"
- :comment "#8a8a8a"
- :string "#ffc63f"
- :constant (:foreground "#ffc63f" :weight 'bold)
- :function (:foreground "#18aed4" :weight 'bold)
- :keyword  (:foreground "#AFD75F" :weight 'bold)
- :type     (:foreground "#18aed4")
- :font     (:height 180)
- :transparency ('alpha 90 90)
- :mode-line             (:foreground "#3b3b3f" :background "#d0d0d0")
- :mode-line-inactive    (:foreground "#3b3b3f" :background "#d0d0d0")
- :fringe   (:background "#d0d0d0"))
+  :background            "#3b3b3f"
+  :foreground            "#d0d0d0"
+  :comment               "#8a8a8a"
+  :string                "#ffc63f"
+  :link                  (:foreground "red"     :weight 'bold)
+  :constant              (:foreground "#ffc63f" :weight 'bold)
+  :function              (:foreground "#18aed4" :weight 'bold)
+  :keyword               (:foreground "#AFD75F" :weight 'bold)
+  :type                  (:foreground "#18aed4")
+  :font                  (:height 230)
+  :transparency          ('alpha 90 90)
+  :mode-line             (:foreground "#3b3b3f" :background "#d0d0d0")
+  :mode-line-inactive    (:foreground "#3b3b3f" :background "#d0d0d0")
+  :fringe                (:background "#d0d0d0"))
 
 (mode-line!
   (:text " ⚓ ")
   (:text (format-time-string "%H:%M ")
 	 :color "#c45651")
   (:text  (mode-line-workspace))
-  (:text "%*%+ ")
-  (:text " %m:")
-  (:text "%b")
+  (:text " %*%+ ")
+  (:text " %m: ")
+  (:text "%b ")
   (:condition
    (vc-backend buffer-file-name)
    :text (format " |%s " vc-mode)
@@ -83,6 +90,15 @@
   (interactive)
   (find-file "~/.emacs.d/keyboard.el"))
 
+(defun ivy-push-view-default-name ()
+  (let* ((view (ivy--get-view-config))
+         (view-name "{} organizer"))
+    (when view-name
+      (let ((x (assoc view-name ivy-views)))
+        (if x
+            (setcdr x (list view))
+          (push (list view-name view) ivy-views))))))
+
 (defun to-workspace-1 ()
   (interactive)
   (workspace-to-workspace-number 1))
@@ -99,60 +115,90 @@
   (interactive)
   (workspace-to-workspace-number 4))
 
+(defun to-workspace-5 ()
+  (interactive)
+  (workspace-to-workspace-number 5))
+
+(defun to-workspace-6 ()
+  (interactive)
+  (workspace-to-workspace-number 6))
+
 (which-key-map evil-normal-state-map ","
-	       :labels
-	       ("i"  "init"
-		"t"  "tools"
-		"p" "projectile"
-		"g"  "magit"
-		"w"  "workspace"
-		"s"  "s-expression"
-		"p"  "projectile"
-		"v"  "ivy-view")
-	       :default-bindings
-	       (;; ibuffer
-		"bi" 'ibuffer
-		"bb" 'counsel-switch-buffer
-		"bm" 'messages-buffer
-		"bs" 'scratch-buffer
-		;; init
-		"ii"  'init-file
-		"im"  'modules-file
-		"ic"  'core-file
-		"id"  'display-file
-		"ik"  'keyboard-file
-		;; workspaces
-                "wd" 'workspace-pop
-                "wj" 'ivy-switch-view
-		"w1" 'to-workspace-1
-		"w2" 'to-workspace-2
-		"w3" 'to-workspace-3
-		"w4" 'to-workspace-4
-		;; magit
-		"gs"  'magit-status
-		"gc"  'magit-branch-checkout
-		"gb"  'magit-blame
-		"gl"  'magit-log-current
-		;; projectile
-		"p"   'projectile-command-map
-		;; generic
-		"x"  'counsel-M-x
-		;; s-expressions
-		"sq"  'indent-pp-sexp
-		"sl"  'forward-sexp
-		"sh"  'backward-sexp
-		"st"  'transpose-sexps
-		;; tools
-		"te" 'eshell))
+  :labels
+  ( "g"  "git"
+    "gr" "code review"
+    "i"  "init"
+    "p"  "projectile"
+    "s"  "s-expression"
+    "w"  "workspaces"
+    )
+  :default-bindings
+  (;; ibuffer
+   "bi" 'ibuffer
+   "bb" 'ivy-switch-buffer
+   "bm" 'messages-buffer
+   "bs" 'scratch-buffer
+   "bw" 'save-buffer
+   ;; (ma)git
+   "gs" 'magit-status
+   "gc" 'magit-branch-checkout
+   "gb" 'magit-blame
+   "gl" 'magit-log-current
+   "gr" 'code-review-start
+   "gh" 'git-timemachine
+   ;; init
+   "ii"  'init-file
+   "im"  'modules-file
+   "ic"  'core-file
+   "id"  'display-file
+   "ik"  'keyboard-file
+   ;; projectile
+   "p"   'projectile-command-map
+   ;; s-expressions
+   "sq"  'indent-pp-sexp
+   "sl"  'forward-sexp
+   "sh"  'backward-sexp
+   "st"  'transpose-sexps
+   "sf"  'move-sexp-forward
+   "sb"  'move-sexp-back
+   ;; tools
+   "te"  'eshell
+   "tp"  'project-switch-project
+   "w1"  'to-workspace-1
+   "w2"  'to-workspace-2
+   "w3"  'to-workspace-3
+   "w4"  'to-workspace-4
+   "w5"  'to-workspace-5
+   "w6"  'to-workspace-6
+   "wd"  'workspace-pop
+   ;; generic
+   "x"  'counsel-M-x))
+
+;;;;;;;;;;;;
+;;; Projects
+
+(defproject emacs
+  :project-dir "~/.emacs.d")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Scratch and Miscellany
 
 ;; TODO
 ;; Clean this up and put it in a macro
-(evil-define-key 'normal 'evil-normal-state-map "[" 'evil-jump-item)
-(evil-define-key 'visual 'evil-visual-state-map "[" 'evil-jump-item)
+(evil-define-key 'normal 'evil-normal-state-map "'" 'evil-jump-item)
+(evil-define-key 'visual 'evil-visual-state-map "'" 'evil-jump-item)
+
+(evil-define-key 'normal 'evil-normal-state-map (kbd "C-k") 'comint-previous-input)
+(evil-define-key 'insert 'evil-insert-state-map (kbd "C-k") 'comint-previous-input)
+(evil-define-key 'normal 'evil-normal-state-map (kbd "C-j") 'comint-next-input)
+(evil-define-key 'insert 'evil-insert-state-map (kbd "C-j") 'comint-next-input)
+(evil-define-key 'normal 'evil-normal-state-map (kbd "C-c l") 'comint-clear-buffer)
 
 ;; Hacks!
 (add-to-list 'exec-path "/usr/local/bin")
 (setenv "PATH" (mapconcat 'identity exec-path ":"))
+(put 'dired-find-alternate-file 'disabled nil)
+
 
 (setq *end* (float-time))
 (eirene-splash (- *end* *start*))
