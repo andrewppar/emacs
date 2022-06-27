@@ -144,29 +144,29 @@
   (workspace-to-workspace-number 6))
 
 (defun organizer-session()
-    (interactive)
-    (find-file "/Users/andrewparisi/org/status.org")
-    (refresh-calendar-items)
-    (evil-close-folds)
-    (let* ((status-buffer (current-buffer))
-           (year      (format-time-string "%Y"))
-           (month     (format-time-string "%B"))
-           (day       (format-time-string "%m-%d-%Y")))
-      (org-agenda-list)
-      (org-agenda-day-view)
-      (let ((agenda-buffer (current-buffer)))
-        (switch-to-buffer status-buffer)
-        (delete-other-windows)
-        (split-window-below)
-        (other-window 1)
-        (switch-to-buffer agenda-buffer)
-        (other-window 1)
-        (split-window-right)
-        (other-window 1)
-        (task-log)
-        (other-window 1)
-        (other-window 1)))
-    (workspace--add-workspace-no-prompt 1 "{} organizer"))
+  (interactive)
+  (find-file "/Users/andrewparisi/org/status.org")
+  (refresh-calendar-items)
+  (evil-close-folds)
+  (let* ((status-buffer (current-buffer))
+         (year      (format-time-string "%Y"))
+         (month     (format-time-string "%B"))
+         (day       (format-time-string "%m-%d-%Y")))
+    (org-agenda-list)
+    (let ((agenda-buffer (current-buffer)))
+      (switch-to-buffer status-buffer)
+      (delete-other-windows)
+      (let ((status-window (selected-window))
+	    (agenda-window (split-window-below)))
+	(select-window agenda-window)
+	(switch-to-buffer agenda-buffer)
+	(select-window status-window)
+	(let ((task-window (split-window-right)))
+	  (select-window task-window)
+	  (task-log)
+	  (select-window agenda-window)))))
+  (workspace--add-workspace-no-prompt 1 "{} organizer")
+  (org-agenda-day-view))
 
 (defun email ()
   (interactive)
@@ -176,7 +176,7 @@
 (which-key-map evil-normal-state-map ","
   :labels
   ( "g"  "git"
-    "gr" "github review"
+    "gr" "code review"
     "i"  "init"
     "n"  "notes"
     "o"  "organizer"
@@ -185,7 +185,6 @@
     "s"  "s-expression"
     "t"  "tools"
     "tc" "conda"
-    "ti" "lsp-ui-imenu"
     "tj" "jira"
     "ts" "sql"
     "tt" "pomodoro"
@@ -201,15 +200,13 @@
    "bw" 'save-buffer
    ;; org
    "c"   'org-capture
-   ;; magit
-   "gs"  'magit-status
-   "gc"  'magit-branch-checkout
-   "gb"  'magit-blame
-   "gl"  'magit-log-current
-   "grs" 'github-review-start
-   "grc" 'github-review-comment
-   "gra" 'github-review-approve
-   "gh"  'git-timemachine
+   ;; (ma)git
+   "gs" 'magit-status
+   "gc" 'magit-branch-checkout
+   "gb" 'magit-blame
+   "gl" 'magit-log-current
+   "gr" 'code-review-start
+   "gh" 'git-timemachine
    ;; init
    "ii"  'init-file
    "im"  'modules-file
@@ -238,18 +235,24 @@
    "sl"  'forward-sexp
    "sh"  'backward-sexp
    "st"  'transpose-sexps
+   "sf"  'move-sexp-forward
+   "sb"  'move-sexp-back
    ;; tools
    "tb"  'project-browse-website
    "tca" 'conda-env-activate
    "tcd" 'conda-env-deactivate
    "tcs" 'conda-env-switch
    "te"  'eshell
+   "tjc" 'jira-comment-on-ticket
    "tjl" 'jira-my-issues-window
    "tjm" 'jira-move-issue
+   "tjq" 'jira-run-jql-query
+   "tjs" 'jira-current-sprint
    "tjv" 'jira-ticket-summary-window
    "tm"  'email
    "tp"  'project-switch-project
    "tsl" 'sql-session-reset-window-layout
+   "tso" 'sql-session-toggle-orientation
    "tsq" 'sql-session-quit-session
    "tss" 'sql-session-start-session
    "tst" 'sql-session-toggle-tables-buffer
@@ -275,9 +278,12 @@
 ;;; Projects
 
 (defproject avicenna
-  :project-dir "~/Documents/projects/avicenna"
-  :website
-  "https://github.com/reifyhealth/concept-data/tree/develop/avicenna")
+  :project-dir  "~/Documents/projects/avicenna"
+  :website "https://github.com/reifyhealth/concept-data/tree/develop/avicenna")
+
+(defproject ri-match
+  :project-dir "~/Documents/projects/concept-data/ri-match"
+  :website      "https://github.com/reifyhealth/concept-data/tree/develop/ri-match")
 
 (defproject data-drawings
   :project-dir "~/Documents/projects/data-diagrams"
@@ -285,6 +291,10 @@
   :init
   (find-file
    "~/Documents/projects/data-diagrams/architecture_data_inference.org"))
+
+(defproject retool
+  :project-dir "~/Documents/projects/retool-admin"
+  :init (magit-status))
 
 (defproject data-warehouse
   :project-dir "~/Documents/projects/data-warehouse"
@@ -296,7 +306,7 @@
 (defproject pyreify
   :project-dir "~/scratch/project-scratch/concept-data"
   :website   "https://github.com/reifyhealth/concept-data/"
-  :conda-env "pyreify_nlp")
+  :conda-env "pyreify")
 
 (defproject sql
    :init (sql-session-start-session))
@@ -306,6 +316,10 @@
   :website
   "https://github.com/reifyhealth/prefect-enrollment-prediction"
   :conda-env   "prefect-zem")
+
+(defproject knowledge-base
+  :project-dir "~/Documents/projects/data-daze-spring-2022/knowledge-base"
+  :website "http://github.com/reifyhealth/data-date-spring-2022")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Scratch and Miscellany
@@ -345,7 +359,7 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(yaml-mode which-key use-package undo-tree ttl-mode sqlformat sphinx-doc sparql-mode quelpa projectile ox-ipynb magit lsp-ui ivy-rich haskell-mode github-review git-timemachine flycheck evil-collection ess envrc csv-mode counsel conda company cider blacken ag)))
+   '(yaml-mode which-key use-package undo-tree ttl-mode sqlformat sphinx-doc sparql-mode quelpa projectile ox-ipynb magit ivy-rich haskell-mode git-timemachine flycheck evil-collection ess envrc csv-mode counsel conda company cider blacken ag)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

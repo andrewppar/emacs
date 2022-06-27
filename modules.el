@@ -2,6 +2,7 @@
 
 (add-to-list 'exec-path "/usr/local/bin")
 (add-to-list 'exec-path "/Library/TeX/texbin/")
+(add-to-list 'exec-path "/Users/andrewparisi/anaconda3/envs/prefect-zem/bin/")
 (setenv "PATH" (mapconcat 'identity exec-path ":"))
 
 ;; TODO: Create module! macro that is a thin wrapper around use-package
@@ -100,11 +101,9 @@
    '(("default"
       ("python"
        (or (mode . python-mode)
-	   (directory . "/Users/andrewparisi/Documents/python")
 	   (name . "\*Python\*")))
       ("clojure"
        (or (mode . clojure-mode)
-	   (directory . "/Users/andrewparisi/Documents/clojure")
 	   (name . "\*cider\*")))
       ("R"
        (or (mode . ess-r-mode)))
@@ -114,10 +113,15 @@
        (or (name . "\*Help\*")
 	   (name . "\*Apropos\*")
 	   (name . "\*info\*")))
+      ("keep"
+       (or (name . "*Org Agenda*")
+	   (name . "*Todays Task Log*")
+	   (name . "status.org")
+	   (name . "*Eirene Splash*")
+	   (name . "*Messages*")
+	   (name . "*scratch*")))
       ("organizer"
-       (or (mode . org-mode)
-	   (name . "*Org Agenda*")
-	   (name . "*Todays Task Log*")))
+       (or (mode . org-mode)))
       ("emacs"
        (or (mode . emacs-lisp-mode)))
       ("filesystem"
@@ -160,23 +164,37 @@
 
   (add-hook 'git-commit-setup-hook 'git-commit-message-setup)
 
-  (major-mode-map magit-mode
-    :bindings
-    ("" 'magit-dispatch)))
+(major-mode-map magit-mode
+  :bindings
+  ("" 'magit-dispatch)))
 
 (module! git-timemachine
   :ensure t
-  :defer t
   :defer t)
 
-(module! github-review
+(module! code-review
+  :ensure t
   :defer t
+  :init
+  (setq code-review-fill-column 80
+	code-review-new-buffer-window-strategy #'switch-to-buffer
+	code-review-download-dir "/tmp/code-review/")
+  :config
+  (major-mode-map code-review-mode
+    :bindings
+    ("m"  'code-review-transient-api)
+    ("c" 'code-review-comment-add-or-edit)))
+
+(module! browse-at-remote
   :ensure t
   :init
-  (setq github-review-view-comments-in-code-lines t
-	github-review-reply-inline-comments t))
+  (defun browse-at-remote-yank ()
+    (interactive)
+    (shell-command (format "echo \"%s\" |  pbcopy" (browse-at-remote-get-url)))))
+
 
 (module! eshell
+  :use-package nil
   :init
   (load! "~/.emacs.d/eshell.el")
   (evil-define-key 'normal 'eshell-mode-map
@@ -194,6 +212,12 @@
 (module! ag
   :defer t
   :ensure t)
+
+(module! term
+  :use-package nil
+  :init (add-hook 'term-mode-hook
+		  (defun my-term-mode-hook ()
+		    (setq bidi-paragraph-direction 'left-to-right))))
 
                        ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -230,6 +254,10 @@
   :init
   (setq *project* "DPS")
   :config
+  (defun org-summary-todo (n-done n-not-done)
+    "Switch entry to DONE when all subentries are done, to TODO otherwise."
+    (let (org-log-done org-log-states)	; turn off logging
+      (org-todo (if (= n-not-done 0) "DONE" "TODO"))))
 
   (defun org-generate-pr-url (number)
     (interactive "sPR Number: ")
@@ -355,28 +383,29 @@
   (major-mode-map org-mode
     :bindings
     ("a"   'org-agenda
-     "tt"  'org-todo
-     "ts"  'org-schedule
-     "te"  'org-set-effort
-     "tp"  'org-priority
-     "ct"  'org-archive-finished-tasks
      "cs"  'org-archive-subtree
-     "jo"  'org-open-at-point
+     "ct"  'org-archive-finished-tasks
+     "di"  'org-toggle-inline-images
+     "e"   'org-export-dispatch
      "fi"  'setup-org-file
      "fmi" 'setup-meetings-file
      "fms" 'org-meeting-insert-speaker
      "ic"  'org-insert-code-block
      "ij"  'org-insert-jira-link
      "it"  'org-jira-link-todo
-     "e"   'org-export-dispatch
-     "p"   'org-generate-pr-url
-     "mp"  'org-move-subtree-up
-     "mn"  'org-move-subtree-down
+     "jo"  'org-open-at-point
+     "mh"  'org-promote-subtree
      "mj"  'org-move-item-up
      "mk"  'org-move-item-down
-     "mh"  'org-promote-subtree
      "ml"  'org-demote-subtree
-     "di"  'org-toggle-inline-images)
+     "mn"  'org-move-subtree-down
+     "mp"  'org-move-subtree-up
+     "ot"  'counsel-org-tag
+     "p"   'org-generate-pr-url
+     "te"  'org-set-effort
+     "tp"  'org-priority
+     "ts"  'org-schedule
+     "tt"  'org-todo)
     :labels
     ("i"  "insert"
      "j"  "jump"
@@ -385,6 +414,7 @@
      "c"  "clear"
      "fm" "meeting-file"
      "f"  "file"
+     "o"  "object"
      "t"  "task"))
   (evil-define-key 'normal org-mode-map
     (kbd "<tab>") 'org-cycle)
@@ -414,23 +444,27 @@
 	   "**** TODO [[https://reifyhealth.atlassian.net/browse/%^{Project}][%\\1]]: %?\nSCHEDULED: %^t")
 	  ("z" "zem" entry
   	   (file+function "~/org/status.org" org-task-goto-zem)
-	   "**** TODO [[https://reifyhealth.atlassian.net/browse/%^{Project}][%\\1]]: %?\nSCHEDULED: %^t"))
+	   "**** TODO [[https://reifyhealth.atlassian.net/browse/%^{Project}][%\\1]]: %?\nSCHEDULED: %^t")
+	  ("m" "mail" entry
+	   (file+function "~/org/status.org" org-task-goto-general)
+	   "*** TODO %?\nSCHEDULED: %t\n%a\n"))
 	org-plantuml-jar-path
 	(expand-file-name
 	 "/Users/andrewparisi/Documents/java/jars/plantuml.jar")
 	nrepl-sync-request-timeout nil)
 
-	(org-babel-do-load-languages
-	 'org-babel-load-languages
-	 '((python . t)
-	   (clojure . t)
-	   (haskell . t)
-	   (emacs-lisp . t)
-	   (sql . t)
-	   (dot . t)
-	   (plantuml . t)
-	   (shell . t)))
-	)
+  (org-babel-do-load-languages
+   'org-babel-load-languages
+   '((python . t)
+     (clojure . t)
+     (haskell . t)
+     (emacs-lisp . t)
+     (sql . t)
+     (dot . t)
+     (plantuml . t)
+     (shell . t)))
+
+  (add-hook 'org-after-todo-statistics-hook #'org-summary-todo))
 
 (module! org-agenda
   :requires evil
@@ -451,6 +485,33 @@
     "e" 'org-agenda-set-effort
     (kbd "<RET>") 'org-agenda-goto
     ">" 'org-agenda-date-prompt)
+
+  ;; work with org-agenda dispatcher [c] "Today Clocked Tasks" to view today's clocked tasks.
+  (defun org-agenda-log-mode-colorize-block ()
+    "Set different line spacing based on clock time duration."
+    (save-excursion
+      (let* ((colors (cl-case (alist-get 'background-mode (frame-parameters))
+                       ('light
+                        (list "#F6B1C3" "#FFFF9D" "#BEEB9F" "#ADD5F7"))
+                       ('dark
+                        (list "#aa557f" "DarkGreen" "DarkSlateGray" "DarkSlateBlue"))))
+             pos
+             duration)
+	(nconc colors colors)
+	(goto-char (point-min))
+	(while (setq pos (next-single-property-change (point) 'duration))
+          (goto-char pos)
+          (when (and (not (equal pos (point-at-eol)))
+                     (setq duration (org-get-at-bol 'duration)))
+            ;; larger duration bar height
+            (let ((line-height (if (< duration 15) 1.0 (+ 0.5 (/ duration 30))))
+                  (ov (make-overlay (point-at-bol) (1+ (point-at-eol)))))
+              (overlay-put ov 'face `(:background ,(car colors) :foreground "black"))
+              (setq colors (cdr colors))
+              (overlay-put ov 'line-height line-height)
+              (overlay-put ov 'line-spacing (1- line-height))))))))
+
+  ;;(add-hook 'org-agenda-finalize-hook #'org-agenda-log-mode-colorize-block)
   (setq
    org-agenda-dim-blocked-tasks 'invisible
    org-agenda-overriding-columns-format
@@ -463,11 +524,17 @@
    calendar-longitude -71.0
    calendar-location-name "Quincy, MA"))
 
+(module! org-timeline
+  :ensure t
+  :after org
+  :init
+  (add-hook 'org-agenda-finalize-hook 'org-timeline-insert-timeline :append))
+
 (module! org-roam
   :ensure t
-  :defer t
+  :after org
   :init
-  (org-roam-db-autosync-mode)
+  (setq org-roam-v2-ack t)
   (defvar *org-roam-db-cycled?* nil)
 
   (defun org-roam-cycle-db ()
@@ -513,7 +580,15 @@
 	     (file+head "${slug}.org"
                         "#+title: ${title}\n#+date: %u\n#+lastmod: \n\n")
 	     :immediate-finish t))
-          time-stamp-start "#\\+lastmod: [\t]*")))
+          time-stamp-start "#\\+lastmod: [\t]*"))
+
+  :config
+  (org-roam-db-autosync-mode)
+  (setq org-roam-directory (file-truename "~/Documents/notes/roam")
+	find-file-visit-truename t
+	org-roam-node-display-template "${title} ${tags}")
+
+  )
 
 
 
@@ -551,43 +626,11 @@
      ("pyls.plugins.pyls_mypy.live_mode" nil t)
      ("pyls.plugins.pyls_black.enabled" t t)
      ("pyls.plugins.pyls_isort.enabled" t t)))
+
+  ;; terraform
+  (add-hook 'terraform-mode-hook #'lsp)
+  (add-hook 'hcl-mode-hook #'lsp)
   )
-
-(module! lsp-ui
-  :ensure t
-  :after (lsp-mode)
-  :init (setq lsp-ui-doc-enable t
-              lsp-ui-doc-use-webkit t
-              lsp-ui-doc-header t
-              lsp-ui-doc-delay 0.2
-              lsp-ui-doc-include-signature t
-              lsp-ui-doc-alignment 'at-point
-              lsp-ui-doc-use-childframe t
-              lsp-ui-doc-border (face-foreground 'default)
-              lsp-ui-peek-enable t
-              lsp-ui-peek-show-directory t
-	      lsp-ui-sideline-show-diagnostics t
-              lsp-ui-sideline-enable t
-              lsp-ui-sideline-show-code-actions t
-              lsp-ui-sideline-show-hover t
-              lsp-ui-sideline-ignore-duplicate t)
-  :config
-  (add-to-list 'lsp-ui-doc-frame-parameters '(right-fringe . 8))
-
-  ;; `C-g'to close doc
-  (advice-add #'keyboard-quit :before #'lsp-ui-doc-hide)
-
-  ;; Reset `lsp-ui-doc-background' after loading theme
-  (add-hook 'after-load-theme-hook
-	    (lambda ()
-              (setq lsp-ui-doc-border (face-foreground 'default))
-              (set-face-background 'lsp-ui-doc-background
-				   (face-background 'tooltip))))
-
-  ;; WORKAROUND Hide mode-line of the lsp-ui-imenu buffer
-  ;; @see https://github.com/emacs-lsp/lsp-ui/issues/243
-  (defadvice lsp-ui-imenu (after hide-lsp-ui-imenu-mode-line activate)
-    (setq mode-line-format nil)))
 
 (module! flycheck
   :ensure t
@@ -778,7 +821,8 @@
      "c"  'cider-eval-defun-at-point
      "r"  'lsp-find-references
      "d"  'lsp-describe-thing-at-point
-     "tt" 'cider-test-run-project-tests
+     "tp" 'cider-test-run-project-tests
+     "tt" 'cider-test-run-test
      "tn" 'cider-test-run-ns-tests
      "a"  'lsp-execute-code-action)
     :labels
@@ -815,17 +859,20 @@
 (module! ess
   :ensure t
   :defer t
-  :init
+  :config
   (require 'ess-site)
   (add-hook
    'inferior-ess-r-mode-hook
    (lambda ()
      (progn
-       (evil-define-key 'normal 'evil-normal-state-map (kbd "C-j") 'comint-next-input)
-       (evil-define-key 'insert 'evil-insert-state-map (kbd "C-j") 'comint-next-input)
-       (evil-define-key 'normal 'evil-normal-state-map (kbd "C-k") 'comint-previous-input)
-       (evil-define-key 'insert 'evil-insert-state-map (kbd "C-k") 'comint-previous-input))))
-  :config
+       (evil-define-key 'normal 'evil-normal-state-map (kbd "C-j")
+	 'comint-next-input)
+       (evil-define-key 'insert 'evil-insert-state-map (kbd "C-j")
+	 'comint-next-input)
+       (evil-define-key 'normal 'evil-normal-state-map (kbd "C-k")
+	 'comint-previous-input)
+       (evil-define-key 'insert 'evil-insert-state-map (kbd "C-k")
+	 'comint-previous-input))))
   (setq ess-r-backend 'lsp))
 
             ;;;
@@ -836,8 +883,9 @@
 ;;; mail
 
 (module! mu4e
-  :load-path "/usr/local/share/emacs/site-lisp/mu/mu4e/"
+  :load-path "/usr/local/share/emacs/site-lisp/mu@1.6.6/mu4e"
   :config
+
   (setq mu4e-mu-binary (executable-find "mu")
 	mu4e-maildir "~/.maildir"
 	mu4e-drafts-folder "/Users/andrewparisi/.maildir/drafts"
@@ -944,7 +992,14 @@
 	     "@concept-data-production.cxyq5v2k4dfd.us-east-1.rds.amazonaws.com"
 	     ":5432"
 	     "/development")))
-          (psql-dev-cd
+          (psql-testing-eng-read
+	   (sql-product 'postgres)
+	   (sql-database
+	      (let ((result (string-trim
+			     (shell-command-to-string
+			      "aws-vault exec studyteam-testing -- bash ~/emacs-files/sql-connect.sh"))))
+		result)))
+	  (psql-testing-concept-data-postgres
 	   (sql-product 'postgres)
 	   (sql-database
 	    (concat
@@ -969,6 +1024,9 @@
 	     "@aact-db.ctti-clinicaltrials.org"
 	     ":5432"
 	     "/aact")))
+	  (kb
+	   (sql-product 'postgres)
+	   (sql-database "postgresql://localhost:5432/kb"))
 	  (redshift-dw-dev
 	   (sql-product 'postgres)
 	   (sql-database
@@ -994,6 +1052,10 @@
   (evil-define-key 'insert sql-mode-map (kbd "C-c p") 'autocomplete-table)
   (evil-define-key 'normal sql-mode-map (kbd "C-c p") 'autocomplete-table)
 
+  (major-mode-map sql-interactive-mode
+    (:bindings
+     "c" 'comint-clear-buffer))
+
   ;;(defun sqli-add-hooks ()
   ;;  "Add hooks to `sql-interactive-mode-hook'."
   ;;  (add-hook 'comint-preoutput-filter-functions
@@ -1005,7 +1067,9 @@
 
 (module! restclient
   :ensure t
-  :defer t)
+  :defer t
+  :init
+  (add-to-list 'auto-mode-alist '("\\.http\\'" . restclient-mode)))
 
 
            ;;;
@@ -1039,6 +1103,36 @@
 ;;; Utilities
 
 (module! yaml-mode
+  :defer t
+  :ensure t
+  :config
+  (add-hook 'yaml-mode-hook
+  (lambda ()
+    (outline-minor-mode)
+    (setq outline-regexp "^ *\\([A-Za-z0-9_-]*: *[>|]?$\\|-\\b\\)")))
+  (add-hook 'yaml-mode-hook 'highlight-indentation-mode)
+  (major-mode-map yaml-mode
+    :bindings))
+
+(module! markdown-mode
+  :use-package nil
+  ;; This has to exist somewhere, but I couldn't find it
+  (defun markdown-add-id-tag ()
+    (interactive)
+    (let ((full-header-text nil))
+      (save-excursion
+	(forward-line)
+	(setq full-header-text (thing-at-point 'line t)))
+      (let ((tag (->> full-header-text
+		      (replace-regexp-in-string (regexp-quote "#") "")
+		      string-trim
+		      (replace-regexp-in-string (regexp-quote " ") "-")
+		      downcase)))
+	(beginning-of-line)
+	(insert (format "<div id=\"%s\"/>" tag))
+	tag))))
+
+(module! terraform-mode
   :defer t
   :ensure t)
 
