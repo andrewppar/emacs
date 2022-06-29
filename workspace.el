@@ -103,17 +103,20 @@
     (workspace--add-workspace-no-prompt n name)))
 
 (defun workspace-to-workspace-number (n)
-  (when (<= n 0)
-    (error "Workspace number must be at least 1."))
-  (if-let ((ws-name (cdr (assoc n *workspaces*))))
-      (workspace-switch-workspace ws-name)
-    (workspace-add-workspace n))
-  (unless *workspaces*
-    (add-hook 'buffer-list-update-hook 'workspace-new-buffer)))
+  (let ((workspaces-set? *workspaces*))
+    (when (<= n 0)
+      (error "Workspace number must be at least 1."))
+    (if-let ((ws-name (cdr (assoc n *workspaces*))))
+	(workspace-switch-workspace ws-name)
+      (workspace-add-workspace n))
+    (unless workspaces-set?
+      (add-hook 'buffer-list-update-hook 'workspace-new-buffer))))
 
 (defun workspace--remove-workspace (n)
   (setq *workspaces*
-	(assoc-delete-all n *workspaces*)))
+	(assoc-delete-all n *workspaces*))
+  (setq *workspace-workspace-buffers*
+	(assoc-delete-all n *workspace-workspace-buffers*)))
 
 (defun workspace-pop ()
   (interactive)
@@ -152,12 +155,14 @@
 
 (defun workspace-switch-buffer ()
   (interactive)
-  (ivy-read "Switch to buffer: "
-	    (mapcar
-	     #'buffer-name
-	     (alist-get *current-workspace* *workspace-workspace-buffers*))
-            :keymap ivy-switch-buffer-map
-            :preselect (buffer-name (other-buffer (current-buffer)))
-            :action #'ivy--switch-buffer-action
-            :matcher #'ivy--switch-buffer-matcher
-            :caller 'ivy-switch-buffer))
+  (if  *workspace-workspace-buffers*
+      (ivy-read "Switch to buffer: "
+		(mapcar
+		 #'buffer-name
+		 (alist-get *current-workspace* *workspace-workspace-buffers*))
+		:keymap ivy-switch-buffer-map
+		:preselect (buffer-name (other-buffer (current-buffer)))
+		:action #'ivy--switch-buffer-action
+		:matcher #'ivy--switch-buffer-matcher
+		:caller 'ivy-switch-buffer)
+    (counsel-switch-buffer))) 
