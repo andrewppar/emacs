@@ -30,6 +30,7 @@
 (defvar *project-projects* '())
 (defvar *project-website-map* '())
 
+
 (defmacro defproject (project-name &rest args)
   "Macro for project declaration.
 

@@ -2,6 +2,7 @@
 
 (defvar *workspaces* '())
 (defvar *current-workspace* nil)
+(defvar *workspace-workspace-buffers* '())
 
 (defun workspace--add-ivy-view (view-name)
   ;;TODO: This should be named add-or-update...
@@ -106,7 +107,9 @@
     (error "Workspace number must be at least 1."))
   (if-let ((ws-name (cdr (assoc n *workspaces*))))
       (workspace-switch-workspace ws-name)
-    (workspace-add-workspace n)))
+    (workspace-add-workspace n))
+  (unless *workspaces*
+    (add-hook 'buffer-list-update-hook 'workspace-new-buffer)))
 
 (defun workspace--remove-workspace (n)
   (setq *workspaces*
@@ -127,3 +130,34 @@
       (progn
 	(workspace--remove-workspace ws-number)
 	(ivy-pop-view-action (assoc to-remove ivy-views))))))
+
+(defun workspace-new-buffer ()
+  (if (not *current-workspace*)
+      (message "Cannot use store workspace if no workspace is set")
+    (let* ((buffer   (current-buffer))
+	   (raw-workspace-buffers (delete-dups
+			       (alist-get
+				*current-workspace*
+				*workspace-workspace-buffers*)))
+	   (workspace-buffers '()))
+      (dolist (buffer raw-workspace-buffers)
+	(when (buffer-live-p buffer)
+	  (push buffer workspace-buffers)))
+
+      (setq *workspace-workspace-buffers*
+	    (assoc-delete-all
+	     *current-workspace* *workspace-workspace-buffers*))
+      (push (cons *current-workspace* (cons buffer workspace-buffers))
+	    *workspace-workspace-buffers*))))
+
+(defun workspace-switch-buffer ()
+  (interactive)
+  (ivy-read "Switch to buffer: "
+	    (mapcar
+	     #'buffer-name
+	     (alist-get *current-workspace* *workspace-workspace-buffers*))
+            :keymap ivy-switch-buffer-map
+            :preselect (buffer-name (other-buffer (current-buffer)))
+            :action #'ivy--switch-buffer-action
+            :matcher #'ivy--switch-buffer-matcher
+            :caller 'ivy-switch-buffer))
