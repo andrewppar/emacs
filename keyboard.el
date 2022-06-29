@@ -37,13 +37,14 @@
 	(push 'escape unread-command-events))
        (t
 	(setq unread-command-events
-	      (append unread-command-events
-		      (list evt))))))))
+	      (append unread-command-events (list evt))))))))
 (define-key
   evil-insert-state-map "j" #'cofi/maybe-exit)
 
 ;;;;;;;;;;;;;;
 ;; Keybindings
+
+(defvar *keybinding-map* nil)
 
 (defun generate-which-key-binding-sexp (map trigger binding item type)
   ;;(message (format "KeyBinding: %s %s %s %s %s" map trigger binding item type))
@@ -99,6 +100,7 @@
     result))
 
 (defmacro which-key-map (map trigger &rest configuration)
+  (declare (indent defun))
   (let ((labels              (make-labels map trigger configuration))
 	(bindings            (make-default-bindings map trigger configuration))
 	(major-mode-bindings (make-major-mode-bindings trigger configuration)))
@@ -135,11 +137,12 @@
 
 (defun generate-mm-bindings (mode bindings-plist)
   (let ((bindings (plist-get bindings-plist :bindings))
-	(mode-map (intern-soft (concat
-				(symbol-name mode)
-				"-map")))
+	(mode-map (intern
+		   (concat
+		    (symbol-name mode)
+		    "-map")))
 	(result '()))
-    (when (and mode-map bindings)
+    (when bindings
       (do-bindings (key function bindings)
 	(setq result
 	      (append (list
@@ -162,6 +165,7 @@
 	 ',mode . ,result))))
 
 (defmacro major-mode-map (mode &rest bindings-plist)
+  ;; TODO: Maybe incorporate insert mode somehow...
   (declare (indent defun))
   (let ((bindings
 	 (generate-mm-bindings mode bindings-plist))
