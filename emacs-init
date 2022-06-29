@@ -114,7 +114,7 @@
 	       :default-bindings
 	       (;; ibuffer
 		"bi" 'ibuffer
-		"bb" 'counsel-switch-buffer
+		"bb" 'workspace-switch-buffer
 		"bm" 'messages-buffer
 		"bs" 'scratch-buffer
 		;; init
