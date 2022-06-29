@@ -4,7 +4,7 @@
 
 ;; TODO: Find a better place for this maybe we need a general settings
 ;; section
-(add-hook 'write-file-functions 'delete-trailing-whitespace)
+;; (add-hook 'write-file-functions 'delete-trailing-whitespace)
 
 (defmacro load! (load-string)
   (declare (indent defun))
@@ -35,7 +35,7 @@
  :keyword  (:foreground "#AFD75F" :weight 'bold)
  :type     (:foreground "#18aed4")
  :font     (:height 180)
- :transparency ('alpha 90 90)
+;; :transparency ('alpha 90 90)
  :mode-line             (:foreground "#3b3b3f" :background "#d0d0d0")
  :mode-line-inactive    (:foreground "#3b3b3f" :background "#d0d0d0")
  :fringe   (:background "#d0d0d0"))
@@ -179,3 +179,18 @@
 (setq *end* (float-time))
 (eirene-splash (- *end* *start*))
 (put 'dired-find-alternate-file 'disabled nil)
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(package-selected-packages
+   '(ttl-mode which-key use-package undo-tree projectile magit lsp-ui ivy-rich flycheck evil-collection counsel conda company cider blacken ag))
+ '(smtpmail-smtp-server "smtp.gmail.com")
+ '(smtpmail-smtp-service 587))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )

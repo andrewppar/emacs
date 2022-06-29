@@ -69,5 +69,6 @@
     (display-recent-files)
     (goto-char start)
     (read-only-mode)
-    (when (display-graphic-p)
-      (local-set-key (kbd "<return>") #'org-open-at-point))))
+   ;; (when (display-graphic-p)
+   ;;   (local-set-key (kbd "<return>") #'org-open-at-point))
+    ))

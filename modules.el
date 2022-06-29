@@ -96,7 +96,7 @@
    #'magit-display-buffer-fullframe-status-v1
    ediff-window-setup-function
    #'ediff-setup-windows-plain)
-  
+
   (defun git-commit-message-setup ()
     (insert (format "%s " (magit-get-current-branch))))
 
@@ -125,7 +125,7 @@
 
 (module! projectile
   :ensure t
-  :defer t 
+  :defer t
   :init
   (projectile-mode +1)
   :config
@@ -183,12 +183,12 @@
     :labels
     ("i"  "insert"
      "f"  "org-file"))
-  
+
   (evil-define-key 'normal org-mode-map
     (kbd "<tab>") 'org-cycle)
-  
+
   (require 'ox-md)
-  
+
   (setq org-startup-indented t
 	org-startup-truncated nil
 	org-hide-leading-stars nil
@@ -198,7 +198,7 @@
 	'((sequence "TODO" "IN PROGRESS" "|" "DONE"))
 	org-hide-leading-stars t
 	org-confirm-babel-evaluate nil
-	org-agenda-files (list "~/org/status.org")
+	org-agenda-files (list "~/org/status.org" "~/Documents/clojure/logos/docs/todos.org")
 	org-capture-default-notes-file "~/org/status.org"
 	org-babel-clojure-backend 'cider)
   (org-babel-do-load-languages
@@ -241,10 +241,10 @@
     (interactive)
     (command-execute 'cider-switch-to-repl-buffer)
     (command-execute 'cider-switch-to-last-clojure-buffer))
-  
+
   (defun clojure-set-up-key-bindings ()
     (define-key clojure-mode-map (kbd "C-c r") 'cider-repl))
-  
+
   ;; If necessary, add more calls to `define-key' here ...
   (with-eval-after-load 'cider
     (evil-define-key 'insert cider-repl-mode-map
@@ -346,6 +346,7 @@
 (module! lsp-mode
   :ensure t
   :defer t
+  :hook (prog-mode . display-fill-column-indicator-mode)
   :init
   (setq lsp-clojure-server-command '("clojure-lsp")
  	lsp-enable-indentation nil
@@ -420,16 +421,24 @@
 	mu4e-update-interval 180
 	mu4e-attachment-dir "~/Desktop"
 	mu4e-change-filenames-when-moving t
-	user-mail-address "andrew.p.parisi@gmail.com"
 	mu4e-sent-messages-behavior 'delete
-
-
+	user-mail-address "andrew.p.parisi@gmail.com"
 	user-full-name "Andrew Parisi"
-	mu4e-compose-signature
-	"Andrew Parisi"
+	mu4e-compose-signature "Andrew Parisi"
 	mu4e-show-images t
 	mu4e-html2text-command "textutil -stdin -format html -convert txt -stdout")
-	
+
+  (require 'smtpmail)
+  (setq message-send-mail-function 'smtpmail-send-it
+	starttls-use-gnutls t
+	smtpmail-starttls-credentials '(("smtp.gmail.com" 587 nil nil))
+	smtpmail-auth-credentials
+	'(("smtp.gmail.com" 587 "andrew.p.parisi@gmail.com" nil))
+	smtpmail-default-smtp-server "smtp.gmail.com"
+	smtpmail-smtp-server "smtp.gmail.com"
+	smtpmail-smtp-service 587)
+  (setq message-kill-buffer-on-exit t)
+
   ;;Custom Bindings
   (define-key mu4e-view-mode-map (kbd "j") 'next-line)
   (define-key mu4e-view-mode-map (kbd "k") 'previous-line)
@@ -438,6 +447,21 @@
   (define-key mu4e-main-mode-map (kbd "U") 'mu4e-update-index))
 
 (setf epa-pinentry-mode 'loopback)
+
+;;;;;;;;;
+;; logos
+
+(progn
+  (load "/Users/andrew/Documents/clojure/logos/docs/logos-mode.el")
+  (major-mode-map logos-mode
+  :bindings
+  ("s" 'logos-one-step!
+   "n" 'new-logos-session!
+   "b" 'logos-back-one-step!
+   "g" 'logos-eval-buffer!
+   "r" 'logos-reset!
+   "q" 'logos-quit!)
+   ))
 
      ;;;
 ;;;;;;;;
