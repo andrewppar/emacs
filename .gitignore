@@ -7,4 +7,13 @@ network-security.data
 tramp
 transient/*
 eshell/*
-recentf
+recentf*
+secrets.el
+.lsp-session*
+.cache*
+bookmarks
+image-dired/*
+projectile.cache
+quelpa/*
+.org-id-locations
+org-roam.db
