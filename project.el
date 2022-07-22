@@ -27,7 +27,9 @@
 ;;; Code:
 
 ;;(require 'workspace)
-(defvar *projects* '())
+(defvar *project-projects* '())
+(defvar *project-website-map* '())
+
 
 (defmacro defproject (project-name &rest args)
   "Macro for project declaration.
@@ -39,34 +41,65 @@
    :conda-env   -- a specification of a conda environment
      associated with the project."
   (let* ((project-dir  (plist-get args :project-dir))
-	 (conda-env     (plist-get args :conda-env))
+	 (conda-env    (plist-get args :conda-env))
+	 (init         (plist-get args :init))
+	 (website      (plist-get args :website))
 	 (function-name (intern (->> project-name
 				     (format "%s-session")))))
-    (push `(,(symbol-name project-name) . ,function-name) *projects*)
+    (push `(,(symbol-name project-name) . ,function-name)
+	  *project-projects*)
     `(defun ,function-name (ws-num)
        (interactive "nWorkspace Number: ")
        (delete-other-windows)
-       (dired ,project-dir)
        (workspace--add-workspace-no-prompt
 	ws-num (format "{} %s" ,(symbol-name project-name)))
+       ,(when project-dir
+	    `(dired ,project-dir))
        ,(when conda-env
 	  `(progn
 	     (conda-env-deactivate)
-	     (conda-env-activate ,conda-env))))))
+	     (conda-env-activate ,conda-env)))
+       ,(when website
+	  (push `(,(format "%s" project-name) . ,website)
+		*project-website-map*)
+	  nil)
+   ,(when init
+	  `(progn
+	     ,init)))))
 
 (defun project--all-projects ()
   "Gather all project names."
-  (mapcar #'car  *projects*))
+  (mapcar #'car *project-projects*))
 
-(defun project-switch-project (workspace-number)
+(defun project-switch-project ()
   "Allow user to switch to a project.
 
-   User specifies the WORKSPACE-NUMBER and project."
-  (interactive "nWorkspace Number: ")
-  (let* ((project-name (ivy-read "Project: " (project--all-projects)))
+   User specifies the PROJECT, the highest workspace available is used."
+  (interactive)
+  (let* ((workspace-numbers (workspace-list-workspace-keys))
+	 (workspace-number (if workspace-numbers
+			       (inc (apply #'max workspace-numbers))
+			     1))
+	 (project-name (ivy-read "Project: " (project--all-projects)))
 	 (project-function
-	  (alist-get project-name *projects* nil nil #'equal)))
+	  (alist-get project-name *project-projects* nil nil #'equal)))
     (funcall project-function workspace-number)))
+
+(defun project-browse-website ()
+  "Select a project website to visit.
+
+  Options are selected from the projects
+  that specify a :website keyword."
+  (interactive)
+  (let* ((websites (mapcar #'car *project-website-map*))
+	 (to-visit (ido-completing-read
+		    "Select a website: "
+		    websites
+		    nil
+		    t))
+	 (url      (alist-get
+		    to-visit *project-website-map* nil nil #'equal)))
+    (browse-url url)))
 
 (provide 'eirene-project)
 ;;; project.el ends here
