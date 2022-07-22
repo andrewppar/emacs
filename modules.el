@@ -18,6 +18,8 @@
   :requires evil
   :diminish
   :config
+  (setq
+   undo-tree-history-directory-alist '(("." . "~/.emacs.d./.cache")))
   (global-undo-tree-mode)
   (evil-set-undo-system 'undo-tree))
 
@@ -311,6 +313,7 @@
   (add-hook 'cider-repl-mode-hook 'clojure-set-up-key-bindings)
 
   (setq cider-repl-pop-to-buffer-on-connect nil
+	clojure-toplevel-inside-comment-form t
 	cider-show-error-buffer nil))
 
 (module! clojure-mode
@@ -381,8 +384,8 @@
   :requires evil
   :config
   (setq
-   conda-anaconda-home "/Users/andrew/anaconda3"
-   conda-env-home-directory "/Users/andrew/anaconda3"))
+   conda-anaconda-home "/opt/anaconda3"
+   conda-env-home-directory "/opt/anaconda3"))
 
       ;;;
 ;;;;;;;;;
@@ -457,6 +460,15 @@
   :ensure t
   :defer t
   :requires evil)
+
+(module! latex
+  :use-package nil
+  (defun new-env (env-name)
+    (interactive "sEnv Name: ")
+    (beginning-of-line)
+    (insert (format "\\begin{%s}\n" env-name))
+    (save-excursion
+      (insert (format "\n\\end{%s}" env-name)))))
 
     ;;;
 ;;;;;;;
