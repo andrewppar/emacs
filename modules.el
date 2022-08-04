@@ -328,7 +328,9 @@
      "jq" 'cider-quit
      "n"  'cider-repl-set-ns
      "q"  'cider-quit
-     "e"  'cider-eval-bufer
+     "eb" 'cider-eval-bufer
+     "ec" 'cider-eval-defun-to-comment
+     "ee" 'cider-eval-defun-at-point
      "s"  'cider-toggle-trace-var
      "g"  'xref-find-definitions
      "c"  'cider-eval-defun-at-point
@@ -463,12 +465,16 @@
 
 (module! latex
   :use-package nil
-  (defun new-env (env-name)
+  (defun latex-new-env (env-name)
     (interactive "sEnv Name: ")
     (beginning-of-line)
     (insert (format "\\begin{%s}\n" env-name))
     (save-excursion
-      (insert (format "\n\\end{%s}" env-name)))))
+      (insert (format "\n\\end{%s}" env-name))))
+
+  (major-mode-map latex-mode
+    :bindings
+    ("e" 'latex-new-env)))
 
     ;;;
 ;;;;;;;
