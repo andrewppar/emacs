@@ -24,12 +24,6 @@
 (load! "~/.emacs.d/workspace.el")
 (load! "~/.emacs.d/project.el")
 
-;;; Custom Work Helpers
-(load! "~/emacs-files/timesheet.el")
-(load! "~/emacs-files/diary-helpers.el")
-(load! "~/emacs-files/sql-session.el")
-(load! "~/emacs-files/jira.el")
-
 ;; Custom Theme
 (colors!
   :background            "#3b3b3f"
@@ -45,6 +39,7 @@
   :transparency          ('alpha 90 90)
   :mode-line             (:foreground "#3b3b3f" :background "#d0d0d0")
   :mode-line-inactive    (:foreground "#3b3b3f" :background "#d0d0d0")
+  :prettify-symbols      t
   :fringe                (:background "#d0d0d0"))
 
 (mode-line!

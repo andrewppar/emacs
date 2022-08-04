@@ -11,6 +11,8 @@
   :ensure t
   :requires evil
   :diminish
+  :init
+  (setq undo-tree-history-directory-alist '(("." . "~/.emacs.d/undo")))
   :config
   (global-undo-tree-mode)
   (evil-set-undo-system 'undo-tree))
@@ -67,6 +69,9 @@
   :init
   (turn-on-pbcopy))
 
+(module! recentf-mode
+  :use-package nil
+  (recentf-mode))
                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -92,7 +97,7 @@
    ibuffer-expert t
    ibuffer-show-empty-filter-groups nil)
   (add-hook 'ibuffer-mode-hook
-	    '(lambda ()
+	    #'(lambda ()
 	       (ibuffer-switch-to-saved-filter-groups
 		"default"))))
 
@@ -119,19 +124,6 @@
   :ensure t
   :defer t)
 
-(module! code-review
-  :ensure t
-  :defer t
-  :init
-  (setq code-review-fill-column 80
-	code-review-new-buffer-window-strategy #'switch-to-buffer
-	code-review-download-dir "/tmp/code-review/")
-  :config
-  (major-mode-map code-review-mode
-    :bindings
-    ("m"  'code-review-transient-api)
-    ("c" 'code-review-comment-add-or-edit)))
-
 (module! eshell
   :use-package nil
   :init
@@ -152,26 +144,19 @@
   :defer t
   :ensure t)
 
-(module! quelpa
-  :defer t
-  :ensure t)
-
 ;; TODO: Figure out a way
 ;; to make module just a wrapper
 ;; and not use use-package.
 
-(module! recentf-mode
-  :use-package nil
-  (recentf-mode))
-
-(module! projectile
+(module! lsp-mode
   :ensure t
+  :hook (prog-mode . display-fill-column-indicator-mode)
   :init
-  (projectile-mode +1)
-  :config
-  (setq projectile-completion-system 'ivy
-        projectile-switch-project-action 'projectile-dired
-	projectile-sort-order 'recentf))
+  (setq lsp-enable-indentation nil
+	lsp-enable-completion-at-point nil
+	lsp-lens-enable t
+	lsp-signature-auto-activate nil)
+  )
 
                        ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
