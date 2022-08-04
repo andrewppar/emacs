@@ -1,8 +1,61 @@
+;;; workspace.el --- Provide Eirene Workspaces -*- lexical-binding: t; -*-
+
+;; Copyright (C) 2022 Andrew Parisi
+
+;; Author: Andrew Parisi <andrew.p.parisi@gmail.com>
+;; Keywords: lisp
+;; Version: 0.0.1
+
+;; This program is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+
+;; Create, Manage, and Delete Eirene Workspaces
+
+;;; Code:
 (require 'ivy)
 
 (defvar *workspaces* '())
 (defvar *current-workspace* nil)
 (defvar *workspace-workspace-buffers* '())
+
+(defmacro -> (item &rest forms)
+  (cond ((not forms)
+	 item)
+	((length= forms 1)
+	 (let ((form (car forms)))
+	   (if (listp form)
+	       `(,(car form) ,item ,@(cdr form))
+	     (list form item))))
+	(t
+	 `(->
+	   (-> ,item ,(car forms))
+	   ,@(cdr forms)))))
+
+(defmacro ->> (item &rest forms)
+  (cond ((not forms)
+	 item)
+	((length= forms 1)
+	 (let ((form (car forms)))
+	   (if (listp form)
+	       (reverse
+		(cons item (reverse form)))
+	     (list form item))))
+	(t
+	 `(->>
+	   (->> ,item ,(car forms))
+	   ,@(cdr forms)))))
 
 (defun workspace--add-ivy-view (view-name)
   ;;TODO: This should be named add-or-update...
@@ -83,14 +136,35 @@
   ;; NOTE: This function is not safe and needs some
   ;; guard rails since I want to be able to call it from
   ;; organizer-session
+  (let ((workspaces-set? *workspaces*))
   (if (workspace--workspace-name-exists ws-name)
       (message
        (format "Workspace with name %s already exists" ws-name))
     (progn
       (setq *current-workspace* number)
       (push (cons number ws-name) *workspaces*)
-      (workspace--add-ivy-view ws-name))))
+      (workspace--add-ivy-view ws-name)
+      (unless workspaces-set?
+	(add-hook 'change-major-mode-hook 'workspace-new-buffer))))))
 
+(defun workspace--get-next-workspace-number-internal
+    (workspace-numbers)
+  (let ((sorted-numbers (sort workspace-numbers #'<)))
+    (cl-do ((last-number    0 current-number)
+	    (current-number (car sorted-numbers) (car todo))
+	    (todo           (cdr sorted-numbers) (cdr todo)))
+	((or (not todo)
+	     (not (equal (inc last-number) current-number)))
+	 (if (not (equal (inc last-number) current-number))
+	     (inc last-number)
+	   (inc (inc last-number)))))))
+
+(defun workspace-get-next-workspace-number ()
+  (let ((workspace-numbers (workspace-list-workspace-keys)))
+    (if workspace-numbers
+	(workspace--get-next-workspace-number-internal
+	 workspace-numbers)
+      1)))
 
 (defun workspace-add-workspace (n)
   (let ((name
@@ -118,21 +192,26 @@
   (setq *workspace-workspace-buffers*
 	(assoc-delete-all n *workspace-workspace-buffers*)))
 
+(defun workspace-remove-workspace (ws-name)
+  (let ((ws-number  (-> ws-name
+			(split-string ":")
+			car
+			string-to-number)))
+    (if (equal ws-number *current-workspace*)
+	(message "Cannot delete the current workspace")
+      (let ((buffers (alist-get
+		      ws-number *workspace-workspace-buffers*)))
+	(workspace--remove-workspace ws-number)
+	(ivy-pop-view-action (assoc ws-name ivy-views))
+	(dolist (buffer buffers)
+	  (kill-buffer buffer))))))
+
 (defun workspace-pop ()
   (interactive)
   (let* ((workspaces (workspace-list))
-	 (to-remove  (ivy-read
-		      "Pop Workspace: "
-		      workspaces))
-	 (ws-number  (-> to-remove
-			 (split-string ":")
-			 car
-			 string-to-number)))
-    (if (equal ws-number *current-workspace*)
-	(message "Cannot delete the current workspace")
-      (progn
-	(workspace--remove-workspace ws-number)
-	(ivy-pop-view-action (assoc to-remove ivy-views))))))
+	 (to-remove  (ivy-read "Pop Workspace: " workspaces)))
+    (workspace-remove-workspace to-remove)))
+
 
 (defun workspace-new-buffer ()
   (if (not *current-workspace*)
@@ -165,4 +244,5 @@
 		:action #'ivy--switch-buffer-action
 		:matcher #'ivy--switch-buffer-matcher
 		:caller 'ivy-switch-buffer)
-    (counsel-switch-buffer))) 
+    (counsel-switch-buffer)))
+;;; workspace.el ends here

@@ -17,3 +17,6 @@ projectile.cache
 quelpa/*
 .org-id-locations
 org-roam.db
+notes
+undo/**
+forge-database.sqlite

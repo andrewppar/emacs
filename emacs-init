@@ -39,6 +39,7 @@
   :transparency          ('alpha 90 90)
   :mode-line             (:foreground "#3b3b3f" :background "#d0d0d0")
   :mode-line-inactive    (:foreground "#3b3b3f" :background "#d0d0d0")
+  :prettify-symbols      t
   :fringe                (:background "#d0d0d0"))
 
 (mode-line!
