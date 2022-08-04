@@ -180,6 +180,14 @@
 
 ;; TODO
 ;; Clean this up and put it in a macro
+
+;; Like this ??? 
+;;(evil-keys
+;; :normal "'" 'evil-jump-item
+;; :visual "'" 'evil-jump-item
+;; :normal (kbd "C-k") 'comint-previous-input
+;; ...)
+
 (evil-define-key 'normal 'evil-normal-state-map "'" 'evil-jump-item)
 (evil-define-key 'visual 'evil-visual-state-map "'" 'evil-jump-item)
 
@@ -192,8 +200,6 @@
 ;; Hacks!
 (add-to-list 'exec-path "/usr/local/bin")
 (setenv "PATH" (mapconcat 'identity exec-path ":"))
-(put 'dired-find-alternate-file 'disabled nil)
-
 
 (setq *end* (float-time))
 (eirene-splash (- *end* *start*))

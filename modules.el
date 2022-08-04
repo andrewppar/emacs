@@ -58,11 +58,13 @@
   (evil-collection-init)
   (setq evil-collection-magit-use-z-for-folds t))
 
-(module! dired
-  :use-package nil
-  (setq dired-dwim-target t)
-  (when (string= system-type "darwin")
-    (setq dired-use-ls-dired nil)))
+(module! ranger
+  :ensure t
+  :init
+  (setq ranger-override-dired 'ranger
+	ranger-show-preview t
+	ranger-cleanup-on-disable t
+	ranger-show-hidden t))
 
 (module! pbcopy
   :ensure t
