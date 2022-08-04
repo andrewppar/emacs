@@ -1,3 +1,4 @@
+mu4e
 company
 lsp-ui
 lsp-mode
@@ -10,14 +11,13 @@ cider
 org-agenda
 org
 ag
-projectile
-quelpa
+lsp-mode
 ag
-code-review
 git-timemachine
 magit
 ibuffer
 pbcopy
+ranger
 evil-collection
 swiper
 ivy-rich

@@ -18,10 +18,9 @@
   :requires evil
   :diminish
   :init
-  (setq undo-tree-history-directory-alist '(("." . "~/.emacs.d/undo")))
   :config
   (setq
-   undo-tree-history-directory-alist '(("." . "~/.emacs.d./.cache")))
+  undo-tree-history-directory-alist '(("." . "~/.emacs.d/undo")))
   (global-undo-tree-mode)
   (evil-set-undo-system 'undo-tree))
 
@@ -71,6 +70,15 @@
   (setq dired-dwim-target t)
   (when (string= system-type "darwin")
     (setq dired-use-ls-dired nil)))
+
+(module! ranger
+  :ensure t
+  :init
+  (setq ranger-override-dired 'ranger
+	ranger-show-preview t
+	ranger-cleanup-on-disable t
+	ranger-show-hidden t)
+  )
 
 (module! pbcopy
   :ensure t
