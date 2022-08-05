@@ -57,6 +57,14 @@
 
 ;; Custom Bindings
 
+(defun save-all-buffers ()
+  (interactive)
+  (save-some-buffers t))
+
+(defun save-all-buffers-kill-no-prompt ()
+  (interactive)
+  (save-buffers-kill-emacs t))
+
 (defun messages-buffer ()
   (interactive)
   (switch-to-buffer "*Messages*"))
@@ -132,8 +140,11 @@
    "bi" 'ibuffer
    "bb" 'ivy-switch-buffer
    "bm" 'messages-buffer
+   "bs" 'save-buffer
+   "bt" 'scratch-buffer
+   "ba" 'save-all-buffers
+   "bq" 'save-all-buffers-kill-no-prompt
    "bs" 'scratch-buffer
-   "bw" 'save-buffer
    ;; (ma)git
    "gs" 'magit-status
    "gc" 'magit-branch-checkout
@@ -181,7 +192,7 @@
 ;; TODO
 ;; Clean this up and put it in a macro
 
-;; Like this ??? 
+;; Like this ???
 ;;(evil-keys
 ;; :normal "'" 'evil-jump-item
 ;; :visual "'" 'evil-jump-item
@@ -190,6 +201,7 @@
 
 (evil-define-key 'normal 'evil-normal-state-map "'" 'evil-jump-item)
 (evil-define-key 'visual 'evil-visual-state-map "'" 'evil-jump-item)
+(define-key evil-motion-state-map (kbd ":") 'counsel-M-x)
 
 (evil-define-key 'normal 'evil-normal-state-map (kbd "C-k") 'comint-previous-input)
 (evil-define-key 'insert 'evil-insert-state-map (kbd "C-k") 'comint-previous-input)
