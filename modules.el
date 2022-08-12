@@ -1,12 +1,8 @@
 (load! "~/.emacs.d/keyboard.el")
 
-(add-to-list 'exec-path "/usr/local/bin")
-(add-to-list 'exec-path "/Library/TeX/texbin/")
-(setenv "PATH" (mapconcat 'identity exec-path ":"))
-
-;; TODO: Create module! macro that is a thin wrapper around use-package
-;; but that makes defining major mode and default bindings for a mode easy
 ;; TODO: Figure a way to auto configure lsp mode for a language
+;; TODO: Add native quelpa support and ensure we can call it from
+;; module!
 ;;;;;;;;;;;;;;;;;;;;
 ;; Required Packages
 ;; TODO See whether or not these can be paired down
@@ -21,19 +17,22 @@
 
 (module! counsel
   :ensure t
+  :after ivy
   :requires evil
   :config (counsel-mode))
 
 (module! ivy
   :ensure t
+  :defer 0.1
+  :diminish
   :requires evil
   :config
   (setq ivy-height 10
-		 ivy-use-virtual-buffers t
-		 ivy-count-format "(%d/%d) "
-		 ivy-initial-inputs-alist nil
-		 ivy-re-builders-alist
-		 '((t . ivy--regex-ignore-order)))
+	ivy-use-virtual-buffers t
+	ivy-count-format "(%d/%d) "
+	ivy-initial-inputs-alist nil
+	ivy-re-builders-alist
+	'((t . ivy--regex-ignore-order)))
   (ivy-mode 1))
 
 (module! ivy-rich
@@ -56,6 +55,17 @@
   :config
   (evil-collection-init)
   (setq evil-collection-magit-use-z-for-folds t))
+
+(module! dired
+  :use-package nil
+  (setq dired-dwim-target t)
+  (when (string= system-type "darwin")
+    (setq dired-use-ls-dired nil)))
+
+(module! pbcopy
+  :ensure t
+  :init
+  (turn-on-pbcopy))
 
                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -100,28 +110,39 @@
   (defun git-commit-message-setup ()
     (insert (format "%s " (magit-get-current-branch))))
 
-  (defun git-commit-message-setup ()
-    (insert (format "%s " (magit-get-current-branch))))
-
   (add-hook 'git-commit-setup-hook 'git-commit-message-setup)
 
   (major-mode-map magit-mode
     :bindings
-    ("" 'magit-dispatch))
+    ("" 'magit-dispatch)))
 
-  )
+(module! git-timemachine
+  :ensure t
+  :defer t)
 
 (module! eshell
+  :use-package nil
   :init
+  (load! "~/.emacs.d/eshell.el")
   (evil-define-key 'normal 'eshell-mode-map
-    (kbd "C-j") 'eshell-next-input
-    (kbd "C-k") 'eshell-previous-input)
+    (kbd "C-j") 'eshell-next-matching-input-from-input
+    (kbd "C-k") 'eshell-previous-matching-input-from-input
+    (kbd "RET") 'eshell/send-input)
   (evil-define-key 'insert 'eshell-mode-map
-    (kbd "C-j") 'eshell-next-input
-    (kbd "C-k") 'eshell-previous-input)
+    (kbd "C-j") 'eshell-next-matching-input-from-input
+    (kbd "C-k") 'eshell-previous-matching-input-from-input
+    (kbd "RET") 'eshell/send-input)
   (major-mode-map eshell-mode
     (:bindings
      "c" 'eshell/clear)))
+
+(module! ag
+  :defer t
+  :ensure t)
+
+(module! recentf-mode
+  :use-package nil
+  (recentf-mode))
 
 (module! projectile
   :ensure t
@@ -132,12 +153,6 @@
   (setq projectile-completion-system 'ivy
         projectile-switch-project-action 'projectile-dired
 	projectile-sort-order 'recentf))
-
-                              ;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(module! ag
-  :ensure t)
 
 ;;;;;;;
 ;;; org
@@ -231,7 +246,7 @@
 ;;;;;;;;;;;
 ;;; clojure
 
-(module! cider				;
+(module! cider
   :ensure t
   :requires evil
   :defer t
@@ -358,15 +373,17 @@
   (add-hook 'python-mode-hook #'lsp)
   :config
   (require 'lsp-clojure)
-  (add-to-list 'lsp-language-id-configuration '(clojure-mode . "clojure"))
-  (add-to-list 'lsp-language-id-configuration '(clojurec-mode . "clojure"))
-  (add-to-list 'lsp-language-id-configuration '(clojurescript-mode . "clojurescript")))
+  (add-to-list 'lsp-language-id-configuration
+	       '(clojure-mode . "clojure"))
+  (add-to-list 'lsp-language-id-configuration
+	       '(clojurec-mode . "clojure"))
+  (add-to-list 'lsp-language-id-configuration
+	       '(clojurescript-mode . "clojurescript")))
 
 (module! lsp-ui
   :ensure t
   :defer t
   :after (lsp-mode)
-
   :init (setq lsp-ui-doc-enable t
               lsp-ui-doc-use-webkit t
               lsp-ui-doc-header t
@@ -445,8 +462,6 @@
   (define-key mu4e-headers-mode-map (kbd "j") 'next-line)
   (define-key mu4e-headers-mode-map (kbd "k") 'previous-line)
   (define-key mu4e-main-mode-map (kbd "U") 'mu4e-update-index))
-
-(setf epa-pinentry-mode 'loopback)
 
 ;;;;;;;;;
 ;; logos
