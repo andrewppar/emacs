@@ -100,7 +100,7 @@
 
 (evil-define-key 'normal eirene-splash-mode-map (kbd "r") 'goto-recents)
 (evil-define-key 'normal eirene-splash-mode-map (kbd "p") 'goto-projects)
-(evil-define-key 'normal eirene-splash-mode-map (kbd "RET") 'org-open-at-point)
+;(evil-define-key 'normal eirene-splash-mode-map (kbd "RET") 'org-open-at-point)
 
 (defun eirene-splash (load-time)
   (switch-to-buffer "*Eirene Splash*")
@@ -110,7 +110,7 @@
     (kill-region start end)
     (insert "\n\n\n")
     (if (display-graphic-p)
-	(display-eirene-banner-graphics)
+	     (display-eirene-banner-graphics)
       (display-eirene-banner-terminal))
     (insert "\n\n\n")
     (insert (format "Load time: %s" load-time))

@@ -68,7 +68,9 @@
 	(font               (plist-get color-config :font))
 	(mode-line          (plist-get color-config :mode-line))
 	(mode-line-inactive (plist-get color-config :mode-line-inactive))
-	(transparency       (plist-get color-config :transparency)))
+	(transparency       (plist-get color-config :transparency))
+	(prettify-symbols   (plist-get color-config :prettify-symbols))
+	)
     ;; TODO Do something different to set-x-color when in terminal
 
     (when background
@@ -105,6 +107,8 @@
 	    (num1   (cadr transparency))
 	    (num2   (caddr transparency)))
 	(push `(set-frame-parameter (selected-frame) ,letter '(,num1 ,num2)) result)))
+    (when prettify-symbols
+      (push (global-prettify-symbols-mode 1) result))
     (when font
       (push (generate-face-attribute :font font) result))
     (cons 'progn result)))

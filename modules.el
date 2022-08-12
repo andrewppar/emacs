@@ -11,7 +11,10 @@
   :ensure t
   :requires evil
   :diminish
+  :init
   :config
+  (setq
+  undo-tree-history-directory-alist '(("." . "~/.emacs.d/undo")))
   (global-undo-tree-mode)
   (evil-set-undo-system 'undo-tree))
 
@@ -67,6 +70,9 @@
   :init
   (turn-on-pbcopy))
 
+(module! recentf-mode
+  :use-package nil
+  (recentf-mode))
                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -92,7 +98,7 @@
    ibuffer-expert t
    ibuffer-show-empty-filter-groups nil)
   (add-hook 'ibuffer-mode-hook
-	    '(lambda ()
+	    #'(lambda ()
 	       (ibuffer-switch-to-saved-filter-groups
 		"default"))))
 
@@ -108,13 +114,17 @@
    #'ediff-setup-windows-plain)
 
   (defun git-commit-message-setup ()
-    (insert (format "%s " (magit-get-current-branch))))
+    (insert (format "%s \n" (magit-get-current-branch))))
 
   (add-hook 'git-commit-setup-hook 'git-commit-message-setup)
 
   (major-mode-map magit-mode
     :bindings
     ("" 'magit-dispatch)))
+
+(module! git-timemachine
+  :ensure t
+  :defer t)
 
 (module! git-timemachine
   :ensure t
@@ -140,19 +150,16 @@
   :defer t
   :ensure t)
 
-(module! recentf-mode
-  :use-package nil
-  (recentf-mode))
-
-(module! projectile
+(module! lsp-mode
   :ensure t
   :defer t
+  :hook (prog-mode . display-fill-column-indicator-mode)
   :init
-  (projectile-mode +1)
-  :config
-  (setq projectile-completion-system 'ivy
-        projectile-switch-project-action 'projectile-dired
-	projectile-sort-order 'recentf))
+  (setq lsp-enable-indentation nil
+	lsp-enable-completion-at-point nil
+	lsp-lens-enable t
+	lsp-signature-auto-activate nil)
+  )
 
 ;;;;;;;
 ;;; org
@@ -273,6 +280,7 @@
   (add-hook 'cider-repl-mode-hook 'clojure-set-up-key-bindings)
 
   (setq cider-repl-pop-to-buffer-on-connect nil
+	clojure-toplevel-inside-comment-form t
 	cider-show-error-buffer nil))
 
 (module! clojure-mode
@@ -287,7 +295,9 @@
      "jq" 'cider-quit
      "n"  'cider-repl-set-ns
      "q"  'cider-quit
-     "e"  'cider-eval-bufer
+     "eb" 'cider-eval-bufer
+     "ec" 'cider-eval-defun-to-comment
+     "ee" 'cider-eval-defun-at-point
      "s"  'cider-toggle-trace-var
      "g"  'xref-find-definitions
      "c"  'cider-eval-defun-at-point
@@ -343,8 +353,8 @@
   :requires evil
   :config
   (setq
-   conda-anaconda-home "/Users/andrew/anaconda3"
-   conda-env-home-directory "/Users/andrew/anaconda3"))
+   conda-anaconda-home "/opt/anaconda3"
+   conda-env-home-directory "/opt/anaconda3"))
 
       ;;;
 ;;;;;;;;;
@@ -422,6 +432,19 @@
   :defer t
   :requires evil)
 
+(module! latex
+  :use-package nil
+  (defun latex-new-env (env-name)
+    (interactive "sEnv Name: ")
+    (beginning-of-line)
+    (insert (format "\\begin{%s}\n" env-name))
+    (save-excursion
+      (insert (format "\n\\end{%s}" env-name))))
+
+  (major-mode-map latex-mode
+    :bindings
+    ("e" 'latex-new-env)))
+
     ;;;
 ;;;;;;;
 
@@ -429,7 +452,7 @@
 ;;; mail
 
 (module! mu4e
-  :load-path  "/usr/local/share/emacs/site-lisp/mu/mu4e/"
+  :load-path  "/usr/local/share/emacs/site-lisp/mu@1.6.6/mu4e/"
   :config
   (setq mu4e-mu-binary (executable-find "mu")
 	mu4e-maildir "~/.maildir"
