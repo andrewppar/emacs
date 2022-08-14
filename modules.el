@@ -452,7 +452,7 @@
 ;;; mail
 
 (module! mu4e
-  :load-path  "/usr/local/share/emacs/site-lisp/mu@1.6.6/mu4e/"
+  :load-path  "/usr/local/share/emacs/site-lisp/mu/mu4e/"
   :config
   (setq mu4e-mu-binary (executable-find "mu")
 	mu4e-maildir "~/.maildir"

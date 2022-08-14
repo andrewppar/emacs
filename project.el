@@ -29,6 +29,9 @@
 ;;(require 'workspace)
 (defvar *project-projects* '())
 (defvar *project-website-map* '())
+(defvar *project-directories* '())
+(defvar *project-quit-function* ())
+
 
 (defun alist-update (alist key update-function &rest args)
   (let* ((old-value (alist-get key alist nil t #'equal))
