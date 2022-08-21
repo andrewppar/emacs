@@ -144,11 +144,11 @@
 		"bi" 'ibuffer
 		"bb" 'workspace-switch-buffer
 		"bm" 'messages-buffer
-		"bs" 'save-buffer
 		"bt" 'scratch-buffer
 		"ba" 'save-all-buffers
 		"bq" 'save-all-buffers-kill-no-prompt
-		"bs" 'scratch-buffer
+		"bs" 'save-buffer
+
 		;; init
 		"ii"  'init-file
 		"im"  'modules-file
@@ -183,57 +183,6 @@
 		"tca" 'conda-env-activate
 		"tcd" 'conda-env-deactivate
 		))
-
-(defproject logos
-  :project-dir "/Users/andrew/Documents/clojure/logos")
-
-(which-key-map evil-normal-state-map ","
-  :labels
-  ("g"  "git"
-    "i"  "init"
-    "p"  "projectile"
-    "s"  "s-expression"
-    "w"  "workspaces")
-  :default-bindings
-  (;; ibuffer
-   "bi" 'ibuffer
-   "bb" 'ivy-switch-buffer
-   "bm" 'messages-buffer
-   "bs" 'scratch-buffer
-   "bw" 'save-buffer
-   ;; (ma)git
-   "gs" 'magit-status
-   "gc" 'magit-branch-checkout
-   "gb" 'magit-blame
-   "gl" 'magit-log-current
-   "gh" 'git-timemachine
-   ;; init
-   "ii"  'init-file
-   "im"  'modules-file
-   "ic"  'core-file
-   "id"  'display-file
-   "ik"  'keyboard-file
-   ;; projectile
-   "p"   'projectile-command-map
-   ;; s-expressions
-   "sq"  'indent-pp-sexp
-   "sl"  'forward-sexp
-   "sh"  'backward-sexp
-   "st"  'transpose-sexps
-   "sf"  'move-sexp-forward
-   "sb"  'move-sexp-back
-   ;; tools
-   "te"  'eshell
-   "tp"  'project-switch-project
-   "w1"  'to-workspace-1
-   "w2"  'to-workspace-2
-   "w3"  'to-workspace-3
-   "w4"  'to-workspace-4
-   "w5"  'to-workspace-5
-   "w6"  'to-workspace-6
-   "wd"  'workspace-pop
-   ;; generic
-   "x"  'counsel-M-x))
 
 ;;;;;;;;;;;;
 ;;; Projects

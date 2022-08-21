@@ -63,7 +63,20 @@
   :use-package nil
   (setq dired-dwim-target t)
   (when (string= system-type "darwin")
-    (setq dired-use-ls-dired nil)))
+    (setq dired-use-ls-dired nil))
+  (defun dired-goto-and-find ()
+    (interactive)
+    (let ((file (expand-file-name
+		 (read-file-name "Goto file: "
+				 (dired-current-directory) nil t))))
+      (dired-goto-file file)
+      (dired-find-file)))
+
+  (evil-define-key
+    'normal dired-mode-map
+    "l" 'dired-find-file
+    "h" 'dired-up-directory
+    "f" 'dired-goto-and-find))
 
 (module! pbcopy
   :ensure t
