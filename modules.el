@@ -58,13 +58,26 @@
   (evil-collection-init)
   (setq evil-collection-magit-use-z-for-folds t))
 
-(module! ranger
-  :ensure t
-  :init
-  (setq ranger-override-dired 'ranger
-	ranger-show-preview t
-	ranger-cleanup-on-disable t
-	ranger-show-hidden t))
+(module! dired
+  :use-package nil
+
+  (defun dired-goto-and-find ()
+    (interactive)
+    (let ((file (expand-file-name
+		 (read-file-name "Goto file: "
+				 (dired-current-directory) nil t))))
+      (dired-goto-file file)
+      (dired-find-alternate-file)))
+
+  (setq dired-dwim-target t)
+  (when (string= system-type "darwin")
+    (setq dired-use-ls-dired nil))
+
+  (evil-define-key
+    'normal dired-mode-map
+    "l" 'dired-find-alternate-file
+    "h" 'dired-up-directory
+    "f" 'dired-goto-and-find))
 
 (module! pbcopy
   :ensure t
