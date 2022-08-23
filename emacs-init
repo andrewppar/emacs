@@ -144,7 +144,6 @@
    "bt" 'scratch-buffer
    "ba" 'save-all-buffers
    "bq" 'save-all-buffers-kill-no-prompt
-   "bs" 'scratch-buffer
    ;; (ma)git
    "gs" 'magit-status
    "gc" 'magit-branch-checkout
@@ -201,7 +200,6 @@
 
 (evil-define-key 'normal 'evil-normal-state-map "'" 'evil-jump-item)
 (evil-define-key 'visual 'evil-visual-state-map "'" 'evil-jump-item)
-(define-key evil-motion-state-map (kbd ":") 'counsel-M-x)
 
 (evil-define-key 'normal 'evil-normal-state-map (kbd "C-k") 'comint-previous-input)
 (evil-define-key 'insert 'evil-insert-state-map (kbd "C-k") 'comint-previous-input)
@@ -215,3 +213,4 @@
 
 (setq *end* (float-time))
 (eirene-splash (- *end* *start*))
+(put 'dired-find-alternate-file 'disabled nil)
