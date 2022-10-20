@@ -30,6 +30,9 @@
 (defvar *current-workspace* nil)
 (defvar *workspace-workspace-buffers* '())
 
+(defun length= (lista num)
+  (equal (length lista) num))
+
 (defmacro -> (item &rest forms)
   (cond ((not forms)
 	 item)
