@@ -30,55 +30,49 @@
 (defvar *current-workspace* nil)
 (defvar *workspace-workspace-buffers* '())
 
-(defmacro -> (item &rest forms)
-  (cond ((not forms)
-	 item)
-	((length= forms 1)
-	 (let ((form (car forms)))
-	   (if (listp form)
-	       `(,(car form) ,item ,@(cdr form))
-	     (list form item))))
-	(t
-	 `(->
-	   (-> ,item ,(car forms))
-	   ,@(cdr forms)))))
+(defun length= (lista num)
+  (equal (length lista) num))
 
-(defmacro ->> (item &rest forms)
-  (cond ((not forms)
-	 item)
-	((length= forms 1)
-	 (let ((form (car forms)))
-	   (if (listp form)
-	       (reverse
-		(cons item (reverse form)))
-	     (list form item))))
-	(t
-	 `(->>
-	   (->> ,item ,(car forms))
-	   ,@(cdr forms)))))
+(defun workspace-key-from-name (ws-name)
+  (cl-do ((next-items (cdr *workspaces*)
+		      (cdr next-items))
+	  (current-item (car *workspaces*)
+			(car next-items)))
+      ((or (equal (cdr current-item) ws-name)
+	   (not next-items))
+       (when (equal (cdr current-item) ws-name)
+	 (car current-item)))
+    nil))
 
-(defun workspace--add-ivy-view (view-name)
-  ;;TODO: This should be named add-or-update...
+(defun workspace--add-or-update-ivy-view (view-name)
   (let ((view (ivy--get-view-config))
 	(x (assoc view-name ivy-views)))
     (if x
         (setcdr x (list view))
       (push (list view-name view) ivy-views))))
 
+(defun worskpace-save-current-view ()
+  (if (not *current-workspace*)
+      (message "There is no workspace to save")
+    (let* ((current-view    (ivy--get-view-config))
+	   (current-ws-name (cdr
+			     (assoc *current-workspace* *workspaces*)))
+	   (old-config      (assoc current-ws-name ivy-views)))
+      (setcdr old-config (list current-view)))))
+
 (defun workspace--set-workspace-and-switch! (ws-name)
-  (setq
-   *current-workspace* (workspace-key-from-name ws-name))
+  (setq *current-workspace* (workspace-key-from-name ws-name))
   (ivy--switch-buffer-action ws-name))
 
 (defun workspace-switch-workspace (ws-name)
   (if (not *current-workspace*)
       (workspace--set-workspace-and-switch! ws-name)
-    (let ((current-ws-name
-	   (cdr (assoc *current-workspace* *workspaces*))))
+    (let ((current-ws-name (cdr
+			    (assoc *current-workspace* *workspaces*))))
       (if (equal ws-name current-ws-name)
 	  (ivy--switch-buffer-action current-ws-name)
 	(progn
-	  (workspace--add-ivy-view current-ws-name)
+	  (workspace--add-or-update-ivy-view current-ws-name)
 	  (workspace--set-workspace-and-switch! ws-name))))))
 
 (defun workspace-list-workspace-names ()
@@ -101,17 +95,6 @@
     (dolist (entry *workspaces*)
       (push (car entry) result))
     result))
-
-(defun workspace-key-from-name (ws-name)
-  (cl-do ((next-items (cdr *workspaces*)
-		      (cdr next-items))
-	  (current-item (car *workspaces*)
-			(car next-items)))
-      ((or (equal (cdr current-item) ws-name)
-	   (not next-items))
-       (when (equal (cdr current-item) ws-name)
-	 (car current-item)))
-    nil))
 
 (defun mode-line-workspace ()
   (let ((result "")
@@ -137,15 +120,19 @@
   ;; guard rails since I want to be able to call it from
   ;; organizer-session
   (let ((workspaces-set? *workspaces*))
-  (if (workspace--workspace-name-exists ws-name)
-      (message
-       (format "Workspace with name %s already exists" ws-name))
-    (progn
-      (setq *current-workspace* number)
-      (push (cons number ws-name) *workspaces*)
-      (workspace--add-ivy-view ws-name)
-      (unless workspaces-set?
-	(add-hook 'change-major-mode-hook 'workspace-new-buffer))))))
+    (if (workspace--workspace-name-exists ws-name)
+	(message
+	 (format "Workspace with name %s already exists" ws-name))
+      (let ((buffer (get-buffer "*scratch*")))
+	(setq *current-workspace* number)
+	(push (cons number ws-name) *workspaces*)
+	(delete-other-windows)
+	(switch-to-buffer buffer)
+	(workspace--add-or-update-ivy-view ws-name)
+	(push (cons *current-workspace* '())
+	      *workspace-workspace-buffers*)))
+    (unless workspaces-set?
+      (add-hook 'change-major-mode-hook 'workspace-new-buffer))))
 
 (defun workspace--get-next-workspace-number-internal
     (workspace-numbers)
@@ -154,10 +141,10 @@
 	    (current-number (car sorted-numbers) (car todo))
 	    (todo           (cdr sorted-numbers) (cdr todo)))
 	((or (not todo)
-	     (not (equal (inc last-number) current-number)))
-	 (if (not (equal (inc last-number) current-number))
-	     (inc last-number)
-	   (inc (inc last-number)))))))
+	     (not (equal (+ 1 last-number) current-number)))
+	 (if (not (equal (+ 1 last-number) current-number))
+	     (+ 1 last-number)
+	   (+ 1 (+ 1 last-number)))))))
 
 (defun workspace-get-next-workspace-number ()
   (let ((workspace-numbers (workspace-list-workspace-keys)))
@@ -176,15 +163,23 @@
 	  )))
     (workspace--add-workspace-no-prompt n name)))
 
-(defun workspace-to-workspace-number (n)
+(defun workspace--to-workspace-number (n name)
   (let ((workspaces-set? *workspaces*))
     (when (<= n 0)
       (error "Workspace number must be at least 1."))
     (if-let ((ws-name (cdr (assoc n *workspaces*))))
 	(workspace-switch-workspace ws-name)
-      (workspace-add-workspace n))
-    (unless workspaces-set?
-      (add-hook 'buffer-list-update-hook 'workspace-new-buffer))))
+      (if name
+	  (workspace--add-workspace-no-prompt n name)
+	(workspace-add-workspace n)))))
+
+(defun workspace-to-workspace-number (n)
+  (interactive)
+  (workspace--to-workspace-number n nil))
+
+(defun workspace-to-workspace-number-with-name (n name)
+  (interactive)
+  (workspace--to-workspace-number n name))
 
 (defun workspace--remove-workspace (n)
   (setq *workspaces*
@@ -192,19 +187,20 @@
   (setq *workspace-workspace-buffers*
 	(assoc-delete-all n *workspace-workspace-buffers*)))
 
+(defun workspace-remove-workspace-number (ws-number)
+  (if (equal ws-number *current-workspace*)
+      (message "Cannot delete the current workspace")
+    (let ((buffers (alist-get
+		    ws-number *workspace-workspace-buffers*)))
+      (workspace--remove-workspace ws-number)
+      (ivy-pop-view-action (assoc ws-name ivy-views))
+      (dolist (buffer buffers)
+	(kill-buffer buffer)))))
+
 (defun workspace-remove-workspace (ws-name)
   (let ((ws-number  (-> ws-name
-			(split-string ":")
-			car
-			string-to-number)))
-    (if (equal ws-number *current-workspace*)
-	(message "Cannot delete the current workspace")
-      (let ((buffers (alist-get
-		      ws-number *workspace-workspace-buffers*)))
-	(workspace--remove-workspace ws-number)
-	(ivy-pop-view-action (assoc ws-name ivy-views))
-	(dolist (buffer buffers)
-	  (kill-buffer buffer))))))
+			(split-string ":") car string-to-number)))
+    (workspace-remove-workspace-number ws-number)))
 
 (defun workspace-pop ()
   (interactive)
@@ -218,9 +214,9 @@
       (message "Cannot use store workspace if no workspace is set")
     (let* ((buffer   (current-buffer))
 	   (raw-workspace-buffers (delete-dups
-			       (alist-get
-				*current-workspace*
-				*workspace-workspace-buffers*)))
+				   (alist-get
+				    *current-workspace*
+				    *workspace-workspace-buffers*)))
 	   (workspace-buffers '()))
       (dolist (buffer raw-workspace-buffers)
 	(when (buffer-live-p buffer)

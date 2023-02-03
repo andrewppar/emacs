@@ -86,9 +86,18 @@
 		  ',module-name
 		  (- (float-time) ,start)))))))
 
+
+(defun maybe-install-package (module-name module-dir)
+  (unless (package-installed-p module-name)
+    (package-install-file module-dir)))
+
 (defmacro simple-wrapper! (module-name &rest args)
   (declare (indent defun))
-  (let ((start (gensym "start")))
+  (let ((start    (gensym "start"))
+	(load-dir (plist-get args :load)))
+    (when load-dir
+      (maybe-install-package module-name load-dir))
+    ;; TODO: Check for package and install if necessary - maybe we have a build flag?
     `(progn
        (let ((,start (float-time)))
 	 (message (format "Loading %s..." ',module-name))
@@ -106,3 +115,31 @@
        `(use-package-wrapper! ,module-name ,@args)))
     (_
      `(use-package-wrapper! ,module-name ,@args))))
+
+;;; Utilities
+
+(defmacro -> (item &rest forms)
+  (cond ((not forms)
+	 item)
+	((length= forms 1) (let ((form (car forms)))
+	   (if (listp form)
+	       `(,(car form) ,item ,@(cdr form))
+	     (list form item))))
+	(t
+	 `(->
+	   (-> ,item ,(car forms))
+	   ,@(cdr forms)))))
+
+(defmacro ->> (item &rest forms)
+  (cond ((not forms)
+	 item)
+	((length= forms 1)
+	 (let ((form (car forms)))
+	   (if (listp form)
+	       (reverse
+		(cons item (reverse form)))
+	     (list form item))))
+	(t
+	 `(->>
+	   (->> ,item ,(car forms))
+	   ,@(cdr forms)))))

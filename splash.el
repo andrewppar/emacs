@@ -100,7 +100,7 @@
 
 (evil-define-key 'normal eirene-splash-mode-map (kbd "r") 'goto-recents)
 (evil-define-key 'normal eirene-splash-mode-map (kbd "p") 'goto-projects)
-;(evil-define-key 'normal eirene-splash-mode-map (kbd "RET") 'org-open-at-point)
+(evil-define-key 'normal eirene-splash-mode-map (kbd "RET") 'org-open-at-point)
 
 (defun eirene-splash (load-time)
   (switch-to-buffer "*Eirene Splash*")
@@ -122,6 +122,6 @@
     (display-recent-files)
     (goto-char start)
     (read-only-mode)
-   ;; (when (display-graphic-p)
-   ;;   (local-set-key (kbd "<return>") #'org-open-at-point))
+    ;;(when (display-graphic-p)
+    ;;  (local-set-key (kbd "<return>") #'org-open-at-point))
     ))

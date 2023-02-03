@@ -190,3 +190,9 @@
 	  ))
        (progn
 	 ,@body))))
+
+;; TODO: Add optional evil-states to this
+(defmacro rebind! (mode key function)
+  `(major-mode-map ,mode
+    :bindings
+    (,key ,function)))
