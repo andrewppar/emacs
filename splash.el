@@ -112,7 +112,10 @@
     (if (display-graphic-p)
 	     (display-eirene-banner-graphics)
       (display-eirene-banner-terminal))
-    (insert "\n\n\n")
+    (insert "\n\n")
+    (insert (emacs-version))
+    (insert "\n\n")
+
     (insert (format "Load time: %s" load-time))
     (insert "\n\n\n")
     (display-keybindings)

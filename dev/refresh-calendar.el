@@ -1,0 +1,8 @@
+(load "/Users/andrewparisi/emacs-files/diary-helpers.el")
+(message "Refreshing...")
+(when (file-locked-p *status*)
+  (message (format "Unlocking %s ..." *status*))
+  (find-file *status*)
+  (unlock-buffer))
+(refresh-calendar-items :week)
+(save-some-buffers t)

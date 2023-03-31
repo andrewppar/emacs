@@ -10,8 +10,7 @@
    ;; it under the terms of the GNU General Public License as published by
    ;; the Free Software Foundation, either version 3 of the License, or
    ;; (at your option) any later version.
-
-   ;; This program is distributed in the hope that it will be useful,
+;; This program is distributed in the hope that it will be useful,
    ;; but WITHOUT ANY WARRANTY; without even the implied warranty of
    ;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    ;; GNU General Public License for more details.
@@ -147,6 +146,50 @@
        (vterm-send-command ,cd-string)
        (vterm-send-command ,run-string))))
 
+
+(defun create-command-symbol (project-name title)
+  (let ((clean-title
+	 (replace-regexp-in-string (regexp-quote " ") "-" title)))
+    (intern (format "%s-%s" project-name title))))
+
+(defun create-command-function (project-name project-dir command)
+  (cl-destructuring-bind (&key title executable args &allow-other-keys)
+      command
+    (let ((function-name       (create-command-symbol project-name title))
+	  (project-name-string (format "%s" project-name)))
+      `(defun ,function-name ()
+	 (interactive)
+	 (let ((default-directory ,project-dir))
+	   (save-window-excursion
+	     (when (< (length (window-list)) 2)
+	       (split-window-right))
+	     (let ((test-buf ,(format "*%s*" function-name)))
+	       (with-output-to-temp-buffer test-buf
+		 (switch-to-buffer test-buf)
+		 (call-process ,executable nil test-buf nil ,@args)
+		 (let ((done? (read-char "Press any key to exit")))
+		   (kill-buffer test-buf)
+		   done?)))))))))
+
+(defun create-command-functions (project-name project-dir commands)
+  `(progn
+     ,@(mapcar
+	(lambda (command)
+	  (create-command-function project-name project-dir command))
+       commands)))
+
+(defun command-transient-menu-item (project-name command)
+  (cl-destructuring-bind (&key title transient-key &allow-other-keys)
+      command
+    (let ((function-name (create-command-symbol project-name title)))
+      `(,(format "c%s" transient-key) ,title ,function-name))))
+
+(defun command-transient-menu-items (project-name commands)
+  (mapcar
+   (lambda (command)
+     (command-transient-menu-item project-name command))
+   commands))
+
 (defun create-docker-functions (project-dir args)
   (let ((docker-block (plist-get args :docker)))
     (when docker-block
@@ -173,7 +216,6 @@
 	(push run-name result)
 	(push build-name result)))
     result))
-
 
 (defun create-docker-compose-functions (project-dir project-name)
   (let ((build (intern (format "compose-build-%s" project-name)))
@@ -223,6 +265,7 @@
 	 (run-command     (plist-get args :run))
 	 (website         (plist-get args :website))
 	 (docker-compose  (plist-get args :docker-compose))
+	 (commands        (plist-get args :commands))
 	 (start-function-name (intern (->> project-name
 					   (format "%s-session"))))
 	 (dir-function-name   (intern (->> project-name
@@ -266,6 +309,8 @@
        	  (create-docker-compose-functions project-dir project-name))
        ,(when run-command
 	  (create-run-function project-dir project-name run-command))
+       ,(when commands
+	  (create-command-functions project-name project-dir commands))
        ,(when website
 	  `(defun ,website-function-name ()
 	     (interactive)
@@ -287,6 +332,11 @@
 	  (when run-command
 	    (push `("g" "run" ,(intern (format "run-%s" project-name)))
 		  transient-command))
+	  (when commands
+	    (let ((menu-items (command-transient-menu-items
+			       project-name commands)))
+	    (dolist (menu-item menu-items)
+	      (push menu-item transient-command))))
 	  (when docker-compose
 	    (push
 	     `("cb" "compose build"
@@ -355,11 +405,14 @@
 	(when (member workspace-name all-projects)
 	  (push workspace active-projects))))
     (let* ((to-quit (ivy-read "Project: " (reverse active-projects)))
+	   (ws-name (project--name-from-workspace to-quit))
 	   (stop (alist-get
-		  (project--name-from-workspace to-quit)
-       		  *project-quit-function* nil nil #'equal)))
+		  ws-name *project-quit-function* nil nil #'equal)))
+      (workspace-switch-workspace ws-name)
       (eval stop)
-
+      ;; HACK - find previous workspace or allow removal of current workspace
+      ;; I think I like the latter
+      (workspace-to-workspace-number 1)
       (workspace-remove-workspace to-quit))))
 
 (provide 'eirene-project)
