@@ -1,11 +1,19 @@
-;; -*- mode: emacs-lisp -*-
+ ;; -*- mode: emacs-lisp -*-
 
 (setq *start* (float-time))
 (setq x-select-enable-clipboard t)
 
 ;; TODO: Find a better place for this maybe we need a general settings
 ;; section
-;; (add-hook 'write-file-functions 'delete-trailing-whitespace)
+(add-hook 'write-file-functions 'delete-trailing-whitespace)
+(setq lisp-indent-function 'common-lisp-indent-function)
+
+(setq backup-directory-alist
+      `(("." . ,(expand-file-name
+                 (concat user-emacs-directory "backups")))))
+(setq auto-save-file-name-transforms
+      `((".*" ,temporary-file-directory t)))
+
 
 (defmacro load! (load-string)
   (declare (indent defun))
@@ -16,7 +24,7 @@
 	(format "done loading %s: %s"
 		,load-string (- (float-time) ,start))))))
 
-(setq user-mail-address  "")
+(setq user-mail-address  "andrew.p.parisi@gmail.com")
 
 (load! "~/.emacs.d/display.el")
 (load! "~/.emacs.d/modules.el")
@@ -24,46 +32,60 @@
 (load! "~/.emacs.d/workspace.el")
 (load! "~/.emacs.d/project.el")
 
+;;; Custom Helpers
+(load! "~/emacs-files/timesheet.el")
+(load! "~/emacs-files/diary-helpers.el")
+(load! "~/emacs-files/sql-session.el")
+;; (load! "~/emacs-files/github-pulls.el")
+
 ;; Custom Theme
 (colors!
   :background            "#3b3b3f"
   :foreground            "#d0d0d0"
   :comment               "#8a8a8a"
-  :string                "#ffc63f"
+  :string                "#C2AD79"
   :link                  (:foreground "red"     :weight 'bold)
   :constant              (:foreground "#ffc63f" :weight 'bold)
   :function              (:foreground "#18aed4" :weight 'bold)
   :keyword               (:foreground "#AFD75F" :weight 'bold)
   :type                  (:foreground "#18aed4")
-  :font                  (:height 230)
-  :transparency          ('alpha 90 90)
-  :mode-line             (:foreground "#3b3b3f" :background "#d0d0d0")
+  :font                  (:height 240)
+  :transparency          ('alpha 80 80)
+  :mode-line             (:foreground "#3b3b3f" :background "#a9a9a9")
   :mode-line-inactive    (:foreground "#3b3b3f" :background "#d0d0d0")
   :prettify-symbols      t
-  :fringe                (:background "#d0d0d0"))
+  ;; :fringe                (:background "#d0d0d0")
+  )
 
 (mode-line!
-  (:text " ⚓ ")
-  (:text (format-time-string "%H:%M ")
-	 :color "#c45651")
+  (:text "CUI ")
+  ;;(:text (format-time-string "%H:%M ")
+  ;; :color "#C45651")
   (:text  (mode-line-workspace))
   (:text " %*%+ ")
   (:text " %m: ")
   (:text "%b ")
+  (:text "%o")
+  (:condition
+   (and (fboundp 'pyvenv-virtual-env-name)
+	pyvenv-virtual-env-name)
+   :text (format " |conda: %s" pyvenv-virtual-env-name)
+   :color "#FFC63F")
+  (:condition
+   (not (equal envrc--status 'none))
+   :text (format " |envrc %s" envrc--status)
+   :color "#FFC63F"
+   :weight bold)
   (:condition
    (vc-backend buffer-file-name)
    :text (format " |%s " vc-mode)
-   :color "#30648e"))
+   :color "#FFC63F"))
 
-;; Custom Bindings
-
-(defun save-all-buffers ()
-  (interactive)
-  (save-some-buffers t))
-
-(defun save-all-buffers-kill-no-prompt ()
-  (interactive)
-  (save-buffers-kill-emacs t))
+;; Start server
+(require 'server)
+(if (and (fboundp 'server-running-p)
+         (not (server-running-p)))
+    (server-start))
 
 (defun messages-buffer ()
   (interactive)
@@ -93,15 +115,6 @@
   (interactive)
   (find-file "~/.emacs.d/keyboard.el"))
 
-(defun ivy-push-view-default-name ()
-  (let* ((view (ivy--get-view-config))
-         (view-name "{} organizer"))
-    (when view-name
-      (let ((x (assoc view-name ivy-views)))
-        (if x
-            (setcdr x (list view))
-          (push (list view-name view) ivy-views))))))
-
 (defun to-workspace-1 ()
   (interactive)
   (workspace-to-workspace-number 1))
@@ -126,72 +139,213 @@
   (interactive)
   (workspace-to-workspace-number 6))
 
-(which-key-map evil-normal-state-map ","
-	       :labels
-	       ("i"  "init"
-		"t"  "tools"
-		"tc" "conda"
-		"tp" "project"
-		"p"  "projectile"
-		"g"  "magit"
-		"w"  "workspace"
-		"s"  "s-expression"
-		"p"  "projectile"
-		"v"  "ivy-view"
-		)
-	       :default-bindings
-	       (;; ibuffer
-		"bi" 'ibuffer
-		"bb" 'workspace-switch-buffer
-		"bm" 'messages-buffer
-		"bt" 'scratch-buffer
-		"ba" 'save-all-buffers
-		"bq" 'save-all-buffers-kill-no-prompt
-		"bs" 'save-buffer
+(defun restore-organizer ()
+  (interactive)
+  (restore-organizer-internal t))
 
-		;; init
-		"ii"  'init-file
-		"im"  'modules-file
-		"ic"  'core-file
-		"id"  'display-file
-		"ik"  'keyboard-file
-		;; workspaces
-                "wd" 'workspace-pop
-                "wj" 'ivy-switch-view
-		"w1" 'to-workspace-1
-		"w2" 'to-workspace-2
-		"w3" 'to-workspace-3
-		"w4" 'to-workspace-4
-		;; magit
-		"gs"  'magit-status
-		"gc"  'magit-branch-checkout
-		"gb"  'magit-blame
-		"gl"  'magit-log-current
-		;; projectile
-		"p"   'projectile-command-map
-		;; generic
-		"x"  'counsel-M-x
-		;; s-expressions
-		"sq"  'indent-pp-sexp
-		"sl"  'forward-sexp
-		"sh"  'backward-sexp
-		"st"  'transpose-sexps
-		;; tools
-		"tp" 'project-switch-project
-		"te" 'eshell
-		"tm" 'mu4e
-		"tca" 'conda-env-activate
-		"tcd" 'conda-env-deactivate
-		))
+(defun restore-organizer-layout ()
+  (interactive)
+  (restore-organizer-internal nil))
+
+(defun restore-organizer-internal (refresh?)
+  (org-agenda-list 1)
+  (when refresh?
+    (refresh-calendar-items-next-week))
+  (let ((agenda-buffer (current-buffer)))
+    (delete-other-windows)
+    (switch-to-buffer agenda-buffer)
+    (when refresh?
+      (org-agenda-redo))
+    (split-window-below)
+    (task-log)
+    (split-window-right)
+    (find-file *status-file*)
+    (evil-close-folds )))
+
+;; Does this belong here? OR is there a better place
+;; to put this stuff?
+
+(defvar todoist-header '("Tasks" "Todoist"))
+(defvar todoist-close-header '("Tasks" "Cisco"))
+
+(defun import-remote-items ()
+  (interactive)
+  (refresh-calendar-items-next-week)
+  (import-todoist todoist-header todoist-close-header))
+
+(defun export-remote-items ()
+  (interactive)
+  (export-todoist todoist-header todoist-close-header))
+
+(defun save-all-buffers ()
+  (interactive)
+  (save-some-buffers t))
+
+(defun save-all-buffers-kill-no-prompt ()
+  (interactive)
+  (save-buffers-kill-emacs t))
+
+(which-key-map evil-normal-state-map ","
+  :labels
+  ( "g"  "git"
+    "gt" "git tools"
+    "gr" "github review"
+    "i"  "init"
+    "n"  "notes"
+    "o"  "organizer"
+    "oe" "edit task"
+    "oa" "task action"
+    "s"  "s-expression"
+    "t"  "tools"
+    "tc" "conda"
+    "te" "eirene-term"
+    "ti" "lsp-ui-imenu"
+    "tr" "run"
+    "ts" "sql"
+    "tf" "flyspell"
+    "v"  "ivy-view"
+    "w"  "workspaces")
+  :default-bindings
+  (;; buffer
+   "ba" 'save-all-buffers
+   "bb" 'workspace-switch-buffer
+   "bd" 'kill-buffer
+   "be" 'treemacs
+   "bi" 'ibuffer
+   "bm" 'messages-buffer
+   "bq" 'save-all-buffers-kill-no-prompt
+   "bs" 'save-buffer
+   "bt" 'scratch-buffer
+   ;; org
+   "c"   'org-capture
+   ;; magit
+   "gb"  'magit-blame
+   "gc"  'magit-branch-checkout
+   "gh"  'git-timemachine
+   "gl"  'magit-log-current
+   "gr"  'code-review-pr-select
+   "gs"  'magit-status
+   "gtp" 'github-visit-pr
+   ;; init
+   "ic"  'core-file
+   "id"  'display-file
+   "ii"  'init-file
+   "ik"  'keyboard-file
+   "im"  'modules-file
+   ;; organizer
+   "oac" 'add-calendar-item-for-today
+   "oas" 'set-up-agenda
+   "oed" 'edit-task-description-at-point
+   "oee" 'edit-task-end-time-at-point
+   "oeg" 'edit-task-group-at-point
+   "oes" 'edit-task-start-time-at-point
+   "oex" 'delete-task-at-point
+   "of"  'task-log-for-date
+   "og"  'get-tasks-in-range
+   "or"  'import-remote-items
+   "ox"  'export-remote-items
+   "os"  'restore-organizer-layout
+   "oed" 'edit-task-description-at-point
+   "oes" 'edit-task-start-time-at-point
+   "oee" 'edit-task-end-time-at-point
+   "oex" 'delete-task-at-point
+   "oeg" 'edit-task-group-at-point
+   ;; s-expressions
+   "sq"  'indent-pp-sexp
+   "l"  'forward-sexp
+   "h"  'backward-sexp
+   "j"  'down-list
+   "k"  'backward-up-list
+   "st"  'transpose-sexps
+   ;; tools
+   "te"  'eirene-term
+   "teq" 'eirene-term-end-session
+   "tp"  'project-switch-project
+   "td"  'docker
+   "tx"  'project-quit-project
+   "tsl" 'sql-session-reset-window-layout
+   "tsq" 'sql-session-quit-session
+   "tss" 'sql-session-start-session
+   "tst" 'sql-session-toggle-tables-buffer
+   "tsw" 'sql-session-save-session
+   "tt"  'project-transient
+   "t+" 'text-scale-increase
+   "t-" 'text-scale-decrease
+   ;; workspaces
+   "w1"  'to-workspace-1
+   "w2"  'to-workspace-2
+   "w3"  'to-workspace-3
+   "w4"  'to-workspace-4
+   "w5"  'to-workspace-5
+   "w6"  'to-workspace-6
+   "wd"  'workspace-pop
+   "wj"  'ivy-switch-view
+   "wr"  'ivy-push-view
+   ;; generic
+   "x"  'counsel-M-x))
 
 ;;;;;;;;;;;;
 ;;; Projects
 
-(defproject emacs
-  :project-dir "~/.emacs.d")
+(defun potentially-start-cider (project-name)
+  (require 'cider)
+  (let* ((host "localhost")
+	 (port-alist (cider--infer-ports host nil)))
+    (when-let ((port (car
+		      (alist-get
+		       project-name port-alist nil nil #'equal))))
+      (let ((params (-> '()
+			(plist-put :host host)
+			(plist-put :port port))))
+	(my-cider-op 'cider-connect-clj params))
+      t)))
+
+(defproject dummett-library
+  :project-dir "/Users/andrewparisi/projects/dummett-library"
+  :website "https://github.com/andrewppar/dummett-library"
+  :docker-compose t)
+
+(defproject organizer
+  :project-dir "/Users/anparisi/org/"
+  :init (restore-organizer))
+
+(defproject pipes
+  :project-dir "/Users/andrewparisi/projects/pipes")
+
+(defproject logos
+  :project-dir "/Users/andrewparisi/projects/logos"
+  :website "https://github.com/andrewppar/logos"
+  :docker-compose t)
+
+(defproject scotus
+  :project-dir "/Users/andrewparisi/projects/scotus"
+  :website  "https://github.com/andrewppar/logos"
+  :init (progn
+	  (potentially-start-cider "scotus")
+	  (cider-load-file "/Users/andrewparisi/projects/scotus/src/clj/scotus/core.clj"))
+  :stop (cider-quit))
+
+(defproject sql
+  :init (sql-session-start-session)
+  :stop (sql-session-quit-session))
+
+(defproject timesheet
+  :project-dir "/Users/andrewparisi/projects/timesheet"
+  :init (progn
+	  (potentially-start-cider "timesheet")
+	  (cider-load-file
+	   "/Users/andrewparisi/projects/timesheet/src/timesheet/core.clj")
+	  ;; TODO: maybe set this up to spawn a terminal and call timesheet.
+	 ;; activate application "iTerm"
+	 ;; tell application "System Events" to keystroke "t" using command down
+	  ;; tell application "iTerm" to tell session -1 of current terminal to write text "pwd"
+	  (cider-interactive-eval "(timesheet.core/-main)")
+
+	  ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Scratch and Miscellany
+
 ;; TODO
 ;; Clean this up and put it in a macro
 (evil-define-key 'normal 'evil-normal-state-map "'" 'evil-jump-item)
@@ -202,26 +356,6 @@
 (evil-define-key 'normal 'evil-normal-state-map (kbd "C-j") 'comint-next-input)
 (evil-define-key 'insert 'evil-insert-state-map (kbd "C-j") 'comint-next-input)
 (evil-define-key 'normal 'evil-normal-state-map (kbd "C-c l") 'comint-clear-buffer)
-
-;; Hacks!
-(add-to-list 'exec-path "/usr/local/bin")
-(setenv "PATH" (mapconcat 'identity exec-path ":"))
-(put 'dired-find-alternate-file 'disabled nil)
-
-
-(defun scroll-down-one ()
-  (interactive)
-  (scroll-down-command 2))
-
-(defun scroll-up-one ()
-  (interactive)
-  (scroll-up-command 2))
-
-;; Redefine M-n and M-p to scroll like an itty bitty mousewheel
-(setq scroll-preserve-screen-position 1)
-;;scroll window up/down by one line
-(global-set-key (kbd "M-n") 'scroll-up-one)
-(global-set-key (kbd "M-p") 'scroll-down-one)
 
 (setq *end* (float-time))
 (eirene-splash (- *end* *start*))

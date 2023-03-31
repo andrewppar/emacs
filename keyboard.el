@@ -119,13 +119,12 @@
   "m" "major mode")
   :default-bindings
   ("f"  'counsel-find-file
-   "eb" 'eval-buffer
+   "el" 'eval-buffer
    "ed" 'eval-defun
    "0"  'delete-window
    "1"  'delete-other-windows
    "2"  'split-window-below
    "3"  'split-window-right
-   "bd" 'kill-buffer
    "bx" 'kill-buffer-and-window
    "ry" 'counsel-yank-pop
    "a"  'other-window))
@@ -165,12 +164,13 @@
 	 ',mode . ,result))))
 
 (defmacro major-mode-map (mode &rest bindings-plist)
+  ;; TODO: Maybe add a check that there are labels
+  ;;       for any keystroke with multiple bindings
+  ;;       or maybe change the datastructure to be groups...
   ;; TODO: Maybe incorporate insert mode somehow...
   (declare (indent defun))
-  (let ((bindings
-	 (generate-mm-bindings mode bindings-plist))
-	(labels
-	 (generate-mm-labels   mode bindings-plist))
+  (let ((bindings (generate-mm-bindings mode bindings-plist))
+	(labels (generate-mm-labels   mode bindings-plist))
 	(result '()))
     (setq result `(progn ,bindings ,labels))
     result))
@@ -190,3 +190,9 @@
 	  ))
        (progn
 	 ,@body))))
+
+;; TODO: Add optional evil-states to this
+(defmacro rebind! (mode key function)
+  `(major-mode-map ,mode
+    :bindings
+    (,key ,function)))

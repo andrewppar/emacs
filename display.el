@@ -131,7 +131,8 @@
 		`(:eval
 		  (propertize
 		   ,text
-		   'face '(:foreground ,color)))))
+		   ;; TODO: Make weights actually configurable
+		   'face '(:foreground ,color :weight bold)))))
       (if (not color)
 	  (setq result `(:eval ,text))
 	(setq result
@@ -142,7 +143,7 @@
     result))
 
 (defmacro mode-line! (&rest mode-line-specs)
-  (declare (indent defun))
+  (declare (indent 0))
   (let ((result '()))
     (dolist (spec mode-line-specs)
       (push `',(parse-mode-line-spec spec) result))

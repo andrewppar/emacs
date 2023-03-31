@@ -86,9 +86,18 @@
 		  ',module-name
 		  (- (float-time) ,start)))))))
 
+
+(defun maybe-install-package (module-name module-dir)
+  (unless (package-installed-p module-name)
+    (package-install-file module-dir)))
+
 (defmacro simple-wrapper! (module-name &rest args)
   (declare (indent defun))
-  (let ((start (gensym "start")))
+  (let ((start    (gensym "start"))
+	(load-dir (plist-get args :load)))
+    (when load-dir
+      (maybe-install-package module-name load-dir))
+    ;; TODO: Check for package and install if necessary - maybe we have a build flag?
     `(progn
        (let ((,start (float-time)))
 	 (message (format "Loading %s..." ',module-name))
@@ -98,7 +107,7 @@
 			  (- (float-time) ,start)))))))
 
 (defmacro module! (module-name &rest args)
-  (declare (indent defun))
+  (declare (indent 1))
   (pcase (car args)
     (:use-package
      (if (equal (car (cdr args)) 'nil)
@@ -106,3 +115,55 @@
        `(use-package-wrapper! ,module-name ,@args)))
     (_
      `(use-package-wrapper! ,module-name ,@args))))
+
+;;; Utilities
+
+(defmacro -> (item &rest forms)
+  (cond ((not forms)
+	 item)
+	((length= forms 1)
+	 (let ((form (car forms)))
+	   (if (listp form)
+	       `(,(car form) ,item ,@(cdr form))
+	     (list form item))))
+	(t
+	 `(->
+	   (-> ,item ,(car forms))
+	   ,@(cdr forms)))))
+
+(defmacro ->> (item &rest forms)
+  (cond ((not forms)
+	 item)
+	((length= forms 1)
+	 (let ((form (car forms)))
+	   (if (listp form)
+	       (reverse (cons item (reverse form)))
+	     (list form item))))
+	(t
+	 `(->>
+	   (->> ,item ,(car forms))
+	   ,@(cdr forms)))))
+
+(defun filter (test-fn list)
+  (let ((result '()))
+    (dolist (item list)
+      (when (funcall test-fn item)
+	(push item result)))
+    result))
+
+(defmacro doarray (spec &rest body)
+  (declare (indent 1) (debug ((symbolp form &optional form) body)))
+  (unless (consp spec)
+    (signal 'wrong-type-argument (list 'consp spec)))
+  (unless (<= 2 (length spec) 3)
+    (signal 'wrong-number-of-arguments (list '(2 . 3) (length spec))))
+  `(let ((idx 0)
+         (last-idx (length ,(cadr spec))))
+     (while (< idx last-idx)
+       (setq ,(car spec) (aref ,(cadr spec) idx))
+       (setq idx (+ 1 idx))
+       ,@body)))
+
+(defmacro comment (&rest body)
+  (declare '(indent defun))
+  nil)
