@@ -29,3 +29,4 @@ pandoc-mode/*
 request/*
 undo/*
 *.sqlite
+url

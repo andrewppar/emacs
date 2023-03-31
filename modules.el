@@ -5,6 +5,7 @@
 (add-to-list 'exec-path "/usr/local/bin")
 (add-to-list 'load-path "~/.emacs.d/lisp")
 
+
 ;; TODO: Create module! macro that is a thin wrapper around use-package
 ;; but that makes defining major mode and default bindings for a mode easy
 ;; TODO: Figure a way to auto configure lsp mode for a language
@@ -14,34 +15,36 @@
 ;; Required Packages
 ;; TODO See whether or not these can be paired down
 
+(defvar *status-file* "/Users/andrewparisi/org/status.org")
+
 (module! undo-tree
-  :ensure t
-  :requires evil
-  :diminish
-  :config
-  (global-undo-tree-mode)
-  (setq undo-tree-history-directory-alist '(("." . "~/.emacs.d/undo")))
-  (evil-set-undo-system 'undo-tree))
+    :ensure t
+    :requires evil
+    :diminish
+    :config
+    (global-undo-tree-mode)
+    (setq undo-tree-history-directory-alist '(("." . "~/.emacs.d/undo")))
+    (evil-set-undo-system 'undo-tree))
 
 (module! counsel
-  :ensure t
-  :after ivy
-  :requires evil
-  :config (counsel-mode))
+    :ensure t
+    :after ivy
+    :requires evil
+    :config (counsel-mode))
 
 (module! ivy
-  :ensure t
-  :defer 0.1
-  :diminish
-  :requires evil
-  :config
-  (setq ivy-height 10
-	ivy-use-virtual-buffers t
-	ivy-count-format "(%d/%d) "
-	ivy-initial-inputs-alist nil
-	ivy-re-builders-alist
-	'((t . ivy--regex-ignore-order)))
-  (ivy-mode 1))
+    :ensure t
+    :defer 0.1
+    :diminish
+    :requires evil
+    :config
+    (setq ivy-height 10
+	  ivy-use-virtual-buffers t
+	  ivy-count-format "(%d/%d) "
+	  ivy-initial-inputs-alist nil
+	  ivy-re-builders-alist
+	  '((t . ivy--regex-ignore-order)))
+    (ivy-mode 1))
 
 (module! ivy-rich
   :ensure t
@@ -76,518 +79,560 @@
 ;; Default Loaded Packages
 
 (module! ibuffer
-  :requires evil
-  :config
-  (setq
-   ibuffer-saved-filter-groups
-   '(("default"
-      ("python"
-       (or (mode . python-mode)
-           (directory . "/Users/andrewparisi/Documents/python")
-           (name . "\*Python\*")))
-      ("clojure"
-       (or (mode . clojure-mode)
-	   (directory . "/Users/andrewparisi/Documents/clojure")
-	   (name . "\*cider\*")))
-      ("magit"
-       (name . "*magit*"))
-      ("help"
-       (or (name . "\*Help\*")
-	   (name . "\*Apropos\*")
-	   (name . "\*info\*")))
-      ("keep"
-       (or (name . "*Org Agenda*")
-	   (name . "*Todays Task Log*")
-	   (name . "status.org")
-	   (name . "*scratch*")
-	   (name . "*Messages*")
-	   (name . "*Eirene Splash*")))
-      ("emacs"
-       (or (mode . emacs-lisp-mode)))
-      ("filesystem"
-       (or (mode . dired-mode)
-	   (mode . eshell-mode)))))
-   evil-emacs-state-modes (delq 'ibuffer-mode evil-emacs-state-modes)
-   ibuffer-expert t
-   ibuffer-show-empty-filter-groups nil)
-  (add-hook 'ibuffer-mode-hook
-	    '(lambda ()
-	       (ibuffer-switch-to-saved-filter-groups
-		"default"))))
+    :requires evil
+    :config
+    (setq
+     ibuffer-saved-filter-groups
+     '(("default"
+	("python"
+	 (or (mode . python-mode)
+             (directory . "/Users/andrewparisi/Documents/python")
+             (name . "\*Python\*")))
+	("clojure"
+	 (or (mode . clojure-mode)
+	     (directory . "/Users/anparisi/Documents/clojure")
+	     (name . "\*cider\*")))
+	("magit"
+	 (name . "*magit*"))
+	("help"
+	 (or (name . "\*Help\*")
+	     (name . "\*Apropos\*")
+	     (name . "\*info\*")))
+	("keep"
+	 (or (name . "*Org Agenda*")
+	     (name . "*Todays Task Log*")
+	     (name . "status.org")
+	     (name . "*scratch*")
+	     (name . "*Messages*")
+	     (name . "*Eirene Splash*")))
+	("emacs"
+	 (or (mode . emacs-lisp-mode)))
+	("filesystem"
+	 (or (mode . dired-mode)
+	     (mode . eshell-mode)))))
+     evil-emacs-state-modes (delq 'ibuffer-mode evil-emacs-state-modes)
+     ibuffer-expert t
+     ibuffer-show-empty-filter-groups nil)
+    (add-hook 'ibuffer-mode-hook
+	      '(lambda ()
+		(ibuffer-switch-to-saved-filter-groups
+		 "default"))))
 
 (module! dired
-  :use-package nil
+    :use-package nil
 
-  (defun dired-get-root ()
-    (save-excursion
-      (goto-char 0)
-      (let ((line (thing-at-point 'line t)))
-	(car (split-string line ":" t "[\t \n]+")))))
-
-  (defun dired-path-line? (line)
-    (or
-     (string-prefix-p "  d" line)
-     (string-prefix-p "  -" line)))
-
-  (defun dired-path-name (line)
-    (let ((line-list (split-string line " " t "\n")))
-      (nth 8 line-list)))
-
-  (defvar *dired-yanked-path* nil)
-
-  (defun dired-yank-item ()
-    (interactive)
-    (let ((root (dired-get-root))
-	  (line (thing-at-point 'line t)))
-      (when (dired-path-line? line)
-	(let ((full-path (format "%s/%s" root (dired-path-name line)))
-	      (directory? (string-prefix-p "  d" line)))
-	  (kill-new full-path)
-	  (setq *dired-yanked-path* `(,full-path . ,directory?))
-	  (message (format "Yanked %s" full-path))
-	  ))))
-
-  (defun dired-paste-item ()
-    (interactive)
-    (when *dired-yanked-path*
-      (let ((current-dir (format "%s/" (dired-get-root))))
-	(if (cdr *dired-yanked-path*)
-	    (copy-directory (car *dired-yanked-path*) current-dir)
-	  (copy-file (car *dired-yanked-path*) current-dir)
-	  (message (format "Copied %s to %s" copy-file current-dir))))))
-
-  (defun dired-build-location-map ()
-    (let ((result      '())
-	  (line-number  1))
+    (defun dired-get-root ()
       (save-excursion
+	(goto-char 0)
+	(let ((line (thing-at-point 'line t)))
+	  (car (split-string line ":" t "[\t \n]+")))))
+
+    (defun dired-path-line? (line)
+      (or
+       (string-prefix-p "  d" line)
+       (string-prefix-p "  -" line)))
+
+    (defun dired-path-name (line)
+      (let ((line-list (split-string line " " t "\n")))
+	(nth 8 line-list)))
+
+    (defvar *dired-yanked-path* nil)
+
+    (defun dired-yank-item ()
+      (interactive)
+      (let ((root (dired-get-root))
+	    (line (thing-at-point 'line t)))
+	(when (dired-path-line? line)
+	  (let ((full-path (format "%s/%s" root (dired-path-name line)))
+		(directory? (string-prefix-p "  d" line)))
+	    (kill-new full-path)
+	    (setq *dired-yanked-path* `(,full-path . ,directory?))
+	    (message (format "Yanked %s" full-path))))))
+
+    (defun dired-paste-item ()
+      (interactive)
+      (when *dired-yanked-path*
+	(let ((current-dir (format "%s/" (dired-get-root))))
+	  (if (cdr *dired-yanked-path*)
+	      (copy-directory (car *dired-yanked-path*) current-dir)
+	    (copy-file (car *dired-yanked-path*) current-dir)
+	    (message (format "Copied %s to %s" copy-file current-dir))))))
+
+    (defun dired-build-location-map ()
+      (let ((result      '())
+	    (line-number  1))
+	(save-excursion
+	  (goto-char (point-min))
+	  (while (not (eobp))
+	    (let ((line (thing-at-point 'line t)))
+	      (when (dired-path-line? line)
+		(push
+		 (cons (dired-path-name line) line-number)
+		 result))
+	      (setq line-number (+ line-number 1))
+	      (forward-line 1))))
+	result))
+
+    (defun dired-goto-and-find ()
+      (interactive)
+      (let* ((location-map  (dired-build-location-map))
+	     (all-locations (mapcar 'car location-map))
+	     (location (ivy-completing-read
+			"Navigate to file: " all-locations nil t)))
 	(goto-char (point-min))
-	(while (not (eobp))
-	  (let ((line (thing-at-point 'line t)))
-	    (when (dired-path-line? line)
-	      (push
-	       (cons (dired-path-name line) line-number)
-	       result))
-	    (setq line-number (+ line-number 1))
-	    (forward-line 1))))
-      result))
+	(forward-line (- (alist-get location location-map nil nil #'equal) 1))
+	(dired-find-alternate-file)))
 
-  (defun dired-goto-and-find ()
-    (interactive)
-    (let* ((location-map  (dired-build-location-map))
-	   (all-locations (mapcar 'car location-map))
-	   (location (ivy-completing-read
-		      "Navigate to file: " all-locations nil t)))
-      (goto-char (point-min))
-      (forward-line (- (alist-get location location-map nil nil #'equal) 1))
-      (dired-find-alternate-file)))
+    (defun dired-open-with ()
+      (interactive)
+      (let ((line (thing-at-point 'line t)))
+	(if (not (dired-path-line? line))
+	    (message "No path at point")
+	  (let* ((path (dired-path-name line))
+		 (open-command (read-string
+				"Open With Command: " nil nil "open"))
+		 (command (format "%s %s" open-command path)))
+	    (shell-command command)))))
 
-  (defun dired-open-with ()
-    (interactive)
-    (let ((line (thing-at-point 'line t)))
-      (if (not (dired-path-line? line))
-	  (message "No path at point")
-	(let* ((path (dired-path-name line))
-	       (open-command (read-string
-			      "Open With Command: " nil nil "open"))
-	       (command (format "%s %s" open-command path)))
-	  (shell-command command)))))
+    (setq dired-dwim-target t)
+    (when (string= system-type "darwin")
+      (setq dired-use-ls-dired nil))
 
-  (setq dired-dwim-target t)
-  (when (string= system-type "darwin")
-    (setq dired-use-ls-dired nil))
-
-  (evil-define-key
-    'normal dired-mode-map
-    "l" 'dired-find-alternate-file
-    "h" 'dired-up-directory
-    "f" 'dired-goto-and-find
-    "w" 'dired-open-with
-    "y" 'dired-yank-item
-    "p" 'dired-paste-item))
+    (evil-define-key 'normal dired-mode-map
+      "l" 'dired-find-alternate-file
+      "h" 'dired-up-directory
+      "f" 'dired-goto-and-find
+      "w" 'dired-open-with
+      "y" 'dired-yank-item
+      "p" 'dired-paste-item))
 
 (module! treemacs
-  :use-package nil
-  :init
-  (evil-define-key
-    'normal treemacs-mode-map
-    "l" 'treemacs-TAB-action
-    "+" 'treemacs-create-dir
-    "f" 'treemacs-create-file
-    ))
-
-(module! pandoc-mode
-  :ensure t
-  :defer t
-  :init
-  (add-hook 'markdown-mode-hook 'pandoc-mode)
-  (add-hook 'pandoc-mode-hook 'pandoc-load-default-settings)
-  (major-mode-map pandoc-mode
-    :bindings
-    ("pc" 'pandoc-run-pandoc
-     "pof" 'pandoc-set-output-file
-     "pod" 'pandoc-set-output-dir
-     "pot" 'pandoc-output-format-hydra/body)
-    :labels
-    ("p" "pandoc"
-     "po" "pandoc output")))
+    :use-package nil
+    :init
+    (evil-define-key
+	'normal treemacs-mode-map
+      "l" 'treemacs-TAB-action
+      "+" 'treemacs-create-dir
+      "f" 'treemacs-create-file
+      ))
 
 (module! magit
-  :ensure t
-  :defer t
-  :config
-  (setq
-   magit-display-buffer-function
-   #'magit-display-buffer-fullframe-status-v1
-   ediff-window-setup-function
-   #'ediff-setup-windows-plain)
+    :ensure t
+    :defer t
+    :config
+    ;;(load "/Users/anparisi/emacs-files/github.el")
+    ;;(load "/Users/anparisi/emacs-files/pair.el")
+    (setq
+     magit-display-buffer-function
+     #'magit-display-buffer-fullframe-status-v1
+     ediff-window-setup-function
+     #'ediff-setup-windows-plain)
 
-  (defun git-commit-message-setup ()
-    (insert (format "[%s] " (magit-get-current-branch))))
+    ;; TODO: Make these dynamically created in the project file?
+    (defclass repo ()
+      ((name         :initarg :name
+		     :type string
+		     :documentation  "The name of the repo")
+       (test-command :initarg :test-command
+		     :type string
+		     :documentation "The test command for the repo"))
+      "A class for github repos")
 
-  (add-hook 'git-commit-setup-hook 'git-commit-message-setup)
+    (defun git-commit-run-tests ())
 
-  (major-mode-map magit-mode
-    :bindings
-    ("" 'magit-dispatch)))
+    ;; TODO: This should be doable with major-mode-map
+    ;;(evil-define-key 'normal magit-mode-map
+    ;;  "p" 'pair-dispatch
+    ;;  "G" 'gh-dispatch)
+
+    (major-mode-map magit-mode
+	:bindings
+      ("" 'magit-dispatch)))
 
 (module! git-timemachine
-  :ensure t
-  :defer t)
+    :ensure t
+    :defer t)
 
 (module! forge
-  :ensure t
-  :after magit
-  :init
-  (setq forge-add-default-bindings nil))
+    :ensure t
+    :after magit
+    :init
+    (setq forge-add-default-bindings nil))
 
 (module! code-review
-  :ensure t
-  :defer t
-  :init
-  (setq ghub-use-workaround-for-emacs-bug 'force)
-  :config
-  (setq code-review-fill-column 80
-	code-review-new-buffer-window-strategy #'switch-to-buffer
-	code-review-download-dir "/tmp/code-review/")
-  (add-hook 'code-review-mode-hook #'emojify-mode)
-  (major-mode-map code-review-mode
-    :bindings
-    ("m"  'code-review-transient-api
-     "c" 'code-review-comment-add-or-edit)))
+    :ensure t
+    :defer t
+    :init
+    (setq ghub-use-workaround-for-emacs-bug 'force)
+    :config
+    (setq code-review-fill-column 80
+	  code-review-new-buffer-window-strategy #'switch-to-buffer
+	  code-review-download-dir "/tmp/code-review/")
+    (add-hook 'code-review-mode-hook #'emojify-mode)
+    (major-mode-map code-review-mode
+	:bindings
+      ("m"  'code-review-transient-api
+	    "c" 'code-review-comment-add-or-edit)))
 
 (module! vterm
-  :ensure t
-  :defer t
-  :init
-  (defun vterm-send-command (command &optional switch-to-vterm?)
-    (let ((buf (current-buffer)))
-      (when switch-to-vterm?
-	(vterm))
-      (vterm--goto-line -1)
-      (vterm-send-string command)
-      (vterm-send-return)))
+    :ensure t
+    :defer t
+    :init
+    ;; TODO: NEed to worry about absolute vs. relative paths
+    ;; TODO: What about aliases
+    ;; Maybe it's just like 10000 times easier to get the current directory
+    ;; from vterm
+    (defun get-path-from-command (command)
+      (let ((path (cadr (split-string command))))
+	(if (string-match "/$" command)
+	    (substring command 0 (- (length command) 1))
+	  command)))
 
-  (defun vterm--get-password ()
-    (let* ((base    "security find-generic-password")
-	   (service "'iTerm2'")
-	   (account "'1Password - iterm'")
-	   (command (format "%s -s %s -a %s -w"
-			    base service account)))
-      (replace-regexp-in-string
-       "\n" "" (shell-command-to-string command))))
+    (defun vterm-send-command (command &optional switch-to-vterm?)
+      (let ((buf           (current-buffer))
+	    (clean-command
+	     (string-trim (substring-no-properties command))))
+	;;(when (string-prefix-p "cd " clean-command)
+	;;	;; TODO: Handle cases with semi-colons
+	;;	;; e.g. cd one/two ; cd ../../three - I don't know
+	;;	;; why someone would do that, but it's legit bash
+	;;	(setq default-directory (get-path-from-command clean-command)))
+	(when switch-to-vterm?
+	  (vterm))
+	(vterm--goto-line -1)
+	(vterm-send-string command)
+	(vterm-send-return)))
 
-  (defun vterm-send-1password ()
-    (interactive)
-    (save-window-excursion
-      (vterm)
-      (vterm--goto-line -1)
-      (vterm-send-string (vterm--get-password))
-      (vterm-send-return)))
+    (defun vterm--get-password ()
+      (let* ((base    "security find-generic-password")
+	     (service "'iTerm2'")
+	     (account "'1Password - iterm'")
+	     (command (format "%s -s %s -a %s -w"
+			      base service account)))
+	(replace-regexp-in-string
+	 "\n" "" (shell-command-to-string command))))
 
-  (defun vterm-send-password ()
-    (let ((buf (current-buffer)))
-      (vterm)
-      (sleep-for 5)
-      (vterm-send-string (vterm--get-password))
-      (vterm-send-return)
-      (vterm-clear)))
+    (defun vterm-send-1password ()
+      (interactive)
+      (save-window-excursion
+	(vterm)
+	(vterm--goto-line -1)
+	(vterm-send-string (vterm--get-password))
+	(vterm-send-return)))
 
-  (defun vterm-run (command)
-    (save-window-excursion
-      (vterm-send-command command t)))
+    (defun vterm-send-password ()
+      (let ((buf (current-buffer)))
+	(vterm)
+	(sleep-for 5)
+	(vterm-send-string (vterm--get-password))
+	(vterm-send-return)
+	(vterm-clear)))
 
-  (defun vterm-send-paragraph ()
-    (interactive)
-    (let* ((start (save-excursion
-		    (backward-paragraph)
+    (defun vterm-run (command)
+      (save-window-excursion
+	(vterm-send-command command t)))
+
+    (defun vterm-send-paragraph ()
+      (interactive)
+      (let* ((start (save-excursion
+		      (backward-paragraph)
+		      (point)))
+	     (end (save-excursion
+		    (forward-paragraph)
 		    (point)))
-	   (end (save-excursion
-		  (forward-paragraph)
-		  (point)))
-	   (command (buffer-substring start end)))
-      (vterm-run command)))
+	     (command (buffer-substring start end)))
+	(vterm-run command)))
+
+    (defun eval-expression-at-point ()
+      (interactive)
+      ;; TODO: This could be a little more robust
+      (let ((url (thing-at-point 'line)))
+	(browse-url url)))
 
 ;;; Figure out auto/tab complete (with lsp?)
 
 ;;;###autoload
-  (define-derived-mode eirene-term-mode sh-mode "eirene-term"
-    "Major mode for eirene-term files.")
+    (define-derived-mode eirene-term-mode sh-mode "eirene-term"
+			 "Major mode for eirene-term files.")
 
-  (evil-define-key  'insert eirene-term-mode-map
-    (kbd "C-c C-c")      'vterm-send-paragraph
-    (kbd "<tab>")        'comint-dynamic-complete-filename
-    (kbd "C-<return>")   'vterm-send-paragraph)
+    (evil-define-key  'insert eirene-term-mode-map
+      (kbd "C-c C-c")      'vterm-send-paragraph
+      (kbd "<tab>")        'comint-dynamic-complete-filename
+      (kbd "C-<return>")   'vterm-send-paragraph)
 
-  (evil-define-key 'normal eirene-term-mode-map
-    (kbd "C-c C-c") 'vterm-send-paragraph
-    "mp" 'vterm-send-1password
-    "mc" 'vterm-send-paragraph)
+    (evil-define-key 'normal eirene-term-mode-map
+      (kbd "C-c C-c") 'vterm-send-paragraph
+      "mc" 'vterm-send-paragraph
+      (kbd "C-<return>") 'vterm-send-paragraph
+      ;; Why can't these be in major-mode-map?
+      "mb" 'browse-url-at-point)
 
-  (defvar *eirene-term-session* nil)
-  (defvar *eirene-term-buffer* "*eirene-term*")
+    (defvar *eirene-term-session* nil)
+    (defvar *eirene-term-buffer* "*eirene-term*")
 
-  (defun eirene-term ()
-    (interactive)
-    (if *eirene-term-session*
-	(workspace-to-workspace-number *eirene-term-session*)
-      (let* ((ws-num (workspace-get-next-workspace-number))
-	     (ws-name (format "%s: eirene-term" ws-num)))
-	(workspace--to-workspace-number ws-num ws-name)
-	(let ((vterm-buffer (vterm)))
-	  (split-window-right)
-	  (switch-to-buffer *eirene-term-buffer*)
-	  (eirene-term-mode))
-	(setq *eirene-term-session* ws-num))))
+    (defun eirene-term ()
+      (interactive)
+      (if *eirene-term-session*
+	  (workspace-to-workspace-number *eirene-term-session*)
+	(let* ((ws-num (workspace-get-next-workspace-number))
+	       (ws-name (format "%s: eirene-term" ws-num)))
+	  (workspace--to-workspace-number ws-num ws-name)
+	  (let ((vterm-buffer (vterm)))
+	    (split-window-right)
+	    (switch-to-buffer *eirene-term-buffer*)
+	    (eirene-term-mode))
+	  (setq *eirene-term-session* ws-num))))
 
-  (defun eirene-term-end-session ()
-    (interactive)
-    (if (not *eirene-term-session*)
-	(message "No eirene term session active")
-      (progn
-	(if (equal *eirene-term-session* 1)
-	    (workspace-to-workspace-number 2)
-	  (workspace-to-workspace-number 1))
-	(workspace-remove-workspace-number *eirene-term-session*)
-	(setq *eirene-term-session* nil)))))
+    (defun eirene-term-end-session ()
+      (interactive)
+      (if (not *eirene-term-session*)
+	  (message "No eirene term session active")
+	(progn
+	  (if (equal *eirene-term-session* 1)
+	      (workspace-to-workspace-number 2)
+	    (workspace-to-workspace-number 1))
+	  (workspace-remove-workspace-number *eirene-term-session*)
+	  (setq *eirene-term-session* nil))))
+
+    (defun vterm-goto-beginning ()
+      (interactive)
+      (vterm--goto-line 0))
+
+    (major-mode-map vterm-mode
+      :bindings
+      ("g" 'vterm-goto-beginning)))
 
 (module! term
-  :use-package nil
-  (custom-set-faces
+    :use-package nil
+    (custom-set-faces
 
-   '(term-color-black ((t (:foreground "#3F3F3F" :background "#2B2B2B"))))
-   '(term-color-red ((t (:foreground "#AC7373" :background "#8C5353"))))
-   '(term-color-green ((t (:foreground "#7F9F7F" :background "#9FC59F"))))
-   '(term-color-yellow ((t (:foreground "#DFAF8F" :background "#9FC59F"))))
-   '(term-color-blue ((t (:foreground "#7CB8BB" :background "#4C7073"))))
-   '(term-color-magenta ((t (:foreground "#DC8CC3" :background "#CC9393"))))
-   '(term-color-cyan ((t (:foreground "#93E0E3" :background "#8CD0D3"))))
-   '(term-color-white ((t (:foreground "#DCDCCC" :background "#656555"))))
+     '(term-color-black ((t (:foreground "#3F3F3F" :background "#2B2B2B"))))
+     '(term-color-red ((t (:foreground "#AC7373" :background "#8C5353"))))
+     '(term-color-green ((t (:foreground "#7F9F7F" :background "#9FC59F"))))
+     '(term-color-yellow ((t (:foreground "#DFAF8F" :background "#9FC59F"))))
+     '(term-color-blue ((t (:foreground "#7CB8BB" :background "#4C7073"))))
+     '(term-color-magenta ((t (:foreground "#DC8CC3" :background "#CC9393"))))
+     '(term-color-cyan ((t (:foreground "#93E0E3" :background "#8CD0D3"))))
+     '(term-color-white ((t (:foreground "#DCDCCC" :background "#656555"))))
 
-   '(term-default-fg-color ((t (:inherit term-color-white))))
-   '(term-default-bg-color ((t (:inherit term-color-black))))))
+     '(term-default-fg-color ((t (:inherit term-color-white))))
+     '(term-default-bg-color ((t (:inherit term-color-black))))))
 
 (module! ag
-  :defer t
-  :ensure t)
+    :defer t
+    :ensure t)
 
 (module! quelpa
-  :defer t
-  :ensure t)
-
-;;(module! exec-path-from-shell
-;;  :ensure t
-;;  :init
-;;  (when (memq window-system '(mac ns x))
-;;    (exec-path-from-shell-initialize)))
+    :defer t
+    :ensure t)
 
 (module! recentf-mode
-  :use-package nil
-  (recentf-mode))
+    :use-package nil
+    (recentf-mode))
 
 (module! envrc
-  :ensure t
-  :init
-  (envrc-global-mode))
+    :ensure t
+    :init
+    (envrc-global-mode))
+
+;;(module! just-mode
+;;  :ensure t
+;;  :defer t)
 
 (module! org
-  :ensure t
-  :mode ("\\.org\\'" . org-mode)
-  :config
+    :ensure t
+    :mode ("\\.org\\'" . org-mode)
+    :config
 
-  (defun execute-fn-on-lines (start end buffer fn &rest args)
-    (save-window-excursion
-      (switch-to-buffer buffer)
-      (goto-line start)
-      (apply fn args)
-      (dotimes (n (- end start))
-	(goto-line (inc (+ start n)))
-	(apply fn args))))
+    (defun execute-fn-on-lines (start end buffer fn &rest args)
+      (save-window-excursion
+	(switch-to-buffer buffer)
+	(goto-line start)
+	(apply fn args)
+	(dotimes (n (- end start))
+	  (goto-line (inc (+ start n)))
+	  (apply fn args))))
 
-  (defun org-archive-finished-tasks ()
-    (interactive)
-    (mapcar
-     (lambda (tag)
-       (org-map-entries 'org-archive-subtree tag 'file))
-     '("TODO=\"DONE\"" "TODO=\"WONT DO\"")))
+    (defun header-text (string)
+      "Get the text from a STRING thats an org mode header."
+      (-> string
+	  string-trim
+	  split-string
+	  cdr
+	  (string-join " ")
+	  string-trim))
 
-  (defun org-insert-code-block (name language results)
-    (interactive "sName: \nsLanguage: \nsResults: ")
-    (insert (format "#+NAME: %s\n" name))
-    ;; TODO: Make this more like a builder
-    (if (equal results "")
-	(insert (format "#+BEGIN_SRC %s\n\n" language))
-      (insert (format
-	       "#+BEGIN_SRC %s :results %s\n\n" language results)))
-    (forward-line)
-    (insert (format "#+END_SRC\n"))
-    (forward-line -2))
+    (defmacro do-org-headers (header-var &rest body)
+      (declare (indent 1))
+      (let ((pos    (gensym)))
+	`(save-excursion
+	   (goto-char 0)
+	   (cl-do ((,pos (re-search-forward "^\*" nil t)
+			 (re-search-forward "^\*" nil t)))
+		  ((not ,pos) nil)
+	     (setq ,header-var (header-text (thing-at-point 'line)))
+	     ,@body))))
 
-  (defun setup-org-file (title)
-    (interactive "sTitle: ")
-    (let ((date (format-time-string "%m-%d-%Y")))
-      (save-excursion
-  	(goto-char 0)
-  	(insert (format "#+title: %s\n" title))
-  	(insert (format "#+date: %s\n" date))
-  	(insert (format "#+author: Andrew Parisi\n")))))
+    (defun org-header-not-done-p (header))
 
-  (defun org-insert-time-stamped-row ()
-    (interactive)
-    (let ((time (format-time-string "%H:%M")))
-      (insert (format "- %s: " time))))
+    (defun org-header-task (header))
 
-  (defun org-summary-todo (n-done n-not-done)
-    "Switch entry to DONE when all subentries are done, to TODO otherwise."
-    (let (org-log-done org-log-states)	; turn off logging
-      (org-todo (if (= n-not-done 0) "DONE" "TODO"))))
+    (defun org-header-depth (header)
+      (-> header string-trim split-string car length))
 
-  (add-hook 'org-after-todo-statistics-hook #'org-summary-todo)
-  (add-hook 'electric-indent-functions
-	    (lambda (x) (when (eq 'org-mode major-mode) 'no-indent)))
+    (defun org-header-p (line)
+      (string-match "^\*" line))
 
-  (make-variable-buffer-local
-   (defvar
-     *footnote-count* 1))
+    (defun org-header-position (header-list)
+      (let ((pos nil)
+	    (hl  header-list))
+	(do-org-headers header
+	    (when (equal header (car hl))
+	      (when (not (cdr hl))
+		(setq pos (point)))
+	      (setq hl (cdr hl))))
+	pos))
 
-  (defun org-add-footnote (text)
-    (interactive "sText: ")
-    (save-excursion
-      (insert (format "[fn:%s]" *footnote-count*))
-      (goto-char (point-max))
-      (when (equal *footnote-count* 1)
-	(insert "* Footnotes\n"))
-      (insert "\n")
-      (insert (format "[fn:%s]: %s" *footnote-count* text))
-      (setq *footnote-count* (inc *footnote-count*))))
+    (defun org-archive-finished-tasks ()
+      (interactive)
+      (mapcar
+       (lambda (tag)
+	 (org-map-entries 'org-archive-subtree tag 'file))
+       '("TODO=\"DONE\"" "TODO=\"WONT DO\"")))
 
-  (defun header-text (string)
-    "Get the text from a STRING thats an org mode header."
-    (-> string
-	string-trim
-	split-string
-	cadr
-	string-trim))
+    (defun org-insert-code-block (name language results)
+      (interactive "sName: \nsLanguage: \nsResults: ")
+      (insert (format "#+NAME: %s\n" name))
+      ;; TODO: Make this more like a builder
+      (if (equal results "")
+	  (insert (format "#+BEGIN_SRC %s\n\n" language))
+	(insert (format
+		 "#+BEGIN_SRC %s :results %s\n\n" language results)))
+      (forward-line)
+      (insert (format "#+END_SRC\n"))
+      (forward-line -2))
 
-  (defmacro do-org-headers (header-var &rest body)
-    (declare (indent defun))
-    (let ((pos    (gensym)))
-      `(save-excursion
-	 (goto-char 0)
-	 (cl-do ((,pos (re-search-forward "^\*" nil t)
-		       (re-search-forward "^\*" nil t)))
-	     ((not ,pos) nil)
-	   (setq ,header-var (header-text (thing-at-point 'line)))
-	   ,@body))))
+    (defun setup-org-file (title)
+      (interactive "sTitle: ")
+      (let ((date (format-time-string "%m-%d-%Y")))
+	(goto-char 0)
+	(insert (format "#+title: %s\n" title))
+	(insert (format "#+date: %s\n" date))
+	(insert (format "#+author: Andrew Parisi\n"))))
 
-  (defun header-position (header-list)
-    (let ((pos nil)
-	  (hl     header-list))
-      (do-org-headers header
-	(when (string-prefix-p header (car hl))
-	  (when (not (cdr hl))
-	    (setq pos (point)))
-	  (setq hl (cdr hl))))
-      pos))
+    (defun org-insert-time-stamped-row ()
+      (interactive)
+      (let ((time (format-time-string "%H:%M")))
+	(insert (format "- %s | " time))))
 
-  (major-mode-map org-mode
-    :bindings
-    ("a"   'org-agenda
-     "n"  'org-todo
-     "te"  'org-set-effort
-     "tp"  'org-priority
-     "ts"  'org-schedule
-     "tt"  'org-set-tags-command
-     "ct"  'org-archive-finished-tasks
-     "cs"  'org-archive-subtree
-     "jo"  'org-open-at-point
-     "fi"  'setup-org-file
-     "fmi" 'setup-meetings-file
-     "fms" 'org-meeting-insert-speaker
-     "ic"  'org-insert-code-block
-     "ij"  'org-insert-org-jira-link
-     "ii"  'org-insert-time-stamped-row
-     "if"  'org-add-footnote
-     "im"  'org-insert-markdown-jira-link
-     "it"  'org-jira-link-todo
-     "e"   'org-export-dispatch
-     "p"   'org-generate-pr-url
-     "mp"  'org-move-subtree-up
-     "mn"  'org-move-subtree-down
-     "mj"  'org-move-item-up
-     "mk"  'org-move-item-down
-     "mh"  'org-promote-subtree
-     "ml"  'org-demote-subtree
-     "di"  'org-toggle-inline-images)
-    :labels
-    ("i"  "insert"
-     "j"  "jump"
-     "m"  "move"
-     "d"  "dial"
-     "c"  "clear"
-     "fm" "meeting-file"
-     "f"  "file"
-     "t"  "task"))
+    (defun org-summary-todo (n-done n-not-done)
+      "Switch entry to DONE when all subentries are done, to TODO otherwise."
+      (let (org-log-done org-log-states) ; turn off logging
+	(org-todo (if (= n-not-done 0) "DONE" "TODO"))))
 
-  (evil-define-key 'normal org-mode-map
-    (kbd "<tab>") 'org-cycle)
+    (add-hook 'org-after-todo-statistics-hook #'org-summary-todo)
+    (add-hook 'electric-indent-functions
+	      (lambda (x) (when (eq 'org-mode major-mode) 'no-indent)))
 
-  (require 'ox-md)
-  (setq org-startup-indented t
-  	org-startup-truncated nil
-  	org-hide-leading-stars nil
-  	org-directory "~/org"
-  	org-log-done t
-	org-enforce-todo-dependencies t
-  	org-todo-keywords
-  	'((sequence "TODO" "WORKING" "|" "DONE" "WONT DO(@)"))
-  	org-hide-leading-stars t
-  	org-confirm-babel-evaluate nil
-  	org-agenda-files (list "~/org/status.org")
-  	org-capture-default-notes-file "~/org/status.org"
-	org-default-notes-file "~/org/status.org"
-	org-plantuml-jar-path
-	(expand-file-name
-	 "/Users/andrewparisi/Documents/java/jars/plantuml.jar")
-	nrepl-sync-request-timeout nil
-	org-capture-templates
-	'(("t" "Tasks" entry
-	   (file+headline "~/org/status.org" "Tasks")
-           "* TODO %?\nSCHEDULED: %^t\n")
-	  ("p" "Personal" entry
-	   (file+headline "~/org/status.org" "Personal")
-	   "** TODO %?\nSCHEDULED: %^t\n" )))
+    (major-mode-map org-mode
+	:bindings
+      ("a"   'org-agenda
+	     "d"   'org-ctrl-c-ctrl-c
+	     "n"   'org-todo
+	     "te"  'org-set-effort
+	     "tp"  'org-priority
+	     "ts"  'org-schedule
+	     "tt"  'org-set-tags-command
+	     "ct"  'org-archive-finished-tasks
+	     "cs"  'org-archive-subtree
+	     "jo"  'org-open-at-point
+	     "fi"  'setup-org-file
+	     "ic"  'org-insert-code-block
+	     "ii"  'org-insert-github-issue-link
+	     "it"  'org-insert-time-stamped-row
+	     "e"   'org-export-dispatch
+	     "p"   'org-generate-pr-url
+	     "mp"  'org-move-subtree-up
+	     "mn"  'org-move-subtree-down
+	     "mj"  'org-move-item-up
+	     "mk"  'org-move-item-down
+	     "mh"  'org-promote-subtree
+	     "ml"  'org-demote-subtree
+	     "si"  'org-toggle-inline-images)
+      :labels
+      ("i"  "insert"
+	    "j"  "jump"
+	    "m"  "move"
+	    "s"  "settings"
+	    "c"  "clear"
+	    "f"  "file"
+	    "t"  "task"))
 
-  (org-babel-do-load-languages
-   'org-babel-load-languages
-   '((python . t)
-     (R . t)
-     (clojure . t)
-     (haskell . t)
-     (emacs-lisp . t)
-     (sql . t)
-     (dot . t)
-     (plantuml . t)
-     (shell . t))))
+    (evil-define-key 'normal org-mode-map
+      (kbd "<tab>") 'org-cycle)
+
+;;; Capture
+
+    ;; Do something a little more flexible with this
+    (defmacro capture-entry (key header)
+      `'(,key ,header entry
+	 (file+headline ,*status-file* ,header)
+	 "*** TODO %?\nSCHEDULED: %^t\n"))
+
+    (defun org-add-to-issue-block ()
+      (let ((issue-number (read-string "Issue Number: ")))
+	(save-window-excursion
+	  (find-file *status-file*)
+	  (goto-char 0)
+	  (let* ((issue-label (format "GH-%s" issue-number))
+		 (issue-header (format "TODO %s" issue-label))
+		 (maybe-header (org-header-position
+				(list "Tasks" "Engine Team" issue-header)))
+		 (header-pos nil))
+	    (if maybe-header
+		(setq header-pos maybe-header)
+	      (progn
+		(goto-char (org-header-position (list "Tasks" "Engine Team")))
+		(re-search-forward ":END:")
+		(forward-line 1)
+		(setq header-pos (point))
+		(insert (format "*** TODO GH-%s\n" issue-number))
+		(insert
+		 (format ":PROPERTIES:\n:CATEGORY: %s\n:END:\n"
+			 (downcase issue-label)))
+		(insert "\n")))
+	    (goto-char header-pos)))))
+
+    (require 'ox-md)
+    (setq org-startup-indented t
+  	  org-startup-truncated nil
+  	  org-hide-leading-stars nil
+  	  org-directory "~/org"
+  	  org-log-done t
+	  org-enforce-todo-dependencies t
+  	  org-todo-keywords
+  	  '((sequence "TODO" "WORKING" "|" "DONE" "WONT DO(@)"))
+  	  org-hide-leading-stars t
+  	  org-confirm-babel-evaluate nil
+  	  org-agenda-files (cons *status-file* (directory-files-recursively "~/notes" "\\.org$"))
+  	  org-capture-default-notes-file *status-file*
+	  org-default-notes-file *status-file*
+	  nrepl-sync-request-timeout nil
+	  org-capture-templates
+	  '(("t" "Tasks" entry
+	     (file+headline "~/org/status.org" "Tasks")
+             "* TODO %?\nSCHEDULED: %^t\n")
+	    ("p" "Personal" entry
+	     (file+headline "~/org/status.org" "Personal")
+	     "** TODO %?\nSCHEDULED: %^t\n" )))
+    (org-babel-do-load-languages
+     'org-babel-load-languages
+     '((clojure . t)
+       (emacs-lisp . t)
+       (sql . t)
+       (dot . t)
+       (plantuml . t)
+       (shell . t))))
 
 (module! org-agenda
   :requires evil
@@ -595,19 +640,20 @@
   :config
   (evil-set-initial-state 'org-agenda-mode 'normal)
   (evil-define-key 'normal org-agenda-mode-map
-    "q" 'org-agenda-quit
-    "r" 'org-agenda-redo
-    "s" 'org-save-all-buffers
-    "t" 'org-agenda-todo
-    "d" 'org-agenda-day-view
-    "w" 'org-agenda-week-view
-    "f" 'org-agenda-later
     "b" 'org-agenda-earlier
     "c" 'org-capture
-    "." 'org-agenda-goto-today
+    "d" 'org-agenda-day-view
+    "D" 'org-agenda-goto-date
     "e" 'org-agenda-set-effort
-    (kbd "<RET>") 'org-agenda-goto
-    ">" 'org-agenda-date-prompt)
+    "f" 'org-agenda-later
+    "p" 'org-agenda-priority
+    "q" 'org-agenda-quit
+    "r" 'org-agenda-redo
+    "s" 'org-agenda-date-prompt
+    "t" 'org-agenda-todo
+    "w" 'org-agenda-week-view
+    "." 'org-agenda-goto-today
+    (kbd "<RET>") 'org-agenda-goto)
   (setq
    org-agenda-dim-blocked-tasks 'invisible
    org-agenda-overriding-columns-format
@@ -624,38 +670,37 @@
   :ensure t
   :after org
   :init
-  (add-hook 'org-agenda-finalize-hook 'org-timeline-insert-timeline :append))
+  ;;(load-file "/Users/anparisi/emacs-files/stock.el")
+  (setq org-timeline-prepend nil)
 
-(use-package org-roam
-  :ensure t
-  :custom
-  (org-roam-directory "~/notes")
-  :init
-  (major-mode-map org-mode
-    :labels
-    ("r"  "roam"
-     "rt" "roam tag")
-    :bindings
-    ("rf"  'org-roam-node-find
-     "rl"  'org-roam-node-insert
-     "rta" 'org-roam-tag-add
-     "rtr" 'org-roam-tag-remove
-     "rb"  'org-roam-buffer-toggle
-     "ri"  'org-roam-link-current-file))
-  (setq org-roam-node-display-template
-        (concat "${title:*} "
-                (propertize "${tags:10}" 'face 'org-tag)))
+  (defun org-insert-stock-ticker ()
+    (unless (buffer-narrowed-p)
+      (goto-char (point-min))
+      (while (and (or
+		   (eq (get-text-property
+			(line-beginning-position) 'org-agenda-type)
+		       'agenda)
+		   (member 'org-timeline-elapsed (text-properties-at (point))))
+		  (not (eobp)))
+	(forward-line))
+      (forward-line)
+      (let ((inhibit-read-only-t))
+	(cursor-sensor-mode 1)
+	(let* ((stock (cisco-stock)))
+	  (cisco-stock-update-logs stock)
+	  (insert (stock-json-to-string stock))))
+      (font-lock-mode)))
 
-  (setq
-   org-roam-capture-templates
-   '(("d" "default" plain "%?"
-      :if-new
-      (file+head "${slug}.org"
-                 "#+title: ${title}\n#+date: %u\n#+lastmod: \n\n")
-      :immediate-finish t))
-   time-stamp-start "#\\+lastmod: [\t]*")
-  :config
-  (org-roam-setup))
+  (defun org-color-holidays-green ()
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward "holiday:" nil t)
+	(add-text-properties (match-beginning 0) (point-at-eol)
+			     '(face (:foreground "#AFD75F"))))))
+
+    (add-hook 'org-agenda-finalize-hook 'org-timeline-insert-timeline :append)
+   ;; (add-hook 'org-agenda-finalize-hook 'org-insert-stock-ticker :append)
+    (add-hook 'org-agenda-finalize-hook 'org-color-holidays-green :append))
 
 ;;;;;;;
 ;;; LSP
@@ -670,6 +715,7 @@
 	lsp-lens-enable t
 	lsp-enable-snipped nil
 	lsp-completion-enable t
+	lsp-enable-snipped nil
 	lsp-signature-auto-activate nil)
 
   ;; TODO: Add these to the :hook section
@@ -733,250 +779,34 @@
   :ensure t
   :defer t
   :init
-  (global-flycheck-mode)
-  :config
-  (flycheck-define-checker
-      python-mypy ""
-      :command ("mypy"
-		"--ignore-missing-imports"
-		source-original)
-      :error-patterns
-      ((error line-start (file-name) ":" line ": error:" (message) line-end))
-      :modes python-mode)
-  (add-to-list 'flycheck-checkers 'python-mypy t)
-  (flycheck-add-next-checker 'python-pylint 'python-mypy t))
+  (global-flycheck-mode))
 
 (module! company
   :ensure t
   :requires evil)
 
-(module! highlight-indent-guides
-  :ensure t
-  :init
-  (add-hook 'python-mode-hook 'highlight-indent-guides-mode))
-
             ;;;
 ;;;;;;;;;;;;;;;
-
-;;;;;;;;;;
-;;; python
-
-(module! sphinx-doc
-  :ensure t
-  :init
-  (defun get-doc-params (doc)
-    (let ((fields   (sphinx-doc-doc-fields doc))
-	  (results '()))
-      (dolist (field fields)
-	(when (equal (sphinx-doc-field-key field) "param")
-	  (let* ((arg (sphinx-doc-field-arg field))
-		 (doc (read-string (format "Docstring for %s: " arg))))
-	    (push (format "%s: %s" arg doc) results))))
-      (reverse results)))
-
-  (defun get-doc-returns (doc)
-    (let ((fields        (sphinx-doc-doc-fields doc))
-	  (return-field  nil))
-      (dolist (field fields)
-	(when (equal (sphinx-doc-field-key field) "returns")
-	  (setq return-field (sphinx-doc-field-arg field))))
-      (if return-field
-	  return-field
-	(read-string "Returns: "))))
-
-  (defun insert-google-comment (doc indent)
-    (insert "\n")
-    (let ((description (read-string "Description: "))
-	  (returns     (get-doc-returns doc))
-	  (params      (get-doc-params doc))
-	  (indent-str  (apply 'concat (make-list indent " "))))
-      (insert (format "%s\"\"\"%s\n\n" indent-str description))
-      (insert (format "%sParameters\n%s----------\n"
-		      indent-str indent-str))
-      (dolist (param params)
-	(insert (format "%s%s\n" indent-str param)))
-      (insert (format "\n%sReturns\n%s-------\n"
-		      indent-str indent-str))
-      (insert (format "%s%s\n%s\"\"\""
-		      indent-str returns indent-str))))
-
-  (defun google-doc ()
-    (interactive)
-    (let* ((fn-def (sphinx-doc-str->fndef (sphinx-doc-fndef-str)))
-	   (doc    (sphinx-doc-fndef->doc fn-def))
-	   (indent (+ 4 (sphinx-doc-current-indent))))
-      (save-excursion
-	(search-forward-regexp sphinx-doc-fun-end-regex)
-	(forward-line -1)
-	(move-end-of-line nil)
-	(insert-google-comment doc indent))))
-
-  (defun rewrite-comment (start-line end-line)
-    (interactive "nStart: \nnEnd: ")
-    (let ((params '())
-	  (returns nil)
-	  (description nil)
-	  (current-line start-line)
-	  (comment-start nil)
-	  (comment-end nil))
-      (save-excursion
-	(setq comment-start
-	      (progn
-		(goto-line start-line)
-		(beginning-of-line)
-		(point)))
-	(setq comment-end
-	      (progn
-		(goto-line end-line)
-		(end-of-line)
-		(point))))
-      (save-excursion
-	(goto-line start-line)
-	(while (<= current-line end-line)
-	  (goto-line current-line)
-	  (let* ((start (progn
-			  (beginning-of-line)
-			  (point)))
-		 (end   (progn
-			  (end-of-line)
-			  (point)))
-		 (line  (buffer-substring start end))
-		 (clean (trim-whitespace line)))
-	    (cond ((string-prefix-p ":param" clean)
-		   (let ((param-description (car (cdr (cdr (split-string clean ":")))))
-			 (param-name        (car (cdr (split-string (car (cdr (split-string clean ":"))) " ")))))
-		     (push (cons param-name param-description) params)))
-		  ((string-prefix-p ":returns" clean)
-		   (let ((return-line (car (cdr (cdr (split-string clean ":"))))))
-		     (push return-line returns)))
-		  (returns
-		   (push line returns))
-		  (t
-		   (push line description)))
-	    (setq current-line (+ 1 current-line))))
-	(kill-region comment-start comment-end)
-	(let ((result ""))
-	  (dolist (d-line (reverse description))
-	    (setq result (concat result d-line "\n")))
-	  (setq result (format "%s\n    Parameters\n    ----------\n" result))
-	  (dolist (param (reverse params))
-	    (setq result (format "%s    %s: %s\n" result (car param) (cdr param))))
-	  (dolist (r-line (reverse returns))
-	    (setq result (concat result r-line "\n")))
-;;;	(setq result (format "%s\"\"\"" result))
-	  (goto-char comment-start)
-	  (insert result)))))
-  :mode ("\\.py\\'" . python-mode)
-  ;; TODO: Consider writing a wrapper around
-  ;; sphinx-doc that goes to the beginning of
-  ;; the current fn.
-  )
-
-(module! python
-  :ensure t
-  :mode ("\\.py\\'" . python-mode)
-  :init
-  (add-hook
-   'inferior-python-mode-hook
-   (lambda ()
-     (progn
-       ;;       (evil-define-key 'normal 'evil-normal-state-map (kbd "C-j") 'comint-next-input)
-       ;;       (evil-define-key 'insert 'evil-insert-state-map (kbd "C-j") 'comint-next-input)
-       ;;       (evil-define-key 'normal 'evil-normal-state-map (kbd "C-k") 'comint-previous-input)
-       ;;       (evil-define-key 'insert 'evil-insert-state-map (kbd "C-k") 'comint-previous-input)
-       ;;       (evil-define-key 'normal 'evil-normal-state-map (kbd "mc")
-       ;;       'comint-clear-buffer)
-;;; TODO: CLEAN THIS UP
-       (evil-define-key 'normal 'inferior-python-mode-map (kbd "C-j") 'comint-next-input)
-       (evil-define-key 'insert 'inferior-python-mode-map (kbd "C-j") 'comint-next-input)
-       (evil-define-key 'normal 'inferior-python-mode-map (kbd "C-k") 'comint-previous-input)
-       (evil-define-key 'insert 'inferior-python-mode-map (kbd "C-k") 'comint-previous-input)
-       (evil-define-key 'normal 'inferior-python-mode-map (kbd "mc")
-	 'comint-clear-buffer))))
-  (setq
-   python-shell-interpreter "ipython"
-   python-shell-interpreter-args "--simple-prompt -i --InteractiveShell.display_page=True"
-   flycheck-display-errors-function #'flycheck-display-error-messages-unless-error-list)
-
-  (add-hook 'python-mode-hook (lambda ()
-                                (require 'sphinx-doc)
-                                (sphinx-doc-mode t)))
-  (major-mode-map python-mode
-    :labels
-    ("d" "doc"
-     "e" "eval"
-     "m" "move")
-    :bindings
-    ("dr" 'rewrite-comment
-     "ds" 'sphinx-doc
-     "dg" 'google-doc
-     "b"  'blacken-buffer
-     "g"  'lsp-find-definition
-     "mn" 'python-nav-forward-defun
-     "mp" 'python-nav-backward-defun
-     "eb" 'python-shell-send-buffer
-     "ed" 'python-shell-send-defun))
-
-  (evil-define-key 'visual python-mode-map "m;" 'comment-or-uncomment-region))
-
-
-(module! blacken
-  :ensure t
-  :defer t
-  :mode ("\\.py\\'" . python-mode)
-  :config
-  (setq blacken-line-length '79))
-
-
-(module! pyvenv
-  :ensure t
-  :defer t
-  :init
-  (setenv "CONDA_PREFIX" "/Users/andrewparisi/opt/anaconda3")
-  (setenv "WORKON_HOME" (concat (getenv "CONDA_PREFIX") "/envs"))
-  :config
-  (pyvenv-mode t)
-
-  ;; Set correct Python interpreter
-;;  (setq pyvenv-post-activate-hooks
-;;        (list (lambda ()
-;;                (setq python-shell-interpreter (concat pyvenv-virtual-env "bin/python3")))))
-;;  (setq pyvenv-post-deactivate-hooks
-;;        (list (lambda ()
-;;                (setq python-shell-interpreter "python3"))))
-
-
-  )
-
-
-(module! ein
-  :defer t
-  :ensure t
-  :init (setq ein:output-area-inlined-images t))
-
-                 ;;;
-;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;
 ;;; emacs lisp
 
 (module! emacs
-  :use-package nil
-  (major-mode-map emacs-lisp-mode
-    :labels
-    ("e" "eval"
-     "m" "macro")
-    :bindings
-    ("eb" 'eval-buffer
-     "ed" 'eval-defun
-     "ee" 'eval-last-sexp
-     "ep" 'pp-eval-last-sexp
-     "g"  'xref-find-definitions
-     "me" 'emacs-lisp-macroexpand
-     "."  'xref-prompt-find-definitions
-     ","  'xref-pop-marker-stack
-     "s"  'trace-function
-     "u"  'untrace-function)))
+    :use-package nil
+    (major-mode-map emacs-lisp-mode
+	:labels ("e" "eval"
+		     "m" "macro")
+	:bindings
+	("el" 'eval-buffer
+	      "ed" 'eval-defun
+	      "ee" 'eval-last-sexp
+	      "ep" 'pp-eval-last-sexp
+	      "g"  'xref-find-definitions
+	      "me" 'emacs-lisp-macroexpand
+	      "."  'xref-prompt-find-definitions
+	      ","  'xref-pop-marker-stack
+	      "s"  'trace-function
+	      "u"  'untrace-function)))
 
 
 ;;;;;;;;;;;
@@ -995,9 +825,9 @@
   :config
     (setq cider-repl-pop-to-buffer-on-connect nil
 	  cider-test-show-report-on-success t
-	  cider-repl-display-help-banner nil
 	  cider-show-eval-spinner t
 	  clojure-toplevel-inside-comment-form t
+	  cider-repl-display-help-banner nil
 	  cider-show-error-buffer t))
 
 (module! clojure-mode
@@ -1045,210 +875,72 @@
           (user-error "There is no default identifier")
 	(xref--find-definitions id nil))))
 
-  ;;TODO: cider toggle debug at point
   (defun clojure-toggle-debug-at-point ()
     (interactive)
-    (let ((debug? nil))
+    (let ((debugged? nil))
       (save-excursion
 	(forward-line -1)
-	(let ((line (string-trim (thing-at-point 'line))))
-	  (when (string-prefix-p "#dbg" line)
-	    (setq debug? t))))
-      (if debug?
+	(setq debugged? (->> (thing-at-point 'line)
+			     string-trim
+			     (string-prefix-p "#dbg"))))
+      (if debugged?
 	  (progn
 	    (forward-line -1)
-	    (delete-line))
+	    (delete-line)
+	    (forward-line 1))
 	(progn
 	  (evil-open-above 1)
 	  (insert "#dbg")))
       (cider-eval-defun-at-point)
       (evil-normal-state)))
 
-  (defun close-result-buffer ()
-    (interactive)
-    (let ((window (get-buffer-window "*cider-result*")))
-      (select-window window)
-      (kill-buffer-and-window)))
-
   (major-mode-map clojure-mode
     :bindings
-    ("ad" 'clojure-toggle-debug-at-point
+    ("aa"  'lsp-execute-code-action
+     "ad" 'clojure-toggle-debug-at-point
      "as" 'cider-toggle-trace-var
      "ae" 'cider-englighted-mode
-     "ar" 'lsp-rename
-     "aa" 'lsp-execute-code-action
-     "c"  'clojure-hash-comment
-     "dd" 'cider-doc
-     "de" 'eldoc-doc-buffer
+     "an" 'clojure-sort-ns
+     "jj" 'my-cider-jack-in
+     "jc" 'my-cider-connect
+     "jq" 'cider-quit
      "el" 'cider-load-buffer
-     "ed" 'cider-eval-defun-at-point
      "ee" 'cider-pprint-eval-last-sexp
+     "ed" 'cider-eval-defun-at-point
      "ec" 'cider-eval-defun-to-comment
      "ep" 'cider-pprint-eval-defun-at-point
      "fd" 'cider-format-defun
      "fb" 'cider-format-buffer
-     "g"  'xref-prompt-find-definitions
-     "jj" 'my-cider-jack-in
-     "jc" 'my-cider-connect
-     "jq" 'cider-quit
+     "q"  'cider-quit
      "n"  'cider-repl-set-ns
-     "qr" 'close-result-buffer
-     "qq" 'cider-quit
-     "r"  'lsp-find-references
+     "g"  'xref-prompt-find-definitions
+     "."  'xref-find-definitions
+     ","  'xref-pop-marker-stack
+     "rn" 'lsp-rename
+     "rr" 'lsp-find-references
+     "dd" 'cider-doc
+     "de" 'eldoc-doc-buffer
      "tn" 'cider-test-run-ns-tests
      "tp" 'cider-test-run-project-tests
      "tt" 'cider-test-run-test
-     "."  'xref-find-definitions
-     ","  'xref-pop-marker-stack)
+     )
     :labels
     (""  "major mode"
      "a" "action"
      "d" "documentation"
      "e" "eval"
      "f" "format"
+     "a" "action"
+     "t" "test"
+     "l" "cider load"
      "j" "repl"
-     "q" "quit"
-     "t" "test"))
+     "d" "documentation"))
   :config
   (setq lsp-clojure-server-command '("clojure-lsp")
 	    org-babel-clojure-backend 'cider))
 
            ;;;
 ;;;;;;;;;;;;;;
-
-;;;;;;;;;
-;;; scala
-
-(module! scala-mode
-  :ensure t
-  :defer t
-  :mode "\\.s\\(cala\\|bt\\)$"
-  :config
-  (major-mode-map scala-mode
-    :labels
-    ("s" "sbt")
-    :bindings
-    ("a" 'lsp-execute-code-action
-     "sc" 'sbt-do-run
-     "st" 'sbt-do-test
-     "ss" 'sbt-start
-     "n" 'lsp-metals-new-scala-file
-     "g" 'lsp-find-definition
-     "r" 'lsp-find-definiions
-     "d" 'lsp-describe-thing-at-point))
-  )
-
-(module! sbt-mode
-  :ensure t
-  :defer t
-  :commands sbt-start sbt-command
-  :config
-  ;; WORKAROUND: https://github.com/ensime/emacs-sbt-mode/issues/31
-  ;; allows using SPACE when in the minibuffer
-  (substitute-key-definition
-   'minibuffer-complete-word
-   'self-insert-command
-   minibuffer-local-completion-map)
-   ;; sbt-supershell kills sbt-mode:  https://github.com/hvesalai/emacs-sbt-mode/issues/152
-  (setq sbt:program-options '("-Dsbt.supershell=false")))
-
-(module! lsp-metals
-  :ensure t
-  :defer t)
-
-         ;;;
-;;;;;;;;;;;;
-
-
-;;;;;;;;;;;
-;;; haskell
-
-(module! haskell-mode
-  :ensure t
-  :defer t
-  :requires (evil which-key)
-
-  :mode ("\\.hs\\'" . haskell-mode)
-  :config
-  (require 'ob-haskell))
-
-            ;;;
-;;;;;;;;;;;;;;;
-
-;;;;;
-;;; R
-
- (module! ess
-   ;; This doesn't really work in a terminal
-   :ensure t
-   :defer t)
-
-
-
-            ;;;
-;;;;;;;;;;;;;;;
-
-
-;;;;;;;;
-;;; mail
-
-;;(module! mu4e
-;;  :load-path "/usr/local/share/emacs/site-lisp/mu@1.6.6/mu4e/"
-;;  :config
-;;  (setq mu4e-mu-binary (executable-find "mu")
-;;	mu4e-maildir "~/.maildir"
-;;	mu4e-drafts-folder "/Users/andrewparisi/.maildir/drafts"
-;;	mu4e-sent-folder   "/Users/andrewparisi/.maildir/sent"
-;;	mu4e-trash-folder  "/Users/andrewparisi/.maildir/trash"
-;;	mu4e-get-mail-command (concat
-;;			       (executable-find "mbsync")
-;;			       " -a")
-;;	mu4e-update-interval 300
-;;	mu4e-attachment-dir "~/Desktop"
-;;	mu4e-change-filename-when-moving t
-;;	mu4e-user-mail-address-list '("andrew.parisi@reifyhealth.com")
-;;	mu4e-confirm-quit nil)
-;;  ;; sending emails
-;;  (require 'smtpmail)
-;;  ;;(require 'epa-file)
-;;  ;;(epa-file-enable)
-;;  (auth-source-forget-all-cached)
-;;  (setq epa-pinentry-mode 'loopback
-;;	message-kill-buffer-on-exit t
-;;	send-mail-function 'sendmail-send-it
-;;	message-send-mail-function 'sendmail-send-it
-;;	sendmail-program (executable-find "msmtp"))
-;;
-;;  (defun timu/set-msmtp-account ()
-;;    (if (message-mail-p)
-;;	(save-excursion
-;;          (let*
-;;              ((from (save-restriction
-;;                       (message-narrow-to-headers)
-;;                       (message-fetch-field "from")))
-;;               (account "gmail"))
-;;            (setq message-sendmail-extra-arguments (list '"-a" account))))))
-;;  (add-hook 'message-send-mail-hook 'timu/set-msmtp-account)
-;;
-;;  ;; mu4e cc & bcc
-;;  ;; this is custom as well
-;;  (add-hook 'mu4e-compose-mode-hook
-;;            (defun timu/add-cc-and-bcc ()
-;;              "My Function to automatically add Cc & Bcc: headers.
-;;    This is in the mu4e compose mode." (save-excursion (message-add-header "Cc:\n"))
-;;              (save-excursion (message-add-header "Bcc:\n"))))
-;;
-;;  ;; mu4e address completion
-;;  (add-hook 'mu4e-compose-mode-hook 'company-mode)
-;;
-;;  ;; For some reason this is throwing an error
-;; ;; (major-mode-map mu4e-view-mode
-;; ;;   :bindings
-;; ;;   ("c" 'mu4e-org-store-and-capture))
-;;  )
-
-             ;;;;
-;;;;;;;;;;;;;;;;;
 
 ;;;;;;;
 ;;; SQL
@@ -1261,25 +953,39 @@
 	sqlformat-args '("-s2" "-g")))
 
 (module! sql
-  :defer t
-  :init
-  (defun sql-add-newline-first (output)
-    "Add newline to beginning of OUTPUT for `comint-preoutput-filter-functions'"
-    (if (equal major-mode 'sql-interactive-mode)
-	(concat "\n" output)
-      output))
+    :defer t
+    :init
+    (defun sql-add-newline-first (output)
+      "Add newline to beginning of OUTPUT for `comint-preoutput-filter-functions'"
+      (if (equal major-mode 'sql-interactive-mode)
+	  (concat "\n" output)
+	output))
 
-  (defun sqli-add-hooks ()
-    "Add hooks to `sql-interactive-mode-hook'."
-    (add-hook 'comint-preoutput-filter-functions
-              'sql-add-newline-first))
-  (add-hook 'sql-interactive-mode-hook 'sqli-add-hooks)
-  (add-hook 'sql-interactive-mode-hook
-	    (lambda () (toggle-truncate-lines t)))
+    (defun sqli-add-hooks ()
+      "Add hooks to `sql-interactive-mode-hook'."
+      (add-hook 'comint-preoutput-filter-functions
+		'sql-add-newline-first))
+    (add-hook 'sql-interactive-mode-hook 'sqli-add-hooks)
+    (add-hook 'sql-interactive-mode-hook
+	      (lambda () (toggle-truncate-lines t)))
 
-  (evil-define-key 'insert sql-mode-map (kbd "C-c p") 'autocomplete-table)
+    (evil-define-key 'insert sql-mode-map (kbd "C-c p") 'autocomplete-table)
 
-  (evil-define-key 'normal sql-mode-map (kbd "C-c p") 'autocomplete-table)
+    (defun sql-eirene-send-paragraph ()
+      (interactive)
+      (save-window-excursion
+	(switch-to-buffer *sqli-connection-buffer*)
+	(comint-clear-buffer)
+	(goto-char (point-max)))
+      (sql-send-paragraph))
+
+    (evil-define-key 'insert sql-mode-map
+      (kbd "C-<return>") 'sql-eirene-send-paragraph
+      (kbd "C-c p") 'autocomplete-table)
+    (evil-define-key 'normal sql-mode-map
+      (kbd "C-<return>") 'sql-eirene-send-paragraph
+      (kbd "C-c p") 'autocomplete-table)
+
   (setq sql-connection-alist
 	'((scotus-kb (sql-product 'postgres)
                      (sql-port 5432)
@@ -1356,33 +1062,15 @@ OUT describes the output file and is either a %-escaped string
   or nil to indicate that there is no output file.")
   )
 
-
            ;;;
 ;;;;;;;;;;;;;;
 
-;;;;;;;
-;;; CSV
-
-(module! csv-mode
-  :ensure t
-  :defer t
-  :config
-  (setq csv-separators '("," "    "))
-  (add-hook 'csv-mode-hook
-            (lambda ()
-              (define-key csv-mode-map (kbd "C-c C-M-a")
-		(defun csv-align-visible (&optional arg)
-                  "Align visible fields"
-                  (interactive "P")
-                  (csv-align-fields
-		   nil
-		   (window-start)
-		   (window-end)))))))
-
-       ;;;
 ;;;;;;;;;;
-
 ;;; Docker
+
+(module! docker
+  :ensure t
+  :defer t)
 
 (module! dockerfile-mode
   :ensure t
@@ -1396,14 +1084,20 @@ OUT describes the output file and is either a %-escaped string
 ;;;;;;;;;;;;;
 ;;; Utilities
 
-(module! yaml-mode
-  :defer t
-  :ensure t)
-
 (module! crdt
   :defer t
   :ensure t)
 
+(module! proof-general
+  :defer t
+  :ensure t
+  :init
+  (add-hook 'coq-mode-hook (lambda () (undo-tree-mode 1)))
+  (major-mode-map proof-mode-map
+    "ed" 'proof-assert-next-command-interactive))
+
+          ;;;
+;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;
 ;;; Semantics
@@ -1416,7 +1110,7 @@ OUT describes the output file and is either a %-escaped string
   :defer t
   :ensure t)
 
-;;;
+           ;;;
 ;;;;;;;;;;;;;;
 
 (module! poetry

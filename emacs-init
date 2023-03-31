@@ -36,8 +36,6 @@
 (load! "~/emacs-files/timesheet.el")
 (load! "~/emacs-files/diary-helpers.el")
 (load! "~/emacs-files/sql-session.el")
-;; (load! "~/emacs-files/jira.el")
-;; (load! "~/emacs-files/interviews.el")
 ;; (load! "~/emacs-files/github-pulls.el")
 
 ;; Custom Theme
@@ -62,7 +60,7 @@
 (mode-line!
   (:text "CUI ")
   ;;(:text (format-time-string "%H:%M ")
-  ;; :color "#c45651")
+  ;; :color "#C45651")
   (:text  (mode-line-workspace))
   (:text " %*%+ ")
   (:text " %m: ")
@@ -84,12 +82,10 @@
    :color "#FFC63F"))
 
 ;; Start server
+(require 'server)
 (if (and (fboundp 'server-running-p)
          (not (server-running-p)))
     (server-start))
-
-
-;; Custom Bindings
 
 (defun messages-buffer ()
   (interactive)
@@ -143,7 +139,6 @@
   (interactive)
   (workspace-to-workspace-number 6))
 
-
 (defun restore-organizer ()
   (interactive)
   (restore-organizer-internal t))
@@ -154,15 +149,18 @@
 
 (defun restore-organizer-internal (refresh?)
   (org-agenda-list 1)
-  ;;(when refresh?
-  ;;  (refresh-calendar-items))
+  (when refresh?
+    (refresh-calendar-items-next-week))
   (let ((agenda-buffer (current-buffer)))
     (delete-other-windows)
     (switch-to-buffer agenda-buffer)
     (when refresh?
       (org-agenda-redo))
     (split-window-below)
-    (task-log)))
+    (task-log)
+    (split-window-right)
+    (find-file *status-file*)
+    (evil-close-folds )))
 
 ;; Does this belong here? OR is there a better place
 ;; to put this stuff?
@@ -179,7 +177,6 @@
   (interactive)
   (export-todoist todoist-header todoist-close-header))
 
-
 (defun save-all-buffers ()
   (interactive)
   (save-some-buffers t))
@@ -188,64 +185,65 @@
   (interactive)
   (save-buffers-kill-emacs t))
 
-
 (which-key-map evil-normal-state-map ","
   :labels
   ( "g"  "git"
+    "gt" "git tools"
     "gr" "github review"
     "i"  "init"
     "n"  "notes"
     "o"  "organizer"
-    "oe" "edit-task"
-    "om" "organizer message"
-    "oi" "organizer interview"
+    "oe" "edit task"
+    "oa" "task action"
     "s"  "s-expression"
     "t"  "tools"
     "tc" "conda"
+    "te" "eirene-term"
     "ti" "lsp-ui-imenu"
-    "tj" "jira"
     "tr" "run"
     "ts" "sql"
     "tf" "flyspell"
     "v"  "ivy-view"
-    "w"  "workspaces"
-    )
+    "w"  "workspaces")
   :default-bindings
-  (;; ibuffer
-   "bi" 'ibuffer
+  (;; buffer
+   "ba" 'save-all-buffers
    "bb" 'workspace-switch-buffer
-   "bm" 'messages-buffer
+   "bd" 'kill-buffer
    "be" 'treemacs
+   "bi" 'ibuffer
+   "bm" 'messages-buffer
+   "bq" 'save-all-buffers-kill-no-prompt
    "bs" 'save-buffer
    "bt" 'scratch-buffer
-   "ba" 'save-all-buffers
-   "bq" 'save-all-buffers-kill-no-prompt
    ;; org
    "c"   'org-capture
    ;; magit
-   "gs"  'magit-status
-   "gc"  'magit-branch-checkout
    "gb"  'magit-blame
+   "gc"  'magit-branch-checkout
+   "gh"  'git-timemachine
    "gl"  'magit-log-current
    "gr"  'code-review-pr-select
-   "gh"  'git-timemachine
+   "gs"  'magit-status
+   "gtp" 'github-visit-pr
    ;; init
-   "ii"  'init-file
-   "im"  'modules-file
    "ic"  'core-file
    "id"  'display-file
+   "ii"  'init-file
    "ik"  'keyboard-file
-   ;; Roam Notes
-   "nf"  'org-roam-node-find
-   "nc"  'org-roam-cycle-db
+   "im"  'modules-file
    ;; organizer
-   "ol"  'task-log
-   "ot"  'log-task
+   "oac" 'add-calendar-item-for-today
+   "oas" 'set-up-agenda
+   "oed" 'edit-task-description-at-point
+   "oee" 'edit-task-end-time-at-point
+   "oeg" 'edit-task-group-at-point
+   "oes" 'edit-task-start-time-at-point
+   "oex" 'delete-task-at-point
    "of"  'task-log-for-date
    "og"  'get-tasks-in-range
    "or"  'import-remote-items
    "ox"  'export-remote-items
-   "oa"  'add-calendar-item-for-today
    "os"  'restore-organizer-layout
    "oed" 'edit-task-description-at-point
    "oes" 'edit-task-start-time-at-point
@@ -260,19 +258,11 @@
    "k"  'backward-up-list
    "st"  'transpose-sexps
    ;; tools
-   "tb"  'project-browse-website
-   "tca" 'pyvenv-workon
-   "tcd" 'pyvenv-deactivate
    "te"  'eirene-term
-   "tjl" 'jira-my-issues-window
-   "tjm" 'jira-move-issue
-   "tjv" 'jira-ticket-summary-window
-   "tjr" 'jira-tickets-to-review
+   "teq" 'eirene-term-end-session
    "tp"  'project-switch-project
    "td"  'docker
    "tx"  'project-quit-project
-   "trp" 'run-python
-   "tfb" 'flyspell-buffer
    "tsl" 'sql-session-reset-window-layout
    "tsq" 'sql-session-quit-session
    "tss" 'sql-session-start-session
@@ -288,9 +278,9 @@
    "w4"  'to-workspace-4
    "w5"  'to-workspace-5
    "w6"  'to-workspace-6
-   "wr"  'ivy-push-view
    "wd"  'workspace-pop
    "wj"  'ivy-switch-view
+   "wr"  'ivy-push-view
    ;; generic
    "x"  'counsel-M-x))
 
@@ -300,14 +290,14 @@
 (defun potentially-start-cider (project-name)
   (require 'cider)
   (let* ((host "localhost")
-         (port-alist (cider--infer-ports host nil)))
+	 (port-alist (cider--infer-ports host nil)))
     (when-let ((port (car
-                      (alist-get
-                       project-name port-alist nil nil #'equal))))
+		      (alist-get
+		       project-name port-alist nil nil #'equal))))
       (let ((params (-> '()
-                        (plist-put :host host)
-                        (plist-put :port port))))
-        (my-cider-op 'cider-connect-clj params))
+			(plist-put :host host)
+			(plist-put :port port))))
+	(my-cider-op 'cider-connect-clj params))
       t)))
 
 (defproject dummett-library
@@ -316,7 +306,7 @@
   :docker-compose t)
 
 (defproject organizer
-  :project-dir "/Users/andrewparisi/org/"
+  :project-dir "/Users/anparisi/org/"
   :init (restore-organizer))
 
 (defproject pipes
@@ -367,32 +357,5 @@
 (evil-define-key 'insert 'evil-insert-state-map (kbd "C-j") 'comint-next-input)
 (evil-define-key 'normal 'evil-normal-state-map (kbd "C-c l") 'comint-clear-buffer)
 
-;; Hacks!
-
-
 (setq *end* (float-time))
 (eirene-splash (- *end* *start*))
-
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(package-selected-packages
-   '(ein pbcopy yaml-mode which-key use-package undo-tree ttl-mode sqlformat sphinx-doc sparql-mode restclient quelpa org-timeline org-roam lsp-ui ivy-rich haskell-mode git-timemachine flycheck evil-collection envrc csv-mode counsel cider blacken ag)))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(term-color-black ((t (:foreground "#3F3F3F" :background "#2B2B2B"))))
- '(term-color-blue ((t (:foreground "#7CB8BB" :background "#4C7073"))))
- '(term-color-cyan ((t (:foreground "#93E0E3" :background "#8CD0D3"))))
- '(term-color-green ((t (:foreground "#7F9F7F" :background "#9FC59F"))))
- '(term-color-magenta ((t (:foreground "#DC8CC3" :background "#CC9393"))))
- '(term-color-red ((t (:foreground "#AC7373" :background "#8C5353"))))
- '(term-color-white ((t (:foreground "#DCDCCC" :background "#656555"))))
- '(term-color-yellow ((t (:foreground "#DFAF8F" :background "#9FC59F"))))
- '(term-default-bg-color ((t (:inherit term-color-black))))
- '(term-default-fg-color ((t (:inherit term-color-white)))))
-(put 'dired-find-alternate-file 'disabled nil)
