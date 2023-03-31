@@ -5,6 +5,7 @@
 (add-to-list 'exec-path "/usr/local/bin")
 (add-to-list 'load-path "~/.emacs.d/lisp")
 
+
 ;; TODO: Create module! macro that is a thin wrapper around use-package
 ;; but that makes defining major mode and default bindings for a mode easy
 ;; TODO: Figure a way to auto configure lsp mode for a language
@@ -13,6 +14,9 @@
 ;;;;;;;;;;;;;;;;;;;;
 ;; Required Packages
 ;; TODO See whether or not these can be paired down
+
+(defvar *status-file*
+  "/Users/anparisi/org/status.org")
 
 (module! undo-tree
   :ensure t
@@ -81,13 +85,10 @@
   (setq
    ibuffer-saved-filter-groups
    '(("default"
-      ("python"
-       (or (mode . python-mode)
-	   (directory . "/Users/andrewparisi/Documents/python")
-	   (name . "\*Python\*")))
+
       ("clojure"
        (or (mode . clojure-mode)
-	   (directory . "/Users/andrewparisi/Documents/clojure")
+	   (directory . "/Users/anparisi/Documents/clojure")
 	   (name . "\*cider\*")))
       ("magit"
        (name . "*magit*"))
@@ -144,8 +145,7 @@
 	      (directory? (string-prefix-p "  d" line)))
 	  (kill-new full-path)
 	  (setq *dired-yanked-path* `(,full-path . ,directory?))
-	  (message (format "Yanked %s" full-path))
-	  ))))
+	  (message (format "Yanked %s" full-path))))))
 
   (defun dired-paste-item ()
     (interactive)
@@ -215,28 +215,12 @@
     "f" 'treemacs-create-file
     ))
 
-(module! pandoc-mode
-  :ensure t
-  :defer t
-  :init
-  (add-hook 'markdown-mode-hook 'pandoc-mode)
-  (add-hook 'pandoc-mode-hook 'pandoc-load-default-settings)
-  (major-mode-map pandoc-mode
-    :bindings
-    ("pc" 'pandoc-run-pandoc
-     "pof" 'pandoc-set-output-file
-     "pod" 'pandoc-set-output-dir
-     "pot" 'pandoc-output-format-hydra/body)
-    :labels
-    ("p" "pandoc"
-     "po" "pandoc output")))
-
-
-
 (module! magit
   :ensure t
   :defer t
   :config
+  (load "/Users/anparisi/emacs-files/github.el")
+  (load "/Users/anparisi/emacs-files/pair.el")
   (setq
    magit-display-buffer-function
    #'magit-display-buffer-fullframe-status-v1
@@ -244,9 +228,62 @@
    #'ediff-setup-windows-plain)
 
   (defun git-commit-message-setup ()
-    (insert (format "[%s] " (magit-get-current-branch))))
+    (insert (format "[%s] " (magit-get-current-branch)))
+    (insert "\n\n")
+    (insert (with-temp-buffer
+	      (insert-file-contents
+	       "/Users/anparisi/.emacs.d/conure-commit.txt")
+	      (buffer-string))))
+
+  ;; TODO: Make these dynamically created in the project file?
+  (defclass repo ()
+    ((name         :initarg :name
+		   :type string
+		   :documentation  "The name of the repo")
+     (test-command :initarg :test-command
+		   :type string
+		   :documentation "The test command for the repo"))
+    "A class for github repos")
+
+  (defun git-commit-run-tests ())
 
   (add-hook 'git-commit-setup-hook 'git-commit-message-setup)
+
+
+  (defun git-commit-check-tasks ()
+    (let* ((branch       nil)	   ;; (magit-get-current-branch))
+	   (ticket       nil)	   ;;(car (split-string branch "/")))
+	   (ticket-header  "GH-228") ;;(upcase ticket))
+	   (tasks         '()))
+      (save-window-excursion
+	(find-file *status-file*)
+	(let ((section-start (org-header-position
+			      `("Tasks" "Engine Team" ,ticket-header)))
+	      (section-end nil))
+	  (goto-char section-start)
+	  (let* ((header (thing-at-point 'line))
+		 (depth  (org-header-depth header)))
+	    (while (not section-end)
+	      (let ((forward? (forward-line 1))
+		    (line (thing-at-point 'line)))
+		(when (or (equal forward? 1)
+			  (and (org-header-p line)
+			       (equal (org-header-depth line) depth)))
+		  (setq section-end (point)))))
+	    (goto-char section-start)
+	    (while (< (point) section-end)
+	      (forward-line 1)
+	      (let ((line (thing-at-point 'line)))
+		(when (and (org-header-p line)
+			   (> (org-header-depth line) depth)
+			   (org-header-not-done-p line))
+		  (push (org-header-task line) tasks)))))))
+      tasks))
+
+  ;; TODO: This should be doable with major-mode-map
+  (evil-define-key 'normal magit-mode-map
+    "p" 'pair-dispatch
+    "G" 'gh-dispatch)
 
   (major-mode-map magit-mode
     :bindings
@@ -271,6 +308,7 @@
   (setq code-review-fill-column 80
 	code-review-new-buffer-window-strategy #'switch-to-buffer
 	code-review-download-dir "/tmp/code-review/")
+  (add-hook 'code-review-mode-hook #'emojify-mode)
   (major-mode-map code-review-mode
     :bindings
     ("m"  'code-review-transient-api
@@ -280,8 +318,25 @@
   :ensure t
   :defer t
   :init
+  ;; TODO: NEed to worry about absolute vs. relative paths
+  ;; TODO: What about aliases
+  ;; Maybe it's just like 10000 times easier to get the current directory
+  ;; from vterm
+  (defun get-path-from-command (command)
+    (let ((path (cadr (split-string command))))
+      (if (string-match "/$" command)
+	  (substring command 0 (- (length command) 1))
+	command)))
+
   (defun vterm-send-command (command &optional switch-to-vterm?)
-    (let ((buf (current-buffer)))
+    (let ((buf           (current-buffer))
+	  (clean-command
+	   (string-trim (substring-no-properties command))))
+      ;;(when (string-prefix-p "cd " clean-command)
+      ;;	;; TODO: Handle cases with semi-colons
+      ;;	;; e.g. cd one/two ; cd ../../three - I don't know
+      ;;	;; why someone would do that, but it's legit bash
+      ;;	(setq default-directory (get-path-from-command clean-command)))
       (when switch-to-vterm?
 	(vterm))
       (vterm--goto-line -1)
@@ -328,6 +383,12 @@
 	   (command (buffer-substring start end)))
       (vterm-run command)))
 
+  (defun eval-expression-at-point ()
+    (interactive)
+    ;; TODO: This could be a little more robust
+    (let ((url (thing-at-point 'line)))
+      (browse-url url)))
+
 ;;; Figure out auto/tab complete (with lsp?)
 
 ;;;###autoload
@@ -335,11 +396,17 @@
     "Major mode for eirene-term files.")
 
   (evil-define-key  'insert eirene-term-mode-map
-    (kbd "C-c C-c") 'vterm-send-paragraph
-    (kbd "<tab>")   'comint-dynamic-complete-filename)
+    (kbd "C-c C-c")      'vterm-send-paragraph
+    (kbd "<tab>")        'comint-dynamic-complete-filename
+    (kbd "C-<return>")   'vterm-send-paragraph)
+
   (evil-define-key 'normal eirene-term-mode-map
     (kbd "C-c C-c") 'vterm-send-paragraph
-    "mp" 'vterm-send-1password)
+    (kbd "C-<return>") 'vterm-send-paragraph
+    ;; Why can't these be in major-mode-map?
+    "mp" 'vterm-send-1password
+    "mc" 'vterm-send-paragraph
+    "mb" 'browse-url-at-point)
 
   (defvar *eirene-term-session* nil)
   (defvar *eirene-term-buffer* "*eirene-term*")
@@ -347,7 +414,7 @@
   (defun eirene-term ()
     (interactive)
     (if *eirene-term-session*
-	(workspace-to-workspace-number *eirene-term-session* )
+	(workspace-to-workspace-number *eirene-term-session*)
       (let* ((ws-num (workspace-get-next-workspace-number))
 	     (ws-name (format "%s: eirene-term" ws-num)))
 	(workspace--to-workspace-number ws-num ws-name)
@@ -366,7 +433,15 @@
 	    (workspace-to-workspace-number 2)
 	  (workspace-to-workspace-number 1))
 	(workspace-remove-workspace-number *eirene-term-session*)
-	(setq *eirene-term-session* nil)))))
+	(setq *eirene-term-session* nil))))
+
+  (defun vterm-goto-beginning ()
+    (interactive)
+    (vterm--goto-line 0))
+
+  (major-mode-map vterm-mode
+    :bindings
+    ("g" 'vterm-goto-beginning)))
 
 (module! term
   :use-package nil
@@ -398,11 +473,6 @@
   (when (memq window-system '(mac ns x))
     (exec-path-from-shell-initialize)))
 
-
-;; TODO: Figure out a way
-;; to make module just a wrapper
-;; and not use use-package.
-
 (module! recentf-mode
   :use-package nil
   (recentf-mode))
@@ -412,54 +482,24 @@
   :init
   (envrc-global-mode))
 
+(module! just-mode
+  :ensure t
+  :defer t)
+
+(module! markdown
+  :use-package nil
+  (add-hook 'markdown-mode-hook 'org-fragtog-mode)
+  (major-mode-map markdown-mode
+    :bindings
+    ("l" 'org-toggle-latex-fragment
+     "u" 'markdown-toggle-url-hiding
+     "p" 'org-latex-preview)))
+
 (module! org
   :ensure t
   :mode ("\\.org\\'" . org-mode)
   :init
   :config
-
-  (defun end-of-buffer-p ()
-    (let ((current (point))
-	  (end     nil))
-      (save-excursion
-	(end-of-buffer)
-	(setq end (point)))
-      (>= current end)))
-
-  ;; For wrapping tables in src blocks
-  (defmacro org--table-enter-or-exit (exit?)
-    `(let ((at-table? ,exit?))
-       (while ,(if exit?
-		   'at-table?
-		 '(not at-table?))
-	 (forward-line)
-	 (when ,(if exit?
-		    '(not (org-at-table-p))
-		  '(or (org-at-table-p)
-		       (end-of-buffer-p)))
-	   (setq at-table? ,(not exit?))))))
-
-  (defun org-to-next-table ()
-    (interactive)
-    (org--table-enter-or-exit nil))
-
-  (defun org-exit-current-table ()
-    (interactive)
-    (org--table-enter-or-exit t))
-
-  (defun org-src-tables ()
-    (interactive)
-    (while (not (end-of-buffer-p))
-      (org-to-next-table)
-      (let ((begin (point)))
-	(org-exit-current-table)
-	(let ((end (point)))
-	  (goto-char begin)
-	  (insert "#+BEGIN_SRC\n")
-	  (goto-char end)
-	  (forward-line)
-	  (insert "#+END_SRC\n")))
-      (forward-line)))
 
   (defun execute-fn-on-lines (start end buffer fn &rest args)
     (save-window-excursion
@@ -470,29 +510,52 @@
 	(goto-line (inc (+ start n)))
 	(apply fn args))))
 
-  (defun org-generate-pr-url (number)
-    (interactive "sPR Number: ")
-    (let* ((project-map '(("ZEM" . "prefect-enrollment-prediction")))
-	   (projects    (mapcar 'car project-map))
-	   (project     (ido-completing-read
-			 "Select Project: " projects))
-	   (url (format
-		 "https://github.com/reifyhealth/%s/pull/%s"
-		 (alist-get project project-map nil nil #'equal)
-		 number)))
-      (insert url)))
+  (defun header-text (string)
+    "Get the text from a STRING thats an org mode header."
+    (-> string
+	string-trim
+	split-string
+	cdr
+	(string-join " ")
+	string-trim))
 
-  (defun org-insert-markdown-jira-link (&optional project number)
-    (interactive)
-    (cl-multiple-value-bind (link-text ticket-number)
-	(org-insert-link-internal project number)
-      (insert (format "[%s](%s)" ticket-number link-text))))
+  (defmacro do-org-headers (header-var &rest body)
+    (declare (indent 1))
+    (let ((pos    (gensym)))
+      `(save-excursion
+	 (goto-char 0)
+	 (cl-do ((,pos (re-search-forward "^\*" nil t)
+		       (re-search-forward "^\*" nil t)))
+	     ((not ,pos) nil)
+	   (setq ,header-var (header-text (thing-at-point 'line)))
+	   ,@body))))
 
-  (defun org-insert-org-jira-link (&optional project number)
-    (interactive)
-    (cl-multiple-value-bind (link-text ticket-number)
-	(org-insert-link-internal project number)
-      (insert (format "[[%s][%s]]" link-text ticket-number))))
+  (defun org-header-not-done-p (header))
+
+  (defun org-header-task (header))
+
+  (defun org-header-depth (header)
+    (-> header string-trim split-string car length))
+
+  (defun org-header-p (line)
+    (string-match "^\*" line))
+
+  (defun org-header-position (header-list)
+    (let ((pos nil)
+	  (hl  header-list))
+      (do-org-headers header
+	(when (equal header (car hl))
+	  (when (not (cdr hl))
+	    (setq pos (point)))
+	  (setq hl (cdr hl))))
+      pos))
+
+  (defun org-insert-github-issue-link (number)
+    (interactive "nIssue Number: ")
+    (insert
+     (format
+      "[[https://github.com/advthreat/conure/issues/%s][#%s]]"
+      number number)))
 
   (defun org-archive-finished-tasks ()
     (interactive)
@@ -516,16 +579,15 @@
   (defun setup-org-file (title)
     (interactive "sTitle: ")
     (let ((date (format-time-string "%m-%d-%Y")))
-      (save-excursion
-  	(goto-char 0)
-  	(insert (format "#+title: %s\n" title))
-  	(insert (format "#+date: %s\n" date))
-  	(insert (format "#+author: Andrew Parisi\n")))))
+      (goto-char 0)
+      (insert (format "#+title: %s\n" title))
+      (insert (format "#+date: %s\n" date))
+      (insert (format "#+author: Andrew Parisi\n"))))
 
   (defun org-insert-time-stamped-row ()
     (interactive)
     (let ((time (format-time-string "%H:%M")))
-      (insert (format "- %s: " time))))
+      (insert (format "- %s | " time))))
 
   (defun org-summary-todo (n-done n-not-done)
     "Switch entry to DONE when all subentries are done, to TODO otherwise."
@@ -536,25 +598,11 @@
   (add-hook 'electric-indent-functions
 	    (lambda (x) (when (eq 'org-mode major-mode) 'no-indent)))
 
-  (make-variable-buffer-local
-   (defvar
-     *footnote-count* 1))
-
-  (defun org-add-footnote (text)
-    (interactive "sText: ")
-    (save-excursion
-      (insert (format "[fn:%s]" *footnote-count*))
-      (goto-char (point-max))
-      (when (equal *footnote-count* 1)
-	(insert "* Footnotes\n"))
-      (insert "\n")
-      (insert (format "[fn:%s]: %s" *footnote-count* text))
-      (setq *footnote-count* (inc *footnote-count*))))
-
   (major-mode-map org-mode
     :bindings
     ("a"   'org-agenda
-     "n"  'org-todo
+     "d"   'org-ctrl-c-ctrl-c
+     "n"   'org-todo
      "te"  'org-set-effort
      "tp"  'org-priority
      "ts"  'org-schedule
@@ -563,14 +611,9 @@
      "cs"  'org-archive-subtree
      "jo"  'org-open-at-point
      "fi"  'setup-org-file
-     "fmi" 'setup-meetings-file
-     "fms" 'org-meeting-insert-speaker
      "ic"  'org-insert-code-block
-     "ij"  'org-insert-org-jira-link
-     "ii"  'org-insert-time-stamped-row
-     "if"  'org-add-footnote
-     "im"  'org-insert-markdown-jira-link
-     "it"  'org-jira-link-todo
+     "ii"  'org-insert-github-issue-link
+     "it"  'org-insert-time-stamped-row
      "e"   'org-export-dispatch
      "p"   'org-generate-pr-url
      "mp"  'org-move-subtree-up
@@ -579,22 +622,52 @@
      "mk"  'org-move-item-down
      "mh"  'org-promote-subtree
      "ml"  'org-demote-subtree
-     "di"  'org-toggle-inline-images)
+     "si"  'org-toggle-inline-images)
     :labels
     ("i"  "insert"
      "j"  "jump"
      "m"  "move"
-     "d"  "dial"
+     "s"  "settings"
      "c"  "clear"
-     "fm" "meeting-file"
      "f"  "file"
      "t"  "task"))
 
   (evil-define-key 'normal org-mode-map
     (kbd "<tab>") 'org-cycle)
 
+;;; Capture
+
+  ;; Do something a little more flexible with this
+  (defmacro capture-entry (key header)
+    `'(,key ,header entry
+	    (file+headline ,*status-file* ,header)
+	    "*** TODO %?\nSCHEDULED: %^t\n"))
+
+  (defun org-add-to-issue-block ()
+    (let ((issue-number (read-string "Issue Number: ")))
+      (save-window-excursion
+	(find-file *status-file*)
+	(goto-char 0)
+	(let* ((issue-label (format "GH-%s" issue-number))
+	       (issue-header (format "TODO %s" issue-label))
+	       (maybe-header (org-header-position
+			      (list "Tasks" "Engine Team" issue-header)))
+	       (header-pos nil))
+	  (if maybe-header
+	      (setq header-pos maybe-header)
+	    (progn
+	      (goto-char (org-header-position (list "Tasks" "Engine Team")))
+	      (re-search-forward ":END:")
+	      (forward-line 1)
+	      (setq header-pos (point))
+	      (insert (format "*** TODO GH-%s\n" issue-number))
+	      (insert
+	       (format ":PROPERTIES:\n:CATEGORY: %s\n:END:\n"
+		       (downcase issue-label)))
+	      (insert "\n")))
+	  (goto-char header-pos)))))
+
   (require 'ox-md)
-  (require 'ox-ipynb)
   (setq org-startup-indented t
   	org-startup-truncated nil
   	org-hide-leading-stars nil
@@ -605,35 +678,30 @@
   	'((sequence "TODO" "WORKING" "|" "DONE" "WONT DO(@)"))
   	org-hide-leading-stars t
   	org-confirm-babel-evaluate nil
-  	org-agenda-files (list "~/org/status.org")
-  	org-capture-default-notes-file "~/org/status.org"
-	org-default-notes-file "~/org/status.org"
-	org-plantuml-jar-path
-	(expand-file-name
-	 "/Users/andrewparisi/Documents/java/jars/plantuml.jar")
+  	org-agenda-files (cons *status-file* (directory-files-recursively "~/notes" "\\.org$"))
+  	org-capture-default-notes-file *status-file*
+	org-default-notes-file *status-file*
 	nrepl-sync-request-timeout nil
 	org-capture-templates
-	'(("t" "Tasks" entry
-	   (file+headline "~/org/status.org" "Tasks")
-           "* TODO %?\nSCHEDULED: %^t\n")))
+	(list
+	 '("t" "Engine Team" entry
+	   (file+headline *status-file* "General")
+	   "**** TODO %?\nSCHEDULED: %^t\n")
+	 (capture-entry "c" "Comfort")
+	 (capture-entry "s" "Cisco Onboarding")
+	 (capture-entry "l" "Learning")
+	 (capture-entry "o" "Miscellaneous")
+	 '("i" "Conure Issue" entry
+	   (file+function *status-file* org-add-to-issue-block)
+	   "**** TODO %?\nSCHEDULED: %^t\n")))
   (org-babel-do-load-languages
    'org-babel-load-languages
-   '((python . t)
-     (R . t)
-     (clojure . t)
-     (haskell . t)
+   '((clojure . t)
      (emacs-lisp . t)
      (sql . t)
      (dot . t)
      (plantuml . t)
      (shell . t))))
-
-(module! org-alert
-  :ensure t
-  :init
-  (setq org-alert-interval 300
-      org-alert-notify-cutoff 10
-      org-alert-notify-after-event-cutoff 10))
 
 (module! org-agenda
   :requires evil
@@ -641,19 +709,20 @@
   :config
   (evil-set-initial-state 'org-agenda-mode 'normal)
   (evil-define-key 'normal org-agenda-mode-map
-    "q" 'org-agenda-quit
-    "r" 'org-agenda-redo
-    "s" 'org-save-all-buffers
-    "t" 'org-agenda-todo
-    "d" 'org-agenda-day-view
-    "w" 'org-agenda-week-view
-    "f" 'org-agenda-later
     "b" 'org-agenda-earlier
     "c" 'org-capture
-    "." 'org-agenda-goto-today
+    "d" 'org-agenda-day-view
+    "D" 'org-agenda-goto-date
     "e" 'org-agenda-set-effort
-    (kbd "<RET>") 'org-agenda-goto
-    ">" 'org-agenda-date-prompt)
+    "f" 'org-agenda-later
+    "p" 'org-agenda-priority
+    "q" 'org-agenda-quit
+    "r" 'org-agenda-redo
+    "s" 'org-agenda-date-prompt
+    "t" 'org-agenda-todo
+    "w" 'org-agenda-week-view
+    "." 'org-agenda-goto-today
+    (kbd "<RET>") 'org-agenda-goto)
   (setq
    org-agenda-dim-blocked-tasks 'invisible
    org-agenda-overriding-columns-format
@@ -670,38 +739,37 @@
   :ensure t
   :after org
   :init
-  (add-hook 'org-agenda-finalize-hook 'org-timeline-insert-timeline :append))
+  (load-file "/Users/anparisi/emacs-files/stock.el")
+  (setq org-timeline-prepend nil)
 
-(use-package org-roam
-  :ensure t
-  :custom
-  (org-roam-directory "~/notes")
-  :init
-  (major-mode-map org-mode
-    :labels
-    ("r"  "roam"
-     "rt" "roam tag")
-    :bindings
-    ("rf"  'org-roam-node-find
-     "rl"  'org-roam-node-insert
-     "rta" 'org-roam-tag-add
-     "rtr" 'org-roam-tag-remove
-     "rb"  'org-roam-buffer-toggle
-     "ri"  'org-roam-link-current-file))
-  (setq org-roam-node-display-template
-        (concat "${title:*} "
-                (propertize "${tags:10}" 'face 'org-tag)))
+  (defun org-insert-stock-ticker ()
+    (unless (buffer-narrowed-p)
+      (goto-char (point-min))
+      (while (and (or
+		   (eq (get-text-property
+			(line-beginning-position) 'org-agenda-type)
+		       'agenda)
+		   (member 'org-timeline-elapsed (text-properties-at (point))))
+		  (not (eobp)))
+	(forward-line))
+      (forward-line)
+      (let ((inhibit-read-only-t))
+	(cursor-sensor-mode 1)
+	(let* ((stock (cisco-stock)))
+	  (cisco-stock-update-logs stock)
+	  (insert (stock-json-to-string stock))))
+      (font-lock-mode)))
 
-  (setq
-   org-roam-capture-templates
-   '(("d" "default" plain "%?"
-      :if-new
-      (file+head "${slug}.org"
-                 "#+title: ${title}\n#+date: %u\n#+lastmod: \n\n")
-      :immediate-finish t))
-   time-stamp-start "#\\+lastmod: [\t]*")
-  :config
-  (org-roam-setup))
+  (defun org-color-holidays-green ()
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward "holiday:" nil t)
+	(add-text-properties (match-beginning 0) (point-at-eol)
+			     '(face (:foreground "#AFD75F"))))))
+
+    (add-hook 'org-agenda-finalize-hook 'org-timeline-insert-timeline :append)
+    (add-hook 'org-agenda-finalize-hook 'org-insert-stock-ticker :append)
+    (add-hook 'org-agenda-finalize-hook 'org-color-holidays-green :append))
 
 ;;;;;;;
 ;;; LSP
@@ -715,6 +783,7 @@
 	lsp-enable-completion-at-point nil
 	lsp-lens-enable t
 	lsp-completion-enable t
+	lsp-enable-snipped nil
 	lsp-signature-auto-activate nil)
 
   ;; TODO: Add these to the :hook section
@@ -723,28 +792,7 @@
   ;; clojure
   (add-hook 'clojure-mode-hook #'lsp)
   (add-hook 'clojurec-mode-hook #'lsp)
-  (add-hook 'clojurescript-mode-hook #'lsp)
-
-  ;; R
-  ;; (add-hook 'ess-r-mode-hook #'lsp)
-
-  ;;yaml
-  (add-hook 'yaml-mode-hook #'lsp)
-
-  ;; python
-  (add-hook 'python-mode-hook #'lsp)
-
-  ;; scala
-  (add-hook 'scala-mode-hook #'lsp)
-
-  :config
-  (lsp-register-custom-settings
-   '(("pyls.plugins.pyls_mypy.enabled" t t)
-     ("pyls.plugins.flake8.enabled" t t)
-     ("pyls.plugins.pyls_mypy.live_mode" t t)
-     ("pyls.plugins.pyls_black.enabled" t t)
-     ("pyls.plugins.pyls_isort.enabled" t t)))
-  )
+  (add-hook 'clojurescript-mode-hook #'lsp))
 
 (module! lsp-ui
   :ensure t
@@ -786,229 +834,14 @@
   :ensure t
   :defer t
   :init
-  (global-flycheck-mode)
-  :config
-  (flycheck-define-checker
-      python-mypy ""
-      :command ("mypy"
-		"--ignore-missing-imports"
-		source-original)
-      :error-patterns
-      ((error line-start (file-name) ":" line ": error:" (message) line-end))
-      :modes python-mode)
-  (add-to-list 'flycheck-checkers 'python-mypy t)
-  (flycheck-add-next-checker 'python-pylint 'python-mypy t))
+  (global-flycheck-mode))
 
 (module! company
   :ensure t
   :requires evil)
 
-(module! highlight-indent-guides
-  :ensure t
-  :init
-  (add-hook 'python-mode-hook 'highlight-indent-guides-mode))
-
             ;;;
 ;;;;;;;;;;;;;;;
-
-;;;;;;;;;;
-;;; python
-
-(module! sphinx-doc
-  :ensure t
-  :init
-  (defun get-doc-params (doc)
-    (let ((fields   (sphinx-doc-doc-fields doc))
-	  (results '()))
-      (dolist (field fields)
-	(when (equal (sphinx-doc-field-key field) "param")
-	  (let* ((arg (sphinx-doc-field-arg field))
-		 (doc (read-string (format "Docstring for %s: " arg))))
-	    (push (format "%s: %s" arg doc) results))))
-      (reverse results)))
-
-  (defun get-doc-returns (doc)
-    (let ((fields        (sphinx-doc-doc-fields doc))
-	  (return-field  nil))
-      (dolist (field fields)
-	(when (equal (sphinx-doc-field-key field) "returns")
-	  (setq return-field (sphinx-doc-field-arg field))))
-      (if return-field
-	  return-field
-	(read-string "Returns: "))))
-
-  (defun insert-google-comment (doc indent)
-    (insert "\n")
-    (let ((description (read-string "Description: "))
-	  (returns     (get-doc-returns doc))
-	  (params      (get-doc-params doc))
-	  (indent-str  (apply 'concat (make-list indent " "))))
-      (insert (format "%s\"\"\"%s\n\n" indent-str description))
-      (insert (format "%sParameters\n%s----------\n"
-		      indent-str indent-str))
-      (dolist (param params)
-	(insert (format "%s%s\n" indent-str param)))
-      (insert (format "\n%sReturns\n%s-------\n"
-		      indent-str indent-str))
-      (insert (format "%s%s\n%s\"\"\""
-		      indent-str returns indent-str))))
-
-  (defun google-doc ()
-    (interactive)
-    (let* ((fn-def (sphinx-doc-str->fndef (sphinx-doc-fndef-str)))
-	   (doc    (sphinx-doc-fndef->doc fn-def))
-	   (indent (+ 4 (sphinx-doc-current-indent))))
-      (save-excursion
-	(search-forward-regexp sphinx-doc-fun-end-regex)
-	(forward-line -1)
-	(move-end-of-line nil)
-	(insert-google-comment doc indent))))
-
-  (defun rewrite-comment (start-line end-line)
-    (interactive "nStart: \nnEnd: ")
-    (let ((params '())
-	  (returns nil)
-	  (description nil)
-	  (current-line start-line)
-	  (comment-start nil)
-	  (comment-end nil))
-      (save-excursion
-	(setq comment-start
-	      (progn
-		(goto-line start-line)
-		(beginning-of-line)
-		(point)))
-	(setq comment-end
-	      (progn
-		(goto-line end-line)
-		(end-of-line)
-		(point))))
-      (save-excursion
-	(goto-line start-line)
-	(while (<= current-line end-line)
-	  (goto-line current-line)
-	  (let* ((start (progn
-			  (beginning-of-line)
-			  (point)))
-		 (end   (progn
-			  (end-of-line)
-			  (point)))
-		 (line  (buffer-substring start end))
-		 (clean (trim-whitespace line)))
-	    (cond ((string-prefix-p ":param" clean)
-		   (let ((param-description (car (cdr (cdr (split-string clean ":")))))
-			 (param-name        (car (cdr (split-string (car (cdr (split-string clean ":"))) " ")))))
-		     (push (cons param-name param-description) params)))
-		  ((string-prefix-p ":returns" clean)
-		   (let ((return-line (car (cdr (cdr (split-string clean ":"))))))
-		     (push return-line returns)))
-		  (returns
-		   (push line returns))
-		  (t
-		   (push line description)))
-	    (setq current-line (+ 1 current-line))))
-	(kill-region comment-start comment-end)
-	(let ((result ""))
-	  (dolist (d-line (reverse description))
-	    (setq result (concat result d-line "\n")))
-	  (setq result (format "%s\n    Parameters\n    ----------\n" result))
-	  (dolist (param (reverse params))
-	    (setq result (format "%s    %s: %s\n" result (car param) (cdr param))))
-	  (dolist (r-line (reverse returns))
-	    (setq result (concat result r-line "\n")))
-;;;	(setq result (format "%s\"\"\"" result))
-	  (goto-char comment-start)
-	  (insert result)))))
-  :mode ("\\.py\\'" . python-mode)
-  ;; TODO: Consider writing a wrapper around
-  ;; sphinx-doc that goes to the beginning of
-  ;; the current fn.
-  )
-
-(module! python
-  :ensure t
-  :mode ("\\.py\\'" . python-mode)
-  :init
-  (add-hook
-   'inferior-python-mode-hook
-   (lambda ()
-     (progn
-       ;;       (evil-define-key 'normal 'evil-normal-state-map (kbd "C-j") 'comint-next-input)
-       ;;       (evil-define-key 'insert 'evil-insert-state-map (kbd "C-j") 'comint-next-input)
-       ;;       (evil-define-key 'normal 'evil-normal-state-map (kbd "C-k") 'comint-previous-input)
-       ;;       (evil-define-key 'insert 'evil-insert-state-map (kbd "C-k") 'comint-previous-input)
-       ;;       (evil-define-key 'normal 'evil-normal-state-map (kbd "mc")
-       ;;       'comint-clear-buffer)
-;;; TODO: CLEAN THIS UP
-       (evil-define-key 'normal 'inferior-python-mode-map (kbd "C-j") 'comint-next-input)
-       (evil-define-key 'insert 'inferior-python-mode-map (kbd "C-j") 'comint-next-input)
-       (evil-define-key 'normal 'inferior-python-mode-map (kbd "C-k") 'comint-previous-input)
-       (evil-define-key 'insert 'inferior-python-mode-map (kbd "C-k") 'comint-previous-input)
-       (evil-define-key 'normal 'inferior-python-mode-map (kbd "mc")
-	 'comint-clear-buffer))))
-  (setq
-   python-shell-interpreter "ipython"
-   python-shell-interpreter-args "--simple-prompt -i --InteractiveShell.display_page=True"
-   flycheck-display-errors-function #'flycheck-display-error-messages-unless-error-list)
-
-  (add-hook 'python-mode-hook (lambda ()
-                                (require 'sphinx-doc)
-                                (sphinx-doc-mode t)))
-  (major-mode-map python-mode
-    :labels
-    ("d" "doc"
-     "e" "eval"
-     "m" "move")
-    :bindings
-    ("dr" 'rewrite-comment
-     "ds" 'sphinx-doc
-     "dg" 'google-doc
-     "b"  'blacken-buffer
-     "g"  'lsp-find-definition
-     "mn" 'python-nav-forward-defun
-     "mp" 'python-nav-backward-defun
-     "eb" 'python-shell-send-buffer
-     "ed" 'python-shell-send-defun))
-
-  (evil-define-key 'visual python-mode-map "m;" 'comment-or-uncomment-region))
-
-
-(module! blacken
-  :ensure t
-  :defer t
-  :mode ("\\.py\\'" . python-mode)
-  :config
-  (setq blacken-line-length '79))
-
-
-(module! pyvenv
-  :ensure t
-  :defer t
-  :init
-  (setenv "CONDA_PREFIX" "/Users/andrewparisi/opt/anaconda3")
-  (setenv "WORKON_HOME" (concat (getenv "CONDA_PREFIX") "/envs"))
-  :config
-  (pyvenv-mode t)
-
-  ;; Set correct Python interpreter
-;;  (setq pyvenv-post-activate-hooks
-;;        (list (lambda ()
-;;                (setq python-shell-interpreter (concat pyvenv-virtual-env "bin/python3")))))
-;;  (setq pyvenv-post-deactivate-hooks
-;;        (list (lambda ()
-;;                (setq python-shell-interpreter "python3"))))
-
-
-  )
-
-
-(module! ein
-  :defer t
-  :ensure t
-  :init (setq ein:output-area-inlined-images t))
-
-                 ;;;
-;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;
 ;;; emacs lisp
@@ -1019,11 +852,12 @@
     :labels
     ("e" "eval")
     :bindings
-    ("eb" 'eval-buffer
+    ("el" 'eval-buffer
      "ed" 'eval-defun
      "ee" 'eval-last-sexp
      "ep" 'pp-eval-last-sexp
      "g"  'xref-find-definitions
+     "m"  'emacs-lisp-macroexpand
      "."  'xref-prompt-find-definitions
      ","  'xref-pop-marker-stack
      "t"  'trace-function
@@ -1046,8 +880,10 @@
   :config
     (setq cider-repl-pop-to-buffer-on-connect nil
 	  cider-test-show-report-on-success t
+	  cider-show-eval-spinner t
+	  clojure-toplevel-inside-comment-form t
 	  cider-repl-display-help-banner nil
-	  cider-show-error-buffer nil))
+	  cider-show-error-buffer t))
 
 (module! clojure-mode
   :ensure t
@@ -1088,177 +924,70 @@
           (user-error "There is no default identifier")
 	(xref--find-definitions id nil))))
 
+  (defun clojure-toggle-debug-at-point ()
+    (interactive)
+    (let ((debugged? nil))
+      (save-excursion
+	(forward-line -1)
+	(setq debugged? (->> (thing-at-point 'line)
+			     string-trim
+			     (string-prefix-p "#dbg"))))
+      (if debugged?
+	  (progn
+	    (forward-line -1)
+	    (delete-line)
+	    (forward-line 1))
+	(progn
+	  (evil-open-above 1)
+	  (insert "#dbg")))
+      (cider-eval-defun-at-point)
+      (evil-normal-state)))
+
   (major-mode-map clojure-mode
     :bindings
-    ("jj" 'my-cider-jack-in
+    ("aa"  'lsp-execute-code-action
+     "ad" 'clojure-toggle-debug-at-point
+     "as" 'cider-toggle-trace-var
+     "ae" 'cider-englighted-mode
+     "an" 'clojure-sort-ns
+     "jj" 'my-cider-jack-in
      "jc" 'my-cider-connect
      "jq" 'cider-quit
      "el" 'cider-load-buffer
-     "ee" 'cider-eval-defun-at-point
+     "ee" 'cider-pprint-eval-last-sexp
+     "ed" 'cider-eval-defun-at-point
      "ec" 'cider-eval-defun-to-comment
      "ep" 'cider-pprint-eval-defun-at-point
      "fd" 'cider-format-defun
      "fb" 'cider-format-buffer
      "q"  'cider-quit
-     "s"  'cider-toggle-trace-var
      "n"  'cider-repl-set-ns
      "g"  'xref-prompt-find-definitions
      "."  'xref-find-definitions
      ","  'xref-pop-marker-stack
-     "c"  'cider-eval-defun-at-point
-     "r"  'lsp-find-references
-     "d"  'lsp-describe-thing-at-point
+     "rn" 'lsp-rename
+     "rr" 'lsp-find-references
+     "dd" 'cider-doc
+     "de" 'eldoc-doc-buffer
      "tn" 'cider-test-run-ns-tests
      "tp" 'cider-test-run-project-tests
      "tt" 'cider-test-run-test
-     "a"  'lsp-execute-code-action)
+     )
     :labels
     (""  "major mode"
      "e" "eval"
      "f" "format"
+     "a" "action"
      "t" "test"
      "l" "cider load"
-     "j"  "repl"))
+     "j" "repl"
+     "d" "documentation"))
   :config
   (setq lsp-clojure-server-command '("clojure-lsp")
 	    org-babel-clojure-backend 'cider))
 
            ;;;
 ;;;;;;;;;;;;;;
-
-;;;;;;;;;
-;;; scala
-
-(module! scala-mode
-  :ensure t
-  :defer t
-  :mode "\\.s\\(cala\\|bt\\)$"
-  :config
-  (major-mode-map scala-mode
-    :labels
-    ("s" "sbt")
-    :bindings
-    ("a" 'lsp-execute-code-action
-     "sc" 'sbt-do-run
-     "st" 'sbt-do-test
-     "ss" 'sbt-start
-     "n" 'lsp-metals-new-scala-file
-     "g" 'lsp-find-definition
-     "r" 'lsp-find-definiions
-     "d" 'lsp-describe-thing-at-point))
-  )
-
-(module! sbt-mode
-  :ensure t
-  :defer t
-  :commands sbt-start sbt-command
-  :config
-  ;; WORKAROUND: https://github.com/ensime/emacs-sbt-mode/issues/31
-  ;; allows using SPACE when in the minibuffer
-  (substitute-key-definition
-   'minibuffer-complete-word
-   'self-insert-command
-   minibuffer-local-completion-map)
-   ;; sbt-supershell kills sbt-mode:  https://github.com/hvesalai/emacs-sbt-mode/issues/152
-  (setq sbt:program-options '("-Dsbt.supershell=false")))
-
-(module! lsp-metals
-  :ensure t
-  :defer t)
-
-         ;;;
-;;;;;;;;;;;;
-
-
-;;;;;;;;;;;
-;;; haskell
-
-(module! haskell-mode
-  :ensure t
-  :defer t
-  :requires (evil which-key)
-
-  :mode ("\\.hs\\'" . haskell-mode)
-  :config
-  (require 'ob-haskell))
-
-            ;;;
-;;;;;;;;;;;;;;;
-
-;;;;;
-;;; R
-
- (module! ess
-   ;; This doesn't really work in a terminal
-   :ensure t
-   :defer t)
-
-
-
-            ;;;
-;;;;;;;;;;;;;;;
-
-
-;;;;;;;;
-;;; mail
-
-;;(module! mu4e
-;;  :load-path "/usr/local/share/emacs/site-lisp/mu@1.6.6/mu4e/"
-;;  :config
-;;  (setq mu4e-mu-binary (executable-find "mu")
-;;	mu4e-maildir "~/.maildir"
-;;	mu4e-drafts-folder "/Users/andrewparisi/.maildir/drafts"
-;;	mu4e-sent-folder   "/Users/andrewparisi/.maildir/sent"
-;;	mu4e-trash-folder  "/Users/andrewparisi/.maildir/trash"
-;;	mu4e-get-mail-command (concat
-;;			       (executable-find "mbsync")
-;;			       " -a")
-;;	mu4e-update-interval 300
-;;	mu4e-attachment-dir "~/Desktop"
-;;	mu4e-change-filename-when-moving t
-;;	mu4e-user-mail-address-list '("andrew.parisi@reifyhealth.com")
-;;	mu4e-confirm-quit nil)
-;;  ;; sending emails
-;;  (require 'smtpmail)
-;;  ;;(require 'epa-file)
-;;  ;;(epa-file-enable)
-;;  (auth-source-forget-all-cached)
-;;  (setq epa-pinentry-mode 'loopback
-;;	message-kill-buffer-on-exit t
-;;	send-mail-function 'sendmail-send-it
-;;	message-send-mail-function 'sendmail-send-it
-;;	sendmail-program (executable-find "msmtp"))
-;;
-;;  (defun timu/set-msmtp-account ()
-;;    (if (message-mail-p)
-;;	(save-excursion
-;;          (let*
-;;              ((from (save-restriction
-;;                       (message-narrow-to-headers)
-;;                       (message-fetch-field "from")))
-;;               (account "gmail"))
-;;            (setq message-sendmail-extra-arguments (list '"-a" account))))))
-;;  (add-hook 'message-send-mail-hook 'timu/set-msmtp-account)
-;;
-;;  ;; mu4e cc & bcc
-;;  ;; this is custom as well
-;;  (add-hook 'mu4e-compose-mode-hook
-;;            (defun timu/add-cc-and-bcc ()
-;;              "My Function to automatically add Cc & Bcc: headers.
-;;    This is in the mu4e compose mode." (save-excursion (message-add-header "Cc:\n"))
-;;              (save-excursion (message-add-header "Bcc:\n"))))
-;;
-;;  ;; mu4e address completion
-;;  (add-hook 'mu4e-compose-mode-hook 'company-mode)
-;;
-;;  ;; For some reason this is throwing an error
-;; ;; (major-mode-map mu4e-view-mode
-;; ;;   :bindings
-;; ;;   ("c" 'mu4e-org-store-and-capture))
-;;  )
-
-             ;;;;
-;;;;;;;;;;;;;;;;;
 
 ;;;;;;;
 ;;; SQL
@@ -1285,93 +1014,35 @@
     (add-hook 'comint-preoutput-filter-functions
               'sql-add-newline-first))
 
-  (defun sql-get-password (key account)
-    (let ((command (concat  "security "
-			    "find-generic-password "
-			    "-s '"
-			    key
-			    "' -a '"
-			    account
-			    "' -w")))
-      (->> command shell-command-to-string split-string car)))
-
-  (defun sql-get-aws-password (environment database role)
-    (string-trim
-     (shell-command-to-string
-      (format "rh-tools db url %s %s %s" environment database role))))
-
-  (setq sql-postgres-login-params nil
-	sql-connection-alist
-	'((psql-prod-concept-data
-	   (sql-product 'postgres)
-	   (sql-database
-	    (sql-get-aws-password
-	     "production" "concept-data-production" "production-db")))
-          (psql-prod-development
-	   (sql-product 'postgres)
-	   (sql-database
-	    (concat
-	     "postgresql://"
-	     "postgres"
-	     ":"
-	     (sql-get-password
-	      "postgresql://concept-data-production.cxyq5v2k4dfd.us-east-1.rds.amazonaws.com"
-	      "postgres")
-	     "@concept-data-production.cxyq5v2k4dfd.us-east-1.rds.amazonaws.com"
-	     ":5432"
-	     "/development")))
-          (psql-testing-concept-data
-	   (sql-product 'postgres)
-	   (sql-database
-	    (concat
-	     "postgresql://"
-	     "postgres"
-	     ":"
-	     (sql-get-password
-	      "postgresql://concept-data-testing.cncpevj1rbhb.us-east-1.rds.amazonaws.com"
-	      "postgres")
-	     "@concept-data-testing.cncpevj1rbhb.us-east-1.rds.amazonaws.com"
-	     ":5432"
-	     "/concept_data")))
-	  (psql-kb
-	   (sql-product 'postgres)
-	   (sql-database
-	    "postgresql://localhost/kb"))
-	  (psql-aact
-	   (sql-product 'postgres)
-	   (sql-database
-	    (concat
-	     "postgresql://"
-	     "aparisi"
-	     ":"
-	     ;; TODO: put this in the secrets
-	     (url-hexify-string "JYM@wcd_gkp.aug0adb")
-	     "@aact-db.ctti-clinicaltrials.org"
-	     ":5432"
-	     "/aact")))
-	  (local-concept-data
-	   (sql-product 'postgres)
-	   (sql-database
-	    "postgresql://localhost/concept_data"))
-	  (redshift-dw-dev
-	   (sql-product 'postgres)
-	   (sql-database
-	    (concat
-	     "postgresql://"
-	     "dev"
-	     ":"
-	     (sql-get-password
-	      "postgresql://localhost:5439"
-	      "dev")
-	     "@localhost"
-	     ":5439"
-	     "/development")))))
   (add-hook 'sql-interactive-mode-hook 'sqli-add-hooks)
   (add-hook 'sql-interactive-mode-hook
 	    (lambda () (toggle-truncate-lines t)))
 
-  (evil-define-key 'insert sql-mode-map (kbd "C-c p") 'autocomplete-table)
-  (evil-define-key 'normal sql-mode-map (kbd "C-c p") 'autocomplete-table))
+  (defun sql-eirene-send-paragraph ()
+    (interactive)
+    (save-window-excursion
+      (switch-to-buffer *sqli-connection-buffer*)
+      (comint-clear-buffer)
+      (goto-char (point-max)))
+    (sql-send-paragraph))
+
+  (evil-define-key 'insert sql-mode-map
+    (kbd "C-<return>") 'sql-eirene-send-paragraph
+    (kbd "C-c p") 'autocomplete-table)
+  (evil-define-key 'normal sql-mode-map
+    (kbd "C-<return>") 'sql-eirene-send-paragraph
+    (kbd "C-c p") 'autocomplete-table)
+
+  (setq sql-postgres-login-params nil
+	sql-connection-alist
+	'((conure-dev-local
+	   (sql-product 'postgres)
+	   (sql-database
+	    "postgresql://postgres:postgres@localhost:5432/investigation"))
+	  (scotus-dev-local
+	   (sql-product 'postgres)
+	   (sql-database
+	    "postgresql://localhost:5432/kb")))))
 
 
 (module! restclient
@@ -1443,48 +1114,16 @@ OUT describes the output file and is either a %-escaped string
   or nil to indicate that there is no output file.")
   )
 
-
            ;;;
 ;;;;;;;;;;;;;;
 
-;;;;;;;
-;;; CSV
-
-(module! csv-mode
-  :ensure t
-  :defer t
-  :config
-  (setq csv-separators '("," "    "))
-  (add-hook 'csv-mode-hook
-            (lambda ()
-              (define-key csv-mode-map (kbd "C-c C-M-a")
-		(defun csv-align-visible (&optional arg)
-                  "Align visible fields"
-                  (interactive "P")
-                  (csv-align-fields
-		   nil
-		   (window-start)
-		   (window-end)))))))
-
-(module! terraform-mode
-  :ensure t
-  :defer t
-  :config
-  (major-mode-map terraform-mode
-    (:bindings
-     "f" 'terraform-format-buffer))
-  )
-
-
-
-       ;;;
 ;;;;;;;;;;
-
 ;;; Docker
 
 (module! docker
-  :use-package nil
-  :load "/Users/andrewparisi/emacs-files/docker")
+  :ensure t
+  :defer t)
+
 
 (module! dockerfile-mode
   :ensure t
@@ -1506,6 +1145,16 @@ OUT describes the output file and is either a %-escaped string
   :defer t
   :ensure t)
 
+(module! proof-general
+  :defer t
+  :ensure t
+  :init
+  (add-hook 'coq-mode-hook (lambda () (undo-tree-mode 1)))
+  (major-mode-map proof-mode-map
+    "ed" 'proof-assert-next-command-interactive))
+
+          ;;;
+;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;
 ;;; Semantics
@@ -1518,126 +1167,5 @@ OUT describes the output file and is either a %-escaped string
   :defer t
   :ensure t)
 
-;;;
+           ;;;
 ;;;;;;;;;;;;;;
-
-(module! poetry
-  :ensure t
-  :defer t
-  :init
-  (add-to-list 'exec-path "/Users/andrewparisi/.poetry/bin")
-
-  (defun poetry-pytest ()
-    (interactive)
-    (poetry-run "pytest"))
-
-  (major-mode-map python-mode
-    :labels
-    ("t" "test")
-    :bindings
-    ("tt" 'poetry-pytest)))
-
-;;;;;;;;;;
-;; Scratch
-
-
-;;; (vc-git--rev-parse "HEAD")
-;;;
-;;;
-;; (let ((version nil))
-;;   (save-window-excursion
-;;     (switch-to-buffer "rds.tf")
-;;     (setq version (vc-git--rev-parse "HEAD")))
-;;   (insert version))
-
-
-(module! typescript-mode
-  :ensure t
-  :defer t
-  :init
-  (defvar *npm-term* "*npm-term*")
-  (defvar *npm-term-started?* nil)
-
-  (defun npm-start ()
-    (interactive)
-    (if (not *npm-term-started?*)
-	(save-window-excursion
-	  (let ((current-dir default-directory)
-		(buffer      (vterm *npm-term*)))
-	    (switch-to-buffer buffer)
-	    (vterm-send-string (format "cd %s" current-dir))
-	    (vterm-send-return)
-	    (vterm-send-string "npm start")
-	    (vterm-send-return)
-	    (setq *npm-term-started?* t)))
-      (message "npm term has already been started")))
-
-  (defun npm-check-compile ()
-    (interactive)
-    (let ((return-to-compile? nil)
-	  (prompt "Press 'y' to remain here, any other key to return"))
-      (if *npm-term-started?*
-	  (progn
-	    (save-window-excursion
-	      (switch-to-buffer *npm-term*)
-	      (let ((keypress (read-char prompt)))
-		(when (equal keypress ?y)
-		  (setq return-to-compile? t))))
-	    (when return-to-compile?
-	      (switch-to-buffer *npm-term*)
-	      (vterm--goto-line -1)))
-	;; TODO this should prompt user to start if they want
-	(message "npm has not been started"))))
-
-  (defun npm-quit ()
-    (interactive)
-    (if *npm-term-started?*
-	(save-window-excursion
-	  (switch-to-buffer *npm-term*)
-	  (vterm-send-C-c)
-	  (vterm-send-C-c)
-	  (setq *npm-term-started?* nil)
-	  (kill-buffer *npm-term*))
-      (message "npm has not been started")))
-
-  (defun ts-new-file ()
-    (interactive)
-    (let ((project-path-len (length tide-project-root)))
-      (let ((full-path (counsel-find-file)))
-	(save-buffer)
-	(let ((relpath (substring full-path project-path-len)))
-	  (goto-char 0)
-	  (insert (format "// %s\n" relpath))))))
-
-  (major-mode-map typescript-mode
-    :bindings
-    ("s" 'npm-start
-     "c" 'npm-check-compile
-     "q" 'npm-quit
-     "f" 'ts-new-file)))
-
-
-(module! tide
-  :ensure t
-  :defer t
-  :init
-  (defun setup-tide-mode ()
-    (interactive)
-    (tide-setup)
-    (flycheck-mode +1)
-    (setq flycheck-check-syntax-automatically '(save mode-enabled))
-    (eldoc-mode +1)
-    (tide-hl-identifier-mode +1))
-
-  ;; aligns annotation to the right hand side
-  (setq company-tooltip-align-annotations t)
-
-  ;; formats the buffer before saving
-  (add-hook 'before-save-hook 'tide-format-before-save)
-
-  ;; if you use typescript-mode
-  (add-hook 'typescript-mode-hook #'setup-tide-mode)
-
-  ;; if you use treesitter based typescript-ts-mode (emacs 29+)
-  ;; (add-hook 'typescript-ts-mode-hook #'setup-tide-mode)
-  )

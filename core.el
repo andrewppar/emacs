@@ -107,7 +107,7 @@
 			  (- (float-time) ,start)))))))
 
 (defmacro module! (module-name &rest args)
-  (declare (indent defun))
+  (declare (indent 1))
   (pcase (car args)
     (:use-package
      (if (equal (car (cdr args)) 'nil)
@@ -143,3 +143,27 @@
 	 `(->>
 	   (->> ,item ,(car forms))
 	   ,@(cdr forms)))))
+
+(defun filter (test-fn list)
+  (let ((result '()))
+    (dolist (item list)
+      (when (funcall test-fn item)
+	(push item result)))
+    result))
+
+(defmacro doarray (spec &rest body)
+  (declare (indent 1) (debug ((symbolp form &optional form) body)))
+  (unless (consp spec)
+    (signal 'wrong-type-argument (list 'consp spec)))
+  (unless (<= 2 (length spec) 3)
+    (signal 'wrong-number-of-arguments (list '(2 . 3) (length spec))))
+  `(let ((idx 0)
+         (last-idx (length ,(cadr spec))))
+     (while (< idx last-idx)
+       (setq ,(car spec) (aref ,(cadr spec) idx))
+       (setq idx (+ 1 idx))
+       ,@body)))
+
+(defmacro comment (&rest body)
+  (declare '(indent defun))
+  nil)

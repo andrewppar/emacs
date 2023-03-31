@@ -188,14 +188,17 @@
 	(assoc-delete-all n *workspace-workspace-buffers*)))
 
 (defun workspace-remove-workspace-number (ws-number)
-  (if (equal ws-number *current-workspace*)
-      (message "Cannot delete the current workspace")
-    (let ((buffers (alist-get
-		    ws-number *workspace-workspace-buffers*)))
-      (workspace--remove-workspace ws-number)
-      (ivy-pop-view-action (assoc ws-name ivy-views))
-      (dolist (buffer buffers)
-	(kill-buffer buffer)))))
+  (let ((buffers (alist-get ws-number *workspace-workspace-buffers*))
+	(ws-name (car (assoc ws-number *workspaces*))))
+    (workspace--remove-workspace ws-number)
+    (ivy-pop-view-action (assoc ws-name ivy-views))
+    (dolist (buffer buffers)
+      (kill-buffer buffer))
+    ;; Only do this if the on ebeing removed is the current one
+    (let ((next-workspace (caar *workspaces*)))
+      (if next-workspace
+	  (workspace-to-workspace-number (caar *workspaces*))
+	(setq *current-workspace* nil)))))
 
 (defun workspace-remove-workspace (ws-name)
   (let ((ws-number  (-> ws-name
@@ -208,28 +211,54 @@
 	 (to-remove  (ivy-read "Pop Workspace: " workspaces)))
     (workspace-remove-workspace to-remove)))
 
+(defun workspace--live-buffers (buffers)
+  (filter (lambda (buffer) (buffer-live-p buffer)) buffers))
 
 (defun workspace-new-buffer ()
   (if (not *current-workspace*)
-      (message "Cannot use store workspace if no workspace is set")
+      (message
+       "Cannot use workspace new buffer workspace if no workspace is set")
     (let* ((buffer   (current-buffer))
 	   (raw-workspace-buffers (delete-dups
 				   (alist-get
 				    *current-workspace*
 				    *workspace-workspace-buffers*)))
-	   (workspace-buffers '()))
-      (dolist (buffer raw-workspace-buffers)
-	(when (buffer-live-p buffer)
-	  (push buffer workspace-buffers)))
-
+	   (workspace-buffers (workspace--live-buffers
+			       raw-workspace-buffers)))
       (setq *workspace-workspace-buffers*
 	    (assoc-delete-all
 	     *current-workspace* *workspace-workspace-buffers*))
       (push (cons *current-workspace* (cons buffer workspace-buffers))
 	    *workspace-workspace-buffers*))))
 
+(defun clean-workspace-buffers ()
+  (let ((to-save '())
+	(numbers (mapcar #'car *workspaces*)))
+    (dolist (workspace-number numbers)
+      (let ((buffers (alist-get
+		      workspace-number *workspace-workspace-buffers*)))
+	(dolist (buffer (workspace--live-buffers buffers))
+	  (push buffer to-save))))
+    (let ((old-numbers (mapcar #'car *workspace-workspace-buffers*)))
+      (dolist (number old-numbers)
+	(let* ((all-buffers
+		(alist-get number *workspace-workspace-buffers*))
+	       (live-buffers (workspace--live-buffers all-buffers)))
+	  (setq *workspace-workspace-buffers*
+		(assoc-delete-all number *workspace-workspace-buffers*))
+	  (if (alist-get number *workspaces*)
+	      (push (cons number live-buffers) *workspace-workspace-buffers*)
+	    (dolist (buffer live-buffers)
+	      (unless (member buffer to-save)
+		(kill-buffer buffer)))))))
+    (ivy-pop-view-action (assoc nil ivy-views))))
+
+
+
 (defun workspace-switch-buffer ()
   (interactive)
+  (when *workspace-workspace-buffers*
+    (clean-workspace-buffers))
   (if  *workspace-workspace-buffers*
       (ivy-read "Switch to buffer: "
 		(mapcar
@@ -241,4 +270,15 @@
 		:matcher #'ivy--switch-buffer-matcher
 		:caller 'ivy-switch-buffer)
     (counsel-switch-buffer)))
+
+(defmacro save-workspace-excursion (ws-name &rest body)
+  (declare (indent 1))
+  (let ((current-ws (gensym)))
+    `(let ((,current-ws *current-workspace*))
+       (workspace-switch-workspace (format "{} %s" ,ws-name))
+       ,@body
+       (workspace--to-workspace-number ,current-ws))))
+
+
+
 ;;; workspace.el ends here

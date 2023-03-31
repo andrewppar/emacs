@@ -119,14 +119,13 @@
   "m" "major mode")
   :default-bindings
   ("f"  'counsel-find-file
-   "eb" 'eval-buffer
+   "el" 'eval-buffer
    "ed" 'eval-defun
    "0"  'delete-window
    "1"  'delete-other-windows
    "2"  'split-window-below
    "3"  'split-window-right
-   "bd" 'kill-buffer
-   "bx" 'kill-buffer-and-window
+   "bx" 'kill-buffer
    "ry" 'counsel-yank-pop
    "a"  'other-window))
 

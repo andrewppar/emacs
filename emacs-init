@@ -1,4 +1,4 @@
- ;; -*- mode: emacs-lisp -*-
+ ;; -*-mode: emacs-lisp -*-
 
 (setq *start* (float-time))
 (setq x-select-enable-clipboard t)
@@ -6,6 +6,7 @@
 ;; TODO: Find a better place for this maybe we need a general settings
 ;; section
 (add-hook 'write-file-functions 'delete-trailing-whitespace)
+(setq lisp-indent-function 'common-lisp-indent-function)
 
 (setq backup-directory-alist
       `(("." . ,(expand-file-name
@@ -23,7 +24,7 @@
 	(format "done loading %s: %s"
 		,load-string (- (float-time) ,start))))))
 
-(setq user-mail-address  "")
+(setq user-mail-address  "anparisi@cisco.com")
 
 (load! "~/.emacs.d/display.el")
 (load! "~/.emacs.d/modules.el")
@@ -34,59 +35,64 @@
 ;;; Custom Helpers
 (load! "~/emacs-files/timesheet.el")
 (load! "~/emacs-files/diary-helpers.el")
-;; (load! "~/emacs-files/sql-session.el")
-;; (load! "~/emacs-files/jira.el")
-;; (load! "~/emacs-files/interviews.el")
-;; (load! "~/emacs-files/github-pulls.el")
+(load! "~/emacs-files/sql-session.el")
+(load! "~/emacs-files/teamspace.el")
 
 ;; Custom Theme
 (colors!
-  :background            "#3b3b3f"
-  :foreground            "#d0d0d0"
-  :comment               "#8a8a8a"
-  :string                "#92569C"
-  :link                  (:foreground "red"     :weight 'bold)
-  :constant              (:foreground "#ffc63f" :weight 'bold)
-  :function              (:foreground "#18aed4" :weight 'bold)
+  :background            "#3B3B3F"
+  :foreground            "#D0D0D0"
+  :comment               "#8A8A8A"
+  :string                "#a48a4b"
+  :link                  (:foreground "#C45651" :weight 'bold)
+  :constant              (:foreground "#FFC63F" :weight 'bold)
+  :function              (:foreground "#18AED4" :weight 'bold)
   :keyword               (:foreground "#AFD75F" :weight 'bold)
-  :type                  (:foreground "#18aed4")
-  :font                  (:height 240)
-  :transparency          ('alpha 90 90)
-  :mode-line             (:foreground "#3b3b3f" :background "#d0d0d0")
-  :mode-line-inactive    (:foreground "#3b3b3f" :background "#d0d0d0")
+  :type                  (:foreground "#18AED4")
+  :font                  (:height 220)
+  :transparency          ('alpha 90 80)
+  :mode-line             (:foreground "#3B3B3F" :background "#E4E4E4")
+  :mode-line-inactive    (:foreground "#3B3B3F" :background "#D0D0D0")
   :prettify-symbols      t
   ;; :fringe                (:background "#d0d0d0")
   )
 
 (mode-line!
-  (:text " ⚓ ")
-  (:text (format-time-string "%H:%M ")
-	 :color "#c45651")
+  ;;(:text " ⚓ ")
+  ;; (:text (format-time-string "%H:%M ")
+    ;;	 :color "#C45651")
+  (:text " ")
   (:text  (mode-line-workspace))
   (:text " %*%+ ")
   (:text " %m: ")
   (:text "%b ")
-  (:condition
-   (and (fboundp 'pyvenv-virtual-env-name)
-	pyvenv-virtual-env-name)
-   :text (format " |conda: %s" pyvenv-virtual-env-name)
-   :color "#30648e")
+  (:text "%o ")
+
   (:condition
    (not (equal envrc--status 'none))
    :text (format " |envrc %s" envrc--status)
-   :color "#30648e")
+   :color "#30648E")
   (:condition
    (vc-backend buffer-file-name)
    :text (format " |%s " vc-mode)
-   :color "#30648e"))
+   :color "#30648E"))
 
 ;; Start server
+(require 'server)
 (if (and (fboundp 'server-running-p)
          (not (server-running-p)))
     (server-start))
 
 
 ;; Custom Bindings
+
+(defun video-call-with()
+  (interactive)
+  (let* ((contacts
+	  '(("Mike" .  "https://us02web.zoom.us/j/6214579943?pwd=aXlJUkM3d1d3SENQbk42aXZUTW9OQT0")))
+	 (person (ivy-completing-read "Who would you like to chat with: "
+				      (mapcar #'car contacts))))
+    (browse-url (alist-get person contacts nil nil #'equal))))
 
 (defun messages-buffer ()
   (interactive)
@@ -151,15 +157,23 @@
 
 (defun restore-organizer-internal (refresh?)
   (org-agenda-list 1)
-  ;;(when refresh?
-  ;;  (refresh-calendar-items))
+  (when refresh?
+    (refresh-calendar-items-next-week))
   (let ((agenda-buffer (current-buffer)))
     (delete-other-windows)
     (switch-to-buffer agenda-buffer)
     (when refresh?
       (org-agenda-redo))
     (split-window-below)
-    (task-log)))
+    (task-log)
+    (split-window-right)
+    (find-file *status-file*)
+    (evil-close-folds )))
+
+(defun set-up-agenda (start end)
+  (interactive "sStart: \nsEnd: ")
+  (let ((date (format-time-string "%m-%d-%Y")))
+    (add-task date start end "Cisco" "Set up agenda for the day")))
 
 (defun save-all-buffers ()
   (interactive)
@@ -169,26 +183,21 @@
   (interactive)
   (save-buffers-kill-emacs t))
 
-(defun email ()
-  (interactive)
-  (delete-other-windows)
-  (mu4e))
-
 (which-key-map evil-normal-state-map ","
   :labels
   ( "g"  "git"
+    "gt" "git tools"
     "gr" "github review"
     "i"  "init"
     "n"  "notes"
     "o"  "organizer"
-    "oe" "edit-task"
-    "om" "organizer message"
-    "oi" "organizer interview"
+    "oe" "edit task"
+    "oa" "task action"
     "s"  "s-expression"
     "t"  "tools"
     "tc" "conda"
+    "te" "eirene-term"
     "ti" "lsp-ui-imenu"
-    "tj" "jira"
     "tr" "run"
     "ts" "sql"
     "tf" "flyspell"
@@ -196,69 +205,58 @@
     "w"  "workspaces"
     )
   :default-bindings
-  (;; ibuffer
-   "bi" 'ibuffer
+  (;; buffer
+   "ba" 'save-all-buffers
    "bb" 'workspace-switch-buffer
-   "bm" 'messages-buffer
+   "bd" 'kill-buffer
    "be" 'treemacs
+   "bi" 'ibuffer
+   "bm" 'messages-buffer
+   "bq" 'save-all-buffers-kill-no-prompt
    "bs" 'save-buffer
    "bt" 'scratch-buffer
-   "ba" 'save-all-buffers
-   "bq" 'save-all-buffers-kill-no-prompt
    ;; org
    "c"   'org-capture
    ;; magit
-   "gs"  'magit-status
-   "gc"  'magit-branch-checkout
    "gb"  'magit-blame
+   "gc"  'magit-branch-checkout
+   "gh"  'git-timemachine
    "gl"  'magit-log-current
    "gr"  'code-review-pr-select
-   "gh"  'git-timemachine
+   "gs"  'magit-status
+   "gtp" 'github-visit-pr
    ;; init
-   "ii"  'init-file
-   "im"  'modules-file
    "ic"  'core-file
    "id"  'display-file
+   "ii"  'init-file
    "ik"  'keyboard-file
-   ;; Roam Notes
-   "nf"  'org-roam-node-find
-   "nc"  'org-roam-cycle-db
+   "im"  'modules-file
    ;; organizer
-   "ol"  'task-log
-   "ot"  'log-task
+   "oac" 'add-calendar-item-for-today
+   "oas" 'set-up-agenda
+   "oed" 'edit-task-description-at-point
+   "oee" 'edit-task-end-time-at-point
+   "oeg" 'edit-task-group-at-point
+   "oes" 'edit-task-start-time-at-point
+   "oex" 'delete-task-at-point
    "of"  'task-log-for-date
    "og"  'get-tasks-in-range
+   "ol"  'task-log
    "or"  'refresh-calendar-items-next-week
-   "oa"  'add-calendar-item-for-today
    "os"  'restore-organizer-layout
-   "oed" 'edit-task-description-at-point
-   "oes" 'edit-task-start-time-at-point
-   "oee" 'edit-task-end-time-at-point
-   "oex" 'delete-task-at-point
-   "oeg" 'edit-task-group-at-point
-   "oms" 'timesheet-daily-slack-message
-   "omq" 'timesheet-daily-slack-message-quit
-   "ois" 'start-interview
+   "ot"  'log-task
    ;; s-expressions
-   "sq"  'indent-pp-sexp
-   "sl"  'forward-sexp
    "sh"  'backward-sexp
+   "sl"  'forward-sexp
+   "sq"  'indent-pp-sexp
    "st"  'transpose-sexps
    ;; tools
    "tb"  'project-browse-website
-   "tca" 'pyvenv-workon
-   "tcd" 'pyvenv-deactivate
-   "te"  'eirene-term
-   "tjl" 'jira-my-issues-window
-   "tjm" 'jira-move-issue
-   "tjv" 'jira-ticket-summary-window
-   "tjr" 'jira-tickets-to-review
-   "tm"  'email
+   "tee" 'eirene-term
+   "teq" 'eirene-term-end-session
    "tp"  'project-switch-project
    "td"  'docker
    "tx"  'project-quit-project
-   "trp" 'run-python
-   "tfb" 'flyspell-buffer
    "tsl" 'sql-session-reset-window-layout
    "tsq" 'sql-session-quit-session
    "tss" 'sql-session-start-session
@@ -274,51 +272,94 @@
    "w4"  'to-workspace-4
    "w5"  'to-workspace-5
    "w6"  'to-workspace-6
-   "wr"  'ivy-push-view
    "wd"  'workspace-pop
    "wj"  'ivy-switch-view
+   "wr"  'ivy-push-view
    ;; generic
    "x"  'counsel-M-x))
 
 ;;;;;;;;;;;;
 ;;; Projects
 
-(defproject aquaduct
-  :project-dir "~/projects/aquaduct/aquaduct"
-  :init (sbt-start)
-  )
 
-(defproject ctgov
-  :project-dir "~/Documents/projects/ctgov-utils")
 
-(defproject thoughts
-  :project-dir "~/Documents/job-applications"
+(defun potentially-start-cider (project-name)
+  (require 'cider)
+  (let* ((host "localhost")
+	 (port-alist (cider--infer-ports host nil)))
+    (when-let ((port (car
+		      (alist-get
+		       project-name port-alist nil nil #'equal))))
+      (let ((params (-> '()
+			(plist-put :host host)
+			(plist-put :port port))))
+	(my-cider-op 'cider-connect-clj params))
+      t)))
+
+(defproject conure
+    :init (when (potentially-start-cider "conure")
+	    (shell-command "brew services stop postgresql@14")
+	    (shell-command "docker compose up -d db")
+	    (cider-load-file
+	     "/Users/anparisi/projects/conure/scratch/startup.clj")
+	    ;; it would be cooler to do something like this...
+	    ;;(cider-interactive-eval "(conure.startup/start-dev)")
+	    )
+    :website "https://github.com/advthreat/conure"
+    :test    "just test"
+    :stop (save-workspace-excursion "conure"
+	    (when (or
+		   (sesman-browser-get 'object)
+		   (cider-current-repl))
+	      (cider-quit))
+	    (shell-command "docker compose down"))
+    :commands ((:title "db" :executable "just" :args ("db") :transient-key "d")
+	       (:title "test" :executable "just" :args ("test") :transient-key "t"))
+    :project-dir "/Users/anparisi/projects/conure")
+
+(defproject git-sync
+  :project-dir "/Users/anparisi/projects/git-sync")
+
+(defproject incident-manager
+  :website "https://github.com/advthreat/incident-manager"
+  :project-dir "/Users/anparisi/projects/incident-manager"
+  ;;  :init  (call npm ci and then npm start in vterm (or send to a tmux
+  ;; terminal window
   )
 
 (defproject organizer
-  :project-dir "/Users/andrewparisi/org/"
+  :project-dir "/Users/anparisi/org/"
   :init (restore-organizer))
 
-(defproject pipes
-  :project-dir "/Users/andrewparisi/projects/pipes")
-
 (defproject scotus
-  :project-dir "/Users/andrewparisi/projects/scotus")
-
-(defproject logos
-  :project-dir "/Users/andrewparisi/projects/logos"
-  :website "https://github.com/andrewppar/logos"
-  :docker-compose t)
-
-(defproject dummett-library
-  :project-dir "/Users/andrewparisi/projects/dummett-library"
-  :website "https://github.com/andrewppar/dummett-library"
-  :docker-compose t)
+  :init (when (potentially-start-cider "scotus")
+	  (let* ((containers
+		  (split-string (shell-command-to-string "docker ps") "\n"))
+		 (conure-db (let ((result nil))
+			      (dolist (row containers)
+				(let ((items (split-string row)))
+				  (when (equal (cadr items) "postgres:14")
+				    (setq result (car items)))))
+			      result)))
+	    (when conure-db
+	      (shell-command (format "docker stop %s" conure-db))))
+	  (shell-command "brew services start postgresql@14")
+	  (cider-load-file "/Users/anparisi/projects/scotus/src/clj/scotus/core.clj"))
+  :project-dir "/Users/anparisi/projects/scotus"
+  ;;:commands ((:title "test"
+  ;;		     :executable "clj"
+  ;;		     :args ("-X:dev/test")
+  ;;		     :transient-key "t"))
+  :stop (progn
+	  (cider-quit)
+	  (shell-command "brew services stop postgresql@14")))
 
 
 (defproject sql
   :init (sql-session-start-session)
   :stop (sql-session-quit-session))
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Scratch and Miscellany
@@ -345,8 +386,38 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(org-agenda-files
+   '("/Users/anparisi/org/status.org" "/Users/anparisi/notes/02-16-2023/installing-conure.org" "/Users/anparisi/notes/02-23-2023/attack-graph.org" "/Users/anparisi/notes/02-23-2023/relation-graph.org" "/Users/anparisi/notes/02-27-2023/attack-graph.org" "/Users/anparisi/notes/03-08-2023/compaction-meeting.org" "/Users/anparisi/notes/03-08-2023/proof.org" "/Users/anparisi/notes/03-09-2023/compaction.org" "/Users/anparisi/notes/03-17-2023/teamspace.org" "/Users/anparisi/notes/03-24-2023/teamspace.org" "/Users/anparisi/notes/03-29-2023/xdr-meeting.org" "/Users/anparisi/notes/weekly-checkins/03-10-2023.org"))
  '(package-selected-packages
-   '(ein terraform-mode pbcopy yaml-mode which-key use-package undo-tree ttl-mode sqlformat sphinx-doc sparql-mode restclient quelpa org-timeline org-roam lsp-ui ivy-rich haskell-mode git-timemachine flycheck evil-collection envrc csv-mode counsel cider blacken ag)))
+   '(ein pbcopy yaml-mode which-key use-package undo-tree ttl-mode sqlformat sparql-mode restclient quelpa org-timeline lsp-ui ivy-rich haskell-mode git-timemachine flycheck evil-collection envrc counsel cider ag))
+ '(safe-local-variable-values
+   '((cider-preferred-build-tool . lein)
+     (cljr-favor-prefix-notation)
+     (eval progn
+      (put 's/defn 'clojure-doc-string-elt 2)
+      (define-clojure-indent
+       (puppetlabs\.trapperkeeper\.core/defservice
+	'(:defn
+	  (:defn)))
+       (trapperkeeper/defservice
+	'(:defn
+	  (:defn)))
+       (tk/defservice
+	'(:defn
+	  (:defn)))
+       (defservice
+	   '(:defn
+	     (:defn)))
+       (dotests 2)
+       (context 2)
+       (DELETE 2)
+       (GET 2)
+       (PATCH 2)
+       (POST 2)
+       (PUT 2)))
+     (eval add-to-list 'auto-mode-alist
+      '("\\.clj-template$" . clojure-mode))
+     (magit-todos-exclude-globs "*.html" "*.org" "*.md" "*.map"))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
