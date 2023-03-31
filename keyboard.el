@@ -165,6 +165,9 @@
 	 ',mode . ,result))))
 
 (defmacro major-mode-map (mode &rest bindings-plist)
+  ;; TODO: Maybe add a check that there are labels
+  ;;       for any keystroke with multiple bindings
+  ;;       or maybe change the datastructure to be groups...
   ;; TODO: Maybe incorporate insert mode somehow...
   (declare (indent defun))
   (let ((bindings

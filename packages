@@ -6,7 +6,6 @@ ttl-mode
 crdt
 yaml-mode
 dockerfile-mode
-terraform-mode
 csv-mode
 restclient
 sql
@@ -30,10 +29,8 @@ lsp-ui
 lsp-mode
 org-timeline
 org-agenda
-org-alert
 org
 envrc
-exec-path-from-shell
 quelpa
 ag
 vterm

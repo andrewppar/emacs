@@ -83,8 +83,8 @@
    '(("default"
       ("python"
        (or (mode . python-mode)
-	   (directory . "/Users/andrewparisi/Documents/python")
-	   (name . "\*Python\*")))
+           (directory . "/Users/andrewparisi/Documents/python")
+           (name . "\*Python\*")))
       ("clojure"
        (or (mode . clojure-mode)
 	   (directory . "/Users/andrewparisi/Documents/clojure")
@@ -231,8 +231,6 @@
     ("p" "pandoc"
      "po" "pandoc output")))
 
-
-
 (module! magit
   :ensure t
   :defer t
@@ -271,6 +269,7 @@
   (setq code-review-fill-column 80
 	code-review-new-buffer-window-strategy #'switch-to-buffer
 	code-review-download-dir "/tmp/code-review/")
+  (add-hook 'code-review-mode-hook #'emojify-mode)
   (major-mode-map code-review-mode
     :bindings
     ("m"  'code-review-transient-api
@@ -335,11 +334,14 @@
     "Major mode for eirene-term files.")
 
   (evil-define-key  'insert eirene-term-mode-map
-    (kbd "C-c C-c") 'vterm-send-paragraph
-    (kbd "<tab>")   'comint-dynamic-complete-filename)
+    (kbd "C-c C-c")      'vterm-send-paragraph
+    (kbd "<tab>")        'comint-dynamic-complete-filename
+    (kbd "C-<return>")   'vterm-send-paragraph)
+
   (evil-define-key 'normal eirene-term-mode-map
     (kbd "C-c C-c") 'vterm-send-paragraph
-    "mp" 'vterm-send-1password)
+    "mp" 'vterm-send-1password
+    "mc" 'vterm-send-paragraph)
 
   (defvar *eirene-term-session* nil)
   (defvar *eirene-term-buffer* "*eirene-term*")
@@ -347,7 +349,7 @@
   (defun eirene-term ()
     (interactive)
     (if *eirene-term-session*
-	(workspace-to-workspace-number *eirene-term-session* )
+	(workspace-to-workspace-number *eirene-term-session*)
       (let* ((ws-num (workspace-get-next-workspace-number))
 	     (ws-name (format "%s: eirene-term" ws-num)))
 	(workspace--to-workspace-number ws-num ws-name)
@@ -392,16 +394,11 @@
   :defer t
   :ensure t)
 
-(module! exec-path-from-shell
-  :ensure t
-  :init
-  (when (memq window-system '(mac ns x))
-    (exec-path-from-shell-initialize)))
-
-
-;; TODO: Figure out a way
-;; to make module just a wrapper
-;; and not use use-package.
+;;(module! exec-path-from-shell
+;;  :ensure t
+;;  :init
+;;  (when (memq window-system '(mac ns x))
+;;    (exec-path-from-shell-initialize)))
 
 (module! recentf-mode
   :use-package nil
@@ -415,51 +412,7 @@
 (module! org
   :ensure t
   :mode ("\\.org\\'" . org-mode)
-  :init
   :config
-
-  (defun end-of-buffer-p ()
-    (let ((current (point))
-	  (end     nil))
-      (save-excursion
-	(end-of-buffer)
-	(setq end (point)))
-      (>= current end)))
-
-  ;; For wrapping tables in src blocks
-  (defmacro org--table-enter-or-exit (exit?)
-    `(let ((at-table? ,exit?))
-       (while ,(if exit?
-		   'at-table?
-		 '(not at-table?))
-	 (forward-line)
-	 (when ,(if exit?
-		    '(not (org-at-table-p))
-		  '(or (org-at-table-p)
-		       (end-of-buffer-p)))
-	   (setq at-table? ,(not exit?))))))
-
-  (defun org-to-next-table ()
-    (interactive)
-    (org--table-enter-or-exit nil))
-
-  (defun org-exit-current-table ()
-    (interactive)
-    (org--table-enter-or-exit t))
-
-  (defun org-src-tables ()
-    (interactive)
-    (while (not (end-of-buffer-p))
-      (org-to-next-table)
-      (let ((begin (point)))
-	(org-exit-current-table)
-	(let ((end (point)))
-	  (goto-char begin)
-	  (insert "#+BEGIN_SRC\n")
-	  (goto-char end)
-	  (forward-line)
-	  (insert "#+END_SRC\n")))
-      (forward-line)))
 
   (defun execute-fn-on-lines (start end buffer fn &rest args)
     (save-window-excursion
@@ -469,30 +422,6 @@
       (dotimes (n (- end start))
 	(goto-line (inc (+ start n)))
 	(apply fn args))))
-
-  (defun org-generate-pr-url (number)
-    (interactive "sPR Number: ")
-    (let* ((project-map '(("ZEM" . "prefect-enrollment-prediction")))
-	   (projects    (mapcar 'car project-map))
-	   (project     (ido-completing-read
-			 "Select Project: " projects))
-	   (url (format
-		 "https://github.com/reifyhealth/%s/pull/%s"
-		 (alist-get project project-map nil nil #'equal)
-		 number)))
-      (insert url)))
-
-  (defun org-insert-markdown-jira-link (&optional project number)
-    (interactive)
-    (cl-multiple-value-bind (link-text ticket-number)
-	(org-insert-link-internal project number)
-      (insert (format "[%s](%s)" ticket-number link-text))))
-
-  (defun org-insert-org-jira-link (&optional project number)
-    (interactive)
-    (cl-multiple-value-bind (link-text ticket-number)
-	(org-insert-link-internal project number)
-      (insert (format "[[%s][%s]]" link-text ticket-number))))
 
   (defun org-archive-finished-tasks ()
     (interactive)
@@ -551,6 +480,35 @@
       (insert (format "[fn:%s]: %s" *footnote-count* text))
       (setq *footnote-count* (inc *footnote-count*))))
 
+  (defun header-text (string)
+    "Get the text from a STRING thats an org mode header."
+    (-> string
+	string-trim
+	split-string
+	cadr
+	string-trim))
+
+  (defmacro do-org-headers (header-var &rest body)
+    (declare (indent defun))
+    (let ((pos    (gensym)))
+      `(save-excursion
+	 (goto-char 0)
+	 (cl-do ((,pos (re-search-forward "^\*" nil t)
+		       (re-search-forward "^\*" nil t)))
+	     ((not ,pos) nil)
+	   (setq ,header-var (header-text (thing-at-point 'line)))
+	   ,@body))))
+
+  (defun header-position (header-list)
+    (let ((pos nil)
+	  (hl     header-list))
+      (do-org-headers header
+	(when (string-prefix-p header (car hl))
+	  (when (not (cdr hl))
+	    (setq pos (point)))
+	  (setq hl (cdr hl))))
+      pos))
+
   (major-mode-map org-mode
     :bindings
     ("a"   'org-agenda
@@ -594,7 +552,6 @@
     (kbd "<tab>") 'org-cycle)
 
   (require 'ox-md)
-  (require 'ox-ipynb)
   (setq org-startup-indented t
   	org-startup-truncated nil
   	org-hide-leading-stars nil
@@ -615,7 +572,11 @@
 	org-capture-templates
 	'(("t" "Tasks" entry
 	   (file+headline "~/org/status.org" "Tasks")
-           "* TODO %?\nSCHEDULED: %^t\n")))
+           "* TODO %?\nSCHEDULED: %^t\n")
+	  ("p" "Personal" entry
+	   (file+headline "~/org/status.org" "Personal")
+	   "** TODO %?\nSCHEDULED: %^t\n" )))
+
   (org-babel-do-load-languages
    'org-babel-load-languages
    '((python . t)
@@ -627,13 +588,6 @@
      (dot . t)
      (plantuml . t)
      (shell . t))))
-
-(module! org-alert
-  :ensure t
-  :init
-  (setq org-alert-interval 300
-      org-alert-notify-cutoff 10
-      org-alert-notify-after-event-cutoff 10))
 
 (module! org-agenda
   :requires evil
@@ -714,6 +668,7 @@
   (setq lsp-enable-indentation nil
 	lsp-enable-completion-at-point nil
 	lsp-lens-enable t
+	lsp-enable-snipped nil
 	lsp-completion-enable t
 	lsp-signature-auto-activate nil)
 
@@ -724,13 +679,6 @@
   (add-hook 'clojure-mode-hook #'lsp)
   (add-hook 'clojurec-mode-hook #'lsp)
   (add-hook 'clojurescript-mode-hook #'lsp)
-
-  ;; R
-  ;; (add-hook 'ess-r-mode-hook #'lsp)
-
-  ;;yaml
-  (add-hook 'yaml-mode-hook #'lsp)
-
   ;; python
   (add-hook 'python-mode-hook #'lsp)
 
@@ -743,8 +691,7 @@
      ("pyls.plugins.flake8.enabled" t t)
      ("pyls.plugins.pyls_mypy.live_mode" t t)
      ("pyls.plugins.pyls_black.enabled" t t)
-     ("pyls.plugins.pyls_isort.enabled" t t)))
-  )
+     ("pyls.plugins.pyls_isort.enabled" t t))))
 
 (module! lsp-ui
   :ensure t
@@ -1017,16 +964,18 @@
   :use-package nil
   (major-mode-map emacs-lisp-mode
     :labels
-    ("e" "eval")
+    ("e" "eval"
+     "m" "macro")
     :bindings
     ("eb" 'eval-buffer
      "ed" 'eval-defun
      "ee" 'eval-last-sexp
      "ep" 'pp-eval-last-sexp
      "g"  'xref-find-definitions
+     "me" 'emacs-lisp-macroexpand
      "."  'xref-prompt-find-definitions
      ","  'xref-pop-marker-stack
-     "t"  'trace-function
+     "s"  'trace-function
      "u"  'untrace-function)))
 
 
@@ -1047,7 +996,9 @@
     (setq cider-repl-pop-to-buffer-on-connect nil
 	  cider-test-show-report-on-success t
 	  cider-repl-display-help-banner nil
-	  cider-show-error-buffer nil))
+	  cider-show-eval-spinner t
+	  clojure-toplevel-inside-comment-form t
+	  cider-show-error-buffer t))
 
 (module! clojure-mode
   :ensure t
@@ -1073,6 +1024,12 @@
       :labels
       ("" "major mode")))
 
+  (defun clojure-hash-comment ()
+    (interactive)
+    (save-excursion
+      (backward-up-list)
+      (insert "#_")))
+
   (defun xref-prompt-find-definitions ()
     (interactive)
     (let* ((backend (xref-find-backend))
@@ -1088,37 +1045,70 @@
           (user-error "There is no default identifier")
 	(xref--find-definitions id nil))))
 
+  ;;TODO: cider toggle debug at point
+  (defun clojure-toggle-debug-at-point ()
+    (interactive)
+    (let ((debug? nil))
+      (save-excursion
+	(forward-line -1)
+	(let ((line (string-trim (thing-at-point 'line))))
+	  (when (string-prefix-p "#dbg" line)
+	    (setq debug? t))))
+      (if debug?
+	  (progn
+	    (forward-line -1)
+	    (delete-line))
+	(progn
+	  (evil-open-above 1)
+	  (insert "#dbg")))
+      (cider-eval-defun-at-point)
+      (evil-normal-state)))
+
+  (defun close-result-buffer ()
+    (interactive)
+    (let ((window (get-buffer-window "*cider-result*")))
+      (select-window window)
+      (kill-buffer-and-window)))
+
   (major-mode-map clojure-mode
     :bindings
-    ("jj" 'my-cider-jack-in
-     "jc" 'my-cider-connect
-     "jq" 'cider-quit
+    ("ad" 'clojure-toggle-debug-at-point
+     "as" 'cider-toggle-trace-var
+     "ae" 'cider-englighted-mode
+     "ar" 'lsp-rename
+     "aa" 'lsp-execute-code-action
+     "c"  'clojure-hash-comment
+     "dd" 'cider-doc
+     "de" 'eldoc-doc-buffer
      "el" 'cider-load-buffer
-     "ee" 'cider-eval-defun-at-point
+     "ed" 'cider-eval-defun-at-point
+     "ee" 'cider-pprint-eval-last-sexp
      "ec" 'cider-eval-defun-to-comment
      "ep" 'cider-pprint-eval-defun-at-point
      "fd" 'cider-format-defun
      "fb" 'cider-format-buffer
-     "q"  'cider-quit
-     "s"  'cider-toggle-trace-var
-     "n"  'cider-repl-set-ns
      "g"  'xref-prompt-find-definitions
-     "."  'xref-find-definitions
-     ","  'xref-pop-marker-stack
-     "c"  'cider-eval-defun-at-point
+     "jj" 'my-cider-jack-in
+     "jc" 'my-cider-connect
+     "jq" 'cider-quit
+     "n"  'cider-repl-set-ns
+     "qr" 'close-result-buffer
+     "qq" 'cider-quit
      "r"  'lsp-find-references
-     "d"  'lsp-describe-thing-at-point
      "tn" 'cider-test-run-ns-tests
      "tp" 'cider-test-run-project-tests
      "tt" 'cider-test-run-test
-     "a"  'lsp-execute-code-action)
+     "."  'xref-find-definitions
+     ","  'xref-pop-marker-stack)
     :labels
     (""  "major mode"
+     "a" "action"
+     "d" "documentation"
      "e" "eval"
      "f" "format"
-     "t" "test"
-     "l" "cider load"
-     "j"  "repl"))
+     "j" "repl"
+     "q" "quit"
+     "t" "test"))
   :config
   (setq lsp-clojure-server-command '("clojure-lsp")
 	    org-babel-clojure-backend 'cider))
@@ -1273,7 +1263,6 @@
 (module! sql
   :defer t
   :init
-
   (defun sql-add-newline-first (output)
     "Add newline to beginning of OUTPUT for `comint-preoutput-filter-functions'"
     (if (equal major-mode 'sql-interactive-mode)
@@ -1284,95 +1273,19 @@
     "Add hooks to `sql-interactive-mode-hook'."
     (add-hook 'comint-preoutput-filter-functions
               'sql-add-newline-first))
-
-  (defun sql-get-password (key account)
-    (let ((command (concat  "security "
-			    "find-generic-password "
-			    "-s '"
-			    key
-			    "' -a '"
-			    account
-			    "' -w")))
-      (->> command shell-command-to-string split-string car)))
-
-  (defun sql-get-aws-password (environment database role)
-    (string-trim
-     (shell-command-to-string
-      (format "rh-tools db url %s %s %s" environment database role))))
-
-  (setq sql-postgres-login-params nil
-	sql-connection-alist
-	'((psql-prod-concept-data
-	   (sql-product 'postgres)
-	   (sql-database
-	    (sql-get-aws-password
-	     "production" "concept-data-production" "production-db")))
-          (psql-prod-development
-	   (sql-product 'postgres)
-	   (sql-database
-	    (concat
-	     "postgresql://"
-	     "postgres"
-	     ":"
-	     (sql-get-password
-	      "postgresql://concept-data-production.cxyq5v2k4dfd.us-east-1.rds.amazonaws.com"
-	      "postgres")
-	     "@concept-data-production.cxyq5v2k4dfd.us-east-1.rds.amazonaws.com"
-	     ":5432"
-	     "/development")))
-          (psql-testing-concept-data
-	   (sql-product 'postgres)
-	   (sql-database
-	    (concat
-	     "postgresql://"
-	     "postgres"
-	     ":"
-	     (sql-get-password
-	      "postgresql://concept-data-testing.cncpevj1rbhb.us-east-1.rds.amazonaws.com"
-	      "postgres")
-	     "@concept-data-testing.cncpevj1rbhb.us-east-1.rds.amazonaws.com"
-	     ":5432"
-	     "/concept_data")))
-	  (psql-kb
-	   (sql-product 'postgres)
-	   (sql-database
-	    "postgresql://localhost/kb"))
-	  (psql-aact
-	   (sql-product 'postgres)
-	   (sql-database
-	    (concat
-	     "postgresql://"
-	     "aparisi"
-	     ":"
-	     ;; TODO: put this in the secrets
-	     (url-hexify-string "JYM@wcd_gkp.aug0adb")
-	     "@aact-db.ctti-clinicaltrials.org"
-	     ":5432"
-	     "/aact")))
-	  (local-concept-data
-	   (sql-product 'postgres)
-	   (sql-database
-	    "postgresql://localhost/concept_data"))
-	  (redshift-dw-dev
-	   (sql-product 'postgres)
-	   (sql-database
-	    (concat
-	     "postgresql://"
-	     "dev"
-	     ":"
-	     (sql-get-password
-	      "postgresql://localhost:5439"
-	      "dev")
-	     "@localhost"
-	     ":5439"
-	     "/development")))))
   (add-hook 'sql-interactive-mode-hook 'sqli-add-hooks)
   (add-hook 'sql-interactive-mode-hook
 	    (lambda () (toggle-truncate-lines t)))
 
   (evil-define-key 'insert sql-mode-map (kbd "C-c p") 'autocomplete-table)
-  (evil-define-key 'normal sql-mode-map (kbd "C-c p") 'autocomplete-table))
 
+  (evil-define-key 'normal sql-mode-map (kbd "C-c p") 'autocomplete-table)
+  (setq sql-connection-alist
+	'((scotus-kb (sql-product 'postgres)
+                     (sql-port 5432)
+                     (sql-server "localhost")
+                     (sql-user "andrewparisi")
+                     (sql-database "kb")))))
 
 (module! restclient
   :ensure t
@@ -1466,25 +1379,10 @@ OUT describes the output file and is either a %-escaped string
 		   (window-start)
 		   (window-end)))))))
 
-(module! terraform-mode
-  :ensure t
-  :defer t
-  :config
-  (major-mode-map terraform-mode
-    (:bindings
-     "f" 'terraform-format-buffer))
-  )
-
-
-
        ;;;
 ;;;;;;;;;;
 
 ;;; Docker
-
-(module! docker
-  :use-package nil
-  :load "/Users/andrewparisi/emacs-files/docker")
 
 (module! dockerfile-mode
   :ensure t
@@ -1539,17 +1437,6 @@ OUT describes the output file and is either a %-escaped string
 
 ;;;;;;;;;;
 ;; Scratch
-
-
-;;; (vc-git--rev-parse "HEAD")
-;;;
-;;;
-;; (let ((version nil))
-;;   (save-window-excursion
-;;     (switch-to-buffer "rds.tf")
-;;     (setq version (vc-git--rev-parse "HEAD")))
-;;   (insert version))
-
 
 (module! typescript-mode
   :ensure t
@@ -1616,7 +1503,6 @@ OUT describes the output file and is either a %-escaped string
      "q" 'npm-quit
      "f" 'ts-new-file)))
 
-
 (module! tide
   :ensure t
   :defer t
@@ -1641,3 +1527,18 @@ OUT describes the output file and is either a %-escaped string
   ;; if you use treesitter based typescript-ts-mode (emacs 29+)
   ;; (add-hook 'typescript-ts-mode-hook #'setup-tide-mode)
   )
+
+
+ ;;(defun run-timesheet-command (postfix data post?)
+ ;; (let* ((url-base (format "%s:%s" *timesheet-server* *timesheet-port*))
+ ;;	 (url      (if postfix (format "%s/%s" url-base postfix) url-base))
+ ;;	 (type      (if post? "POST" "GET")))
+ ;;   (-> url
+ ;;	(request
+ ;;	    :type type
+ ;;	  :headers
+ ;;	  '(("Content-Type" . "application/json"))
+ ;;	  :data (json-encode data)
+ ;;	  :sync t
+ ;;	  :parser 'json-read)
+ ;;	request-response-data)))

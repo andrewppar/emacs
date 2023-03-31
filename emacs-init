@@ -6,6 +6,7 @@
 ;; TODO: Find a better place for this maybe we need a general settings
 ;; section
 (add-hook 'write-file-functions 'delete-trailing-whitespace)
+(setq lisp-indent-function 'common-lisp-indent-function)
 
 (setq backup-directory-alist
       `(("." . ,(expand-file-name
@@ -23,7 +24,7 @@
 	(format "done loading %s: %s"
 		,load-string (- (float-time) ,start))))))
 
-(setq user-mail-address  "")
+(setq user-mail-address  "andrew.p.parisi@gmail.com")
 
 (load! "~/.emacs.d/display.el")
 (load! "~/.emacs.d/modules.el")
@@ -34,7 +35,7 @@
 ;;; Custom Helpers
 (load! "~/emacs-files/timesheet.el")
 (load! "~/emacs-files/diary-helpers.el")
-;; (load! "~/emacs-files/sql-session.el")
+(load! "~/emacs-files/sql-session.el")
 ;; (load! "~/emacs-files/jira.el")
 ;; (load! "~/emacs-files/interviews.el")
 ;; (load! "~/emacs-files/github-pulls.el")
@@ -44,41 +45,43 @@
   :background            "#3b3b3f"
   :foreground            "#d0d0d0"
   :comment               "#8a8a8a"
-  :string                "#92569C"
+  :string                "#C2AD79"
   :link                  (:foreground "red"     :weight 'bold)
   :constant              (:foreground "#ffc63f" :weight 'bold)
   :function              (:foreground "#18aed4" :weight 'bold)
   :keyword               (:foreground "#AFD75F" :weight 'bold)
   :type                  (:foreground "#18aed4")
   :font                  (:height 240)
-  :transparency          ('alpha 90 90)
-  :mode-line             (:foreground "#3b3b3f" :background "#d0d0d0")
+  :transparency          ('alpha 80 80)
+  :mode-line             (:foreground "#3b3b3f" :background "#a9a9a9")
   :mode-line-inactive    (:foreground "#3b3b3f" :background "#d0d0d0")
   :prettify-symbols      t
   ;; :fringe                (:background "#d0d0d0")
   )
 
 (mode-line!
-  (:text " ⚓ ")
-  (:text (format-time-string "%H:%M ")
-	 :color "#c45651")
+  (:text "CUI ")
+  ;;(:text (format-time-string "%H:%M ")
+  ;; :color "#c45651")
   (:text  (mode-line-workspace))
   (:text " %*%+ ")
   (:text " %m: ")
   (:text "%b ")
+  (:text "%o")
   (:condition
    (and (fboundp 'pyvenv-virtual-env-name)
 	pyvenv-virtual-env-name)
    :text (format " |conda: %s" pyvenv-virtual-env-name)
-   :color "#30648e")
+   :color "#FFC63F")
   (:condition
    (not (equal envrc--status 'none))
    :text (format " |envrc %s" envrc--status)
-   :color "#30648e")
+   :color "#FFC63F"
+   :weight bold)
   (:condition
    (vc-backend buffer-file-name)
    :text (format " |%s " vc-mode)
-   :color "#30648e"))
+   :color "#FFC63F"))
 
 ;; Start server
 (if (and (fboundp 'server-running-p)
@@ -161,6 +164,22 @@
     (split-window-below)
     (task-log)))
 
+;; Does this belong here? OR is there a better place
+;; to put this stuff?
+
+(defvar todoist-header '("Tasks" "Todoist"))
+(defvar todoist-close-header '("Tasks" "Cisco"))
+
+(defun import-remote-items ()
+  (interactive)
+  (refresh-calendar-items-next-week)
+  (import-todoist todoist-header todoist-close-header))
+
+(defun export-remote-items ()
+  (interactive)
+  (export-todoist todoist-header todoist-close-header))
+
+
 (defun save-all-buffers ()
   (interactive)
   (save-some-buffers t))
@@ -169,10 +188,6 @@
   (interactive)
   (save-buffers-kill-emacs t))
 
-(defun email ()
-  (interactive)
-  (delete-other-windows)
-  (mu4e))
 
 (which-key-map evil-normal-state-map ","
   :labels
@@ -228,7 +243,8 @@
    "ot"  'log-task
    "of"  'task-log-for-date
    "og"  'get-tasks-in-range
-   "or"  'refresh-calendar-items-next-week
+   "or"  'import-remote-items
+   "ox"  'export-remote-items
    "oa"  'add-calendar-item-for-today
    "os"  'restore-organizer-layout
    "oed" 'edit-task-description-at-point
@@ -236,13 +252,12 @@
    "oee" 'edit-task-end-time-at-point
    "oex" 'delete-task-at-point
    "oeg" 'edit-task-group-at-point
-   "oms" 'timesheet-daily-slack-message
-   "omq" 'timesheet-daily-slack-message-quit
-   "ois" 'start-interview
    ;; s-expressions
    "sq"  'indent-pp-sexp
-   "sl"  'forward-sexp
-   "sh"  'backward-sexp
+   "l"  'forward-sexp
+   "h"  'backward-sexp
+   "j"  'down-list
+   "k"  'backward-up-list
    "st"  'transpose-sexps
    ;; tools
    "tb"  'project-browse-website
@@ -253,7 +268,6 @@
    "tjm" 'jira-move-issue
    "tjv" 'jira-ticket-summary-window
    "tjr" 'jira-tickets-to-review
-   "tm"  'email
    "tp"  'project-switch-project
    "td"  'docker
    "tx"  'project-quit-project
@@ -283,17 +297,23 @@
 ;;;;;;;;;;;;
 ;;; Projects
 
-(defproject aquaduct
-  :project-dir "~/projects/aquaduct/aquaduct"
-  :init (sbt-start)
-  )
+(defun potentially-start-cider (project-name)
+  (require 'cider)
+  (let* ((host "localhost")
+         (port-alist (cider--infer-ports host nil)))
+    (when-let ((port (car
+                      (alist-get
+                       project-name port-alist nil nil #'equal))))
+      (let ((params (-> '()
+                        (plist-put :host host)
+                        (plist-put :port port))))
+        (my-cider-op 'cider-connect-clj params))
+      t)))
 
-(defproject ctgov
-  :project-dir "~/Documents/projects/ctgov-utils")
-
-(defproject thoughts
-  :project-dir "~/Documents/job-applications"
-  )
+(defproject dummett-library
+  :project-dir "/Users/andrewparisi/projects/dummett-library"
+  :website "https://github.com/andrewppar/dummett-library"
+  :docker-compose t)
 
 (defproject organizer
   :project-dir "/Users/andrewparisi/org/"
@@ -302,23 +322,36 @@
 (defproject pipes
   :project-dir "/Users/andrewparisi/projects/pipes")
 
-(defproject scotus
-  :project-dir "/Users/andrewparisi/projects/scotus")
-
 (defproject logos
   :project-dir "/Users/andrewparisi/projects/logos"
   :website "https://github.com/andrewppar/logos"
   :docker-compose t)
 
-(defproject dummett-library
-  :project-dir "/Users/andrewparisi/projects/dummett-library"
-  :website "https://github.com/andrewppar/dummett-library"
-  :docker-compose t)
-
+(defproject scotus
+  :project-dir "/Users/andrewparisi/projects/scotus"
+  :website  "https://github.com/andrewppar/logos"
+  :init (progn
+	  (potentially-start-cider "scotus")
+	  (cider-load-file "/Users/andrewparisi/projects/scotus/src/clj/scotus/core.clj"))
+  :stop (cider-quit))
 
 (defproject sql
   :init (sql-session-start-session)
   :stop (sql-session-quit-session))
+
+(defproject timesheet
+  :project-dir "/Users/andrewparisi/projects/timesheet"
+  :init (progn
+	  (potentially-start-cider "timesheet")
+	  (cider-load-file
+	   "/Users/andrewparisi/projects/timesheet/src/timesheet/core.clj")
+	  ;; TODO: maybe set this up to spawn a terminal and call timesheet.
+	 ;; activate application "iTerm"
+	 ;; tell application "System Events" to keystroke "t" using command down
+	  ;; tell application "iTerm" to tell session -1 of current terminal to write text "pwd"
+	  (cider-interactive-eval "(timesheet.core/-main)")
+
+	  ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Scratch and Miscellany
@@ -346,7 +379,7 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(ein terraform-mode pbcopy yaml-mode which-key use-package undo-tree ttl-mode sqlformat sphinx-doc sparql-mode restclient quelpa org-timeline org-roam lsp-ui ivy-rich haskell-mode git-timemachine flycheck evil-collection envrc csv-mode counsel cider blacken ag)))
+   '(ein pbcopy yaml-mode which-key use-package undo-tree ttl-mode sqlformat sphinx-doc sparql-mode restclient quelpa org-timeline org-roam lsp-ui ivy-rich haskell-mode git-timemachine flycheck evil-collection envrc csv-mode counsel cider blacken ag)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

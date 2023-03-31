@@ -121,7 +121,8 @@
 (defmacro -> (item &rest forms)
   (cond ((not forms)
 	 item)
-	((length= forms 1) (let ((form (car forms)))
+	((length= forms 1)
+	 (let ((form (car forms)))
 	   (if (listp form)
 	       `(,(car form) ,item ,@(cdr form))
 	     (list form item))))
@@ -136,8 +137,7 @@
 	((length= forms 1)
 	 (let ((form (car forms)))
 	   (if (listp form)
-	       (reverse
-		(cons item (reverse form)))
+	       (reverse (cons item (reverse form)))
 	     (list form item))))
 	(t
 	 `(->>

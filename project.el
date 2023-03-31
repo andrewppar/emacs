@@ -359,6 +359,7 @@
 		  (project--name-from-workspace to-quit)
        		  *project-quit-function* nil nil #'equal)))
       (eval stop)
+
       (workspace-remove-workspace to-quit))))
 
 (provide 'eirene-project)

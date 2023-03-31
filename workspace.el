@@ -188,14 +188,12 @@
 	(assoc-delete-all n *workspace-workspace-buffers*)))
 
 (defun workspace-remove-workspace-number (ws-number)
-  (if (equal ws-number *current-workspace*)
-      (message "Cannot delete the current workspace")
-    (let ((buffers (alist-get
-		    ws-number *workspace-workspace-buffers*)))
+  (let* ((buffers (alist-get ws-number *workspace-workspace-buffers*))
+	 (ws-name (alist-get ws-number *workspaces*)))
       (workspace--remove-workspace ws-number)
       (ivy-pop-view-action (assoc ws-name ivy-views))
       (dolist (buffer buffers)
-	(kill-buffer buffer)))))
+	(kill-buffer buffer))))
 
 (defun workspace-remove-workspace (ws-name)
   (let ((ws-number  (-> ws-name
