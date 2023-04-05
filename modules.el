@@ -203,7 +203,8 @@
     "f" 'dired-goto-and-find
     "w" 'dired-open-with
     "y" 'dired-yank-item
-    "p" 'dired-paste-item))
+    "p" 'dired-paste-item
+    (kbd "C-m") 'magit-dired-log))
 
 (module! treemacs
   :use-package nil
@@ -230,10 +231,12 @@
   (defun git-commit-message-setup ()
     (insert (format "[%s] " (magit-get-current-branch)))
     (insert "\n\n")
-    (insert (with-temp-buffer
-	      (insert-file-contents
-	       "/Users/anparisi/.emacs.d/conure-commit.txt")
-	      (buffer-string))))
+    (when (string-match
+	   (regexp-quote "projects/conure") default-directory)
+      (insert (with-temp-buffer
+		(insert-file-contents
+		 "/Users/anparisi/.emacs.d/conure-commit.txt")
+		(buffer-string)))))
 
   ;; TODO: Make these dynamically created in the project file?
   (defclass repo ()
@@ -318,6 +321,7 @@
   :ensure t
   :defer t
   :init
+  ;; TODO: Put this in another file
   ;; TODO: NEed to worry about absolute vs. relative paths
   ;; TODO: What about aliases
   ;; Maybe it's just like 10000 times easier to get the current directory
@@ -388,12 +392,12 @@
     ;; TODO: This could be a little more robust
     (let ((url (thing-at-point 'line)))
       (browse-url url)))
-
-;;; Figure out auto/tab complete (with lsp?)
-
-;;;###autoload
+ ;;; Figure out auto/tab complete (with lsp?)
+ ;;;###autoload
   (define-derived-mode eirene-term-mode sh-mode "eirene-term"
-    "Major mode for eirene-term files.")
+		       "Major mode for eirene-term files.")
+  ;; TODO: Create a macro - major-mode-redefs that works like
+  ;; major mode map but does this...
 
   (evil-define-key  'insert eirene-term-mode-map
     (kbd "C-c C-c")      'vterm-send-paragraph
@@ -437,11 +441,7 @@
 
   (defun vterm-goto-beginning ()
     (interactive)
-    (vterm--goto-line 0))
-
-  (major-mode-map vterm-mode
-    :bindings
-    ("g" 'vterm-goto-beginning)))
+    (vterm--goto-line 0)))
 
 (module! term
   :use-package nil
@@ -509,6 +509,15 @@
       (dotimes (n (- end start))
 	(goto-line (inc (+ start n)))
 	(apply fn args))))
+
+;;  (defmacro do-file (header-var &rest body)
+;;    (declare (indent 1))
+;;    (let ((pos (gensym)))
+;;      `(save-excursion
+;;	 (goto-char 0)
+;;	 (setq
+;;
+;;      )
 
   (defun header-text (string)
     "Get the text from a STRING thats an org mode header."
@@ -739,7 +748,7 @@
   :ensure t
   :after org
   :init
-  (load-file "/Users/anparisi/emacs-files/stock.el")
+  (load-file "/Users/anparisi/emacs-files/widget.el")
   (setq org-timeline-prepend nil)
 
   (defun org-insert-stock-ticker ()
@@ -755,9 +764,8 @@
       (forward-line)
       (let ((inhibit-read-only-t))
 	(cursor-sensor-mode 1)
-	(let* ((stock (cisco-stock)))
-	  (cisco-stock-update-logs stock)
-	  (insert (stock-json-to-string stock))))
+	(let ((widget-string (agenda-widget!)))
+	  (insert widget-string)))
       (font-lock-mode)))
 
   (defun org-color-holidays-green ()
@@ -794,41 +802,43 @@
   (add-hook 'clojurec-mode-hook #'lsp)
   (add-hook 'clojurescript-mode-hook #'lsp))
 
-(module! lsp-ui
-  :ensure t
-  :after (lsp-mode)
-  :init (setq lsp-ui-doc-enable t
-              lsp-ui-doc-use-webkit t
-              lsp-ui-doc-header t
-              lsp-ui-doc-delay 0.2
-              lsp-ui-doc-include-signature t
-              lsp-ui-doc-alignment 'at-point
-              lsp-ui-doc-use-childframe t
-              lsp-ui-doc-border (face-foreground 'default)
-              lsp-ui-peek-enable t
-              lsp-ui-peek-show-directory t
-	      lsp-ui-sideline-show-diagnostics t
-              lsp-ui-sideline-enable t
-              lsp-ui-sideline-show-code-actions t
-              lsp-ui-sideline-show-hover t
-              lsp-ui-sideline-ignore-duplicate t)
-  :config
-  (add-to-list 'lsp-ui-doc-frame-parameters '(right-fringe . 8))
+;; lsp-treemacs
 
-  ;; `C-g'to close doc
-  (advice-add #'keyboard-quit :before #'lsp-ui-doc-hide)
-
-  ;; Reset `lsp-ui-doc-background' after loading theme
-  (add-hook 'after-load-theme-hook
-	    (lambda ()
-              (setq lsp-ui-doc-border (face-foreground 'default))
-              (set-face-background 'lsp-ui-doc-background
-				   (face-background 'tooltip))))
-
-  ;; WORKAROUND Hide mode-line of the lsp-ui-imenu buffer
-  ;; @see https://github.com/emacs-lsp/lsp-ui/issues/243
-  (defadvice lsp-ui-imenu (after hide-lsp-ui-imenu-mode-line activate)
-    (setq mode-line-format nil)))
+;;(module! lsp-ui
+;;  :ensure t
+;;  :after (lsp-mode)
+;;  :init (setq lsp-ui-doc-enable t
+;;              lsp-ui-doc-use-webkit t
+;;              lsp-ui-doc-header t
+;;              lsp-ui-doc-delay 0.2
+;;              lsp-ui-doc-include-signature t
+;;              lsp-ui-doc-alignment 'at-point
+;;              lsp-ui-doc-use-childframe t
+;;              lsp-ui-doc-border (face-foreground 'default)
+;;              lsp-ui-peek-enable t
+;;              lsp-ui-peek-show-directory t
+;;	      lsp-ui-sideline-show-diagnostics t
+;;              lsp-ui-sideline-enable t
+;;              lsp-ui-sideline-show-code-actions t
+;;              lsp-ui-sideline-show-hover t
+;;              lsp-ui-sideline-ignore-duplicate t)
+;;  :config
+;;  (add-to-list 'lsp-ui-doc-frame-parameters '(right-fringe . 8))
+;;
+;;  ;; `C-g'to close doc
+;;  (advice-add #'keyboard-quit :before #'lsp-ui-doc-hide)
+;;
+;;  ;; Reset `lsp-ui-doc-background' after loading theme
+;;  (add-hook 'after-load-theme-hook
+;;	    (lambda ()
+;;              (setq lsp-ui-doc-border (face-foreground 'default))
+;;              (set-face-background 'lsp-ui-doc-background
+;;				   (face-background 'tooltip))))
+;;
+;;  ;; WORKAROUND Hide mode-line of the lsp-ui-imenu buffer
+;;  ;; @see https://github.com/emacs-lsp/lsp-ui/issues/243
+;;  (defadvice lsp-ui-imenu (after hide-lsp-ui-imenu-mode-line activate)
+;;    (setq mode-line-format nil)))
 
 (module! flycheck
   :ensure t
@@ -1169,3 +1179,14 @@ OUT describes the output file and is either a %-escaped string
 
            ;;;
 ;;;;;;;;;;;;;;
+
+
+(comment
+ "This is from the emacs show and tell 03-31-2023"
+ (defun mail-work (start end &optional region?)
+  (interactive "r\nP")
+  (let ((s (buffer-substring start end)))
+    (compose-mail "auhaas@cisco.com" "emacs region")
+    (when region?
+      (insert s))))
+ )

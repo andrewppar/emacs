@@ -281,7 +281,70 @@
 ;;;;;;;;;;;;
 ;;; Projects
 
+(defun tmux-window-map (session-name)
+  (let ((command-results (-> "tmux list-windows -t %s"
+			     (format session-name)
+			     shell-command-to-string
+			     (string-split "\n")))
+	result           '())
+    (dolist (window-string command-results)
+      (unless (equal window-string "")
+	(let* ((split  (split-string window-string))
+	       (number (car (split-string (car split) ":")))
+	       (name   (cadr split)))
+	  (push (cons name number) result))))
+    result))
 
+(defun tmux-current-window ()
+  (let ((command-results (shell-command-to-string "tmux list-windows"))
+	(result          nil))
+    (dolist (window (split-string command-results "\n"))
+      (unless (equal window "")
+	(let* ((split (split-string window)))
+	  (when (equal (car (last split)) "(active)")
+	    (setq result (car (split-string (car split) ":")))))))
+    result))
+
+(defun tmux-switch-window (window)
+  (shell-command-to-string
+   (format
+    "tmux select-window -t %s" window)))
+
+(defmacro save-tmux-excursion (&rest body)
+  (declare (indent 0))
+  (let ((current-window (gensym)))
+    `(let ((,current-window (tmux-current-window)))
+       ,@body
+       (tmux-switch-window ,current-window))))
+
+(defun tmux-send-command (command session window)
+  (shell-command
+   (format "tmux send-keys -t %s:%s \"%s\" ENTER" session window command)))
+
+(defun tmux-current-session ()
+  (-> "tmux display-message -p '#S'"
+      shell-command-to-string
+      (split-string "\n")
+      car
+      string-trim))
+
+(defun tmux-new-window ()
+  (let* ((session-id (tmux-current-session))
+	 (old-idxs (mapcar #'cdr (tmux-window-map session-id))))
+    (save-tmux-excursion
+      (shell-command "tmux new-window"))
+    (let ((new-idxs (mapcar #'cdr (tmux-window-map session-id)))
+	  (new-window-id nil))
+      (dolist (new-idx new-idxs)
+	(unless (member new-idx old-idxs)
+	  (setq new-window-id new-idx)))
+      new-window-id)))
+
+
+(defun incident-manager ()
+  (let ((session-id    (tmux-current-session))
+	(new-window-id (tmux-new-window)))
+    (tmux-send-command "incident_manager" session-id new-window-id)))
 
 (defun potentially-start-cider (project-name)
   (require 'cider)
@@ -296,17 +359,25 @@
 	(my-cider-op 'cider-connect-clj params))
       t)))
 
+(defun conure-init ()
+  (interactive)
+  (let ((session-id (tmux-current-session))
+	(new-window (tmux-new-window)))
+    (tmux-send-command "conure" session-id new-window)
+    (sleep-for 5)
+    (when (potentially-start-cider "conure")
+      (shell-command "brew services stop postgresql@14")
+      (shell-command "docker compose up -d db")
+      (cider-load-file
+       "/Users/anparisi/projects/conure/scratch/startup.clj")
+      ;; it would be cooler to do something like this...
+      ;;(cider-interactive-eval "(conure.startup/start-dev)")
+      ;;(incident-manager)
+      )))
+
 (defproject conure
-    :init (when (potentially-start-cider "conure")
-	    (shell-command "brew services stop postgresql@14")
-	    (shell-command "docker compose up -d db")
-	    (cider-load-file
-	     "/Users/anparisi/projects/conure/scratch/startup.clj")
-	    ;; it would be cooler to do something like this...
-	    ;;(cider-interactive-eval "(conure.startup/start-dev)")
-	    )
+    :init (conure-init)
     :website "https://github.com/advthreat/conure"
-    :test    "just test"
     :stop (save-workspace-excursion "conure"
 	    (when (or
 		   (sesman-browser-get 'object)
@@ -377,7 +448,6 @@
 
 ;; Hacks!
 
-
 (setq *end* (float-time))
 (eirene-splash (- *end* *start*))
 
@@ -389,7 +459,7 @@
  '(org-agenda-files
    '("/Users/anparisi/org/status.org" "/Users/anparisi/notes/02-16-2023/installing-conure.org" "/Users/anparisi/notes/02-23-2023/attack-graph.org" "/Users/anparisi/notes/02-23-2023/relation-graph.org" "/Users/anparisi/notes/02-27-2023/attack-graph.org" "/Users/anparisi/notes/03-08-2023/compaction-meeting.org" "/Users/anparisi/notes/03-08-2023/proof.org" "/Users/anparisi/notes/03-09-2023/compaction.org" "/Users/anparisi/notes/03-17-2023/teamspace.org" "/Users/anparisi/notes/03-24-2023/teamspace.org" "/Users/anparisi/notes/03-29-2023/xdr-meeting.org" "/Users/anparisi/notes/weekly-checkins/03-10-2023.org"))
  '(package-selected-packages
-   '(ein pbcopy yaml-mode which-key use-package undo-tree ttl-mode sqlformat sparql-mode restclient quelpa org-timeline lsp-ui ivy-rich haskell-mode git-timemachine flycheck evil-collection envrc counsel cider ag))
+   '(ein pbcopy yaml-mode which-key use-package undo-tree ttl-mode sqlformat sparql-mode restclient quelpa org-timeline ivy-rich haskell-mode git-timemachine flycheck evil-collection envrc counsel cider ag))
  '(safe-local-variable-values
    '((cider-preferred-build-tool . lein)
      (cljr-favor-prefix-notation)

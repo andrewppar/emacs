@@ -10,9 +10,9 @@ sql
 sqlformat
 clojure-mode
 cider
+paredit
 company
 flycheck
-lsp-ui
 lsp-mode
 org-timeline
 org-agenda
