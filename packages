@@ -14,7 +14,6 @@ clojure-mode
 cider
 company
 flycheck
-lsp-ui
 lsp-mode
 org-timeline
 org-agenda
@@ -31,7 +30,7 @@ ibuffer
 pbcopy
 evil-collection
 swiper
+counsel
 ivy-rich
 ivy
-counsel
 undo-tree

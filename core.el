@@ -164,6 +164,21 @@
        (setq idx (+ 1 idx))
        ,@body)))
 
+(defmacro doalist (spec &rest body)
+  (declare (indent 1) (debug ((symbolp form &optional form) body)))
+  (unless (consp spec)
+    (signal 'wrong-type-argument (list 'consp spec)))
+  (unless (<= 3 (length spec) 4)
+    (signal 'wrong-number-of-arguments (list '(3 . 4) (length spec))))
+  (let ((keys (gensym))
+	(key  (gensym)))
+    `(let ((,keys (mapcar #'car ,(caddr spec))))
+       (dolist (,key ,keys)
+	 (let ((,(car spec) ,key)
+	       (,(cadr spec) (alist-get
+			      ,key ,(caddr spec) nil nil #'equal)))
+	   ,@body)))))
+
 (defmacro comment (&rest body)
   (declare '(indent defun))
   nil)

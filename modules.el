@@ -3,8 +3,6 @@
 
 ;;TODO: Are these necessary?
 (add-to-list 'exec-path "/usr/local/bin")
-(add-to-list 'load-path "~/.emacs.d/lisp")
-
 
 ;; TODO: Create module! macro that is a thin wrapper around use-package
 ;; but that makes defining major mode and default bindings for a mode easy
@@ -25,12 +23,6 @@
     (global-undo-tree-mode)
     (setq undo-tree-history-directory-alist '(("." . "~/.emacs.d/undo")))
     (evil-set-undo-system 'undo-tree))
-
-(module! counsel
-    :ensure t
-    :after ivy
-    :requires evil
-    :config (counsel-mode))
 
 (module! ivy
     :ensure t
@@ -54,6 +46,12 @@
 	ivy-rich-switch-buffer-align-virtual-buffer t
 	ivy-rich-path-style 'abbrev)
   (ivy-rich-mode))
+
+(module! counsel
+    :ensure t
+    :after ivy
+    :requires evil
+    :config (counsel-mode))
 
 (module! swiper
   :ensure t
@@ -245,6 +243,11 @@
     ;;  "p" 'pair-dispatch
     ;;  "G" 'gh-dispatch)
 
+    (defun git-commit-message-setup ()
+      (insert (format "[%s] " (magit-get-current-branch))))
+
+     (add-hook 'git-commit-setup-hook 'git-commit-message-setup)
+
     (major-mode-map magit-mode
 	:bindings
       ("" 'magit-dispatch)))
@@ -270,9 +273,10 @@
 	  code-review-download-dir "/tmp/code-review/")
     (add-hook 'code-review-mode-hook #'emojify-mode)
     (major-mode-map code-review-mode
-	:bindings
-      ("m"  'code-review-transient-api
-	    "c" 'code-review-comment-add-or-edit)))
+      :bindings
+      ("m"
+       'code-review-transient-api
+       "c" 'code-review-comment-add-or-edit)))
 
 (module! vterm
     :ensure t
@@ -438,6 +442,21 @@
 ;;(module! just-mode
 ;;  :ensure t
 ;;  :defer t)
+
+(module! tmux
+  :use-package nil
+  (add-to-list 'load-path (expand-file-name "~/.emacs.d/lisp/tmux"))
+  (require 'tmux))
+
+(module! spacehammer
+  :use-package nil
+  (add-to-list 'load-path (expand-file-name "~/.emacs.d/lisp/spacehammer"))
+  (require 'spacehammer))
+
+(module! timesheet
+  :use-package nil
+  (add-to-list 'load-path (expand-file-name "~/.emacs.d/lisp/timesheet"))
+  (require 'timesheet-ui))
 
 (module! org
     :ensure t
@@ -716,10 +735,13 @@
 	lsp-enable-snipped nil
 	lsp-completion-enable t
 	lsp-enable-snipped nil
+	lsp-headerline-breadcrumb-enable nil
 	lsp-signature-auto-activate nil)
 
   ;; TODO: Add these to the :hook section
   (add-hook 'lsp-mode #'lsp-enable-which-key-integration)
+
+
 
   ;; clojure
   (add-hook 'clojure-mode-hook #'lsp)
@@ -739,41 +761,41 @@
      ("pyls.plugins.pyls_black.enabled" t t)
      ("pyls.plugins.pyls_isort.enabled" t t))))
 
-(module! lsp-ui
-  :ensure t
-  :after (lsp-mode)
-  :init (setq lsp-ui-doc-enable t
-              lsp-ui-doc-use-webkit t
-              lsp-ui-doc-header t
-              lsp-ui-doc-delay 0.2
-              lsp-ui-doc-include-signature t
-              lsp-ui-doc-alignment 'at-point
-              lsp-ui-doc-use-childframe t
-              lsp-ui-doc-border (face-foreground 'default)
-              lsp-ui-peek-enable t
-              lsp-ui-peek-show-directory t
-	      lsp-ui-sideline-show-diagnostics t
-              lsp-ui-sideline-enable t
-              lsp-ui-sideline-show-code-actions t
-              lsp-ui-sideline-show-hover t
-              lsp-ui-sideline-ignore-duplicate t)
-  :config
-  (add-to-list 'lsp-ui-doc-frame-parameters '(right-fringe . 8))
-
-  ;; `C-g'to close doc
-  (advice-add #'keyboard-quit :before #'lsp-ui-doc-hide)
-
-  ;; Reset `lsp-ui-doc-background' after loading theme
-  (add-hook 'after-load-theme-hook
-	    (lambda ()
-              (setq lsp-ui-doc-border (face-foreground 'default))
-              (set-face-background 'lsp-ui-doc-background
-				   (face-background 'tooltip))))
-
-  ;; WORKAROUND Hide mode-line of the lsp-ui-imenu buffer
-  ;; @see https://github.com/emacs-lsp/lsp-ui/issues/243
-  (defadvice lsp-ui-imenu (after hide-lsp-ui-imenu-mode-line activate)
-    (setq mode-line-format nil)))
+;;(module! lsp-ui
+;;  :ensure t
+;;  :after (lsp-mode)
+;;  :init (setq lsp-ui-doc-enable t
+;;              lsp-ui-doc-use-webkit t
+;;              lsp-ui-doc-header t
+;;              lsp-ui-doc-delay 0.2
+;;              lsp-ui-doc-include-signature t
+;;              lsp-ui-doc-alignment 'at-point
+;;              lsp-ui-doc-use-childframe t
+;;              lsp-ui-doc-border (face-foreground 'default)
+;;              lsp-ui-peek-enable t
+;;              lsp-ui-peek-show-directory t
+;;	      lsp-ui-sideline-show-diagnostics t
+;;              lsp-ui-sideline-enable t
+;;              lsp-ui-sideline-show-code-actions t
+;;              lsp-ui-sideline-show-hover t
+;;              lsp-ui-sideline-ignore-duplicate t)
+;;  :config
+;;  (add-to-list 'lsp-ui-doc-frame-parameters '(right-fringe . 8))
+;;
+;;  ;; `C-g'to close doc
+;;  (advice-add #'keyboard-quit :before #'lsp-ui-doc-hide)
+;;
+;;  ;; Reset `lsp-ui-doc-background' after loading theme
+;;  (add-hook 'after-load-theme-hook
+;;	    (lambda ()
+;;              (setq lsp-ui-doc-border (face-foreground 'default))
+;;              (set-face-background 'lsp-ui-doc-background
+;;				   (face-background 'tooltip))))
+;;
+;;  ;; WORKAROUND Hide mode-line of the lsp-ui-imenu buffer
+;;  ;; @see https://github.com/emacs-lsp/lsp-ui/issues/243
+;;  (defadvice lsp-ui-imenu (after hide-lsp-ui-imenu-mode-line activate)
+;;    (setq mode-line-format nil)))
 
 (module! flycheck
   :ensure t
@@ -901,6 +923,9 @@
      "as" 'cider-toggle-trace-var
      "ae" 'cider-englighted-mode
      "an" 'clojure-sort-ns
+     "af" 'clojure-thread-first-all
+     "al" 'clojure-thread-last-all
+     "au" 'lsp-clojure-unwind-thread
      "jj" 'my-cider-jack-in
      "jc" 'my-cider-connect
      "jq" 'cider-quit
@@ -916,6 +941,7 @@
      "g"  'xref-prompt-find-definitions
      "."  'xref-find-definitions
      ","  'xref-pop-marker-stack
+     "'"  'clojure-toggle-ignore
      "rn" 'lsp-rename
      "rr" 'lsp-find-references
      "dd" 'cider-doc
@@ -937,7 +963,14 @@
      "d" "documentation"))
   :config
   (setq lsp-clojure-server-command '("clojure-lsp")
-	    org-babel-clojure-backend 'cider))
+	org-babel-clojure-backend 'cider))
+
+(module! fennel-mode
+  :use-package nil
+  :config
+  (autoload 'fennel-mode "/Users/andrewparisi/emacs-files/fennel-mode/fennel-mode.el" nil t)
+  (add-to-list 'auto-mode-alist '("\\.fnl\\'" . fennel-mode)))
+
 
            ;;;
 ;;;;;;;;;;;;;;

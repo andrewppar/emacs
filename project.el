@@ -278,8 +278,9 @@
       (push (cons (format "%s" project-name) `,stop)
     	    *project-quit-function*))
     `(progn
-       (defun ,start-function-name (ws-num)
-	 (interactive "nWorkspace Number: ")
+       (defun ,start-function-name ()
+	 (interactive)
+	 (let ((ws-num (workspace-get-next-workspace-number)))
 	 (delete-other-windows)
 	 (workspace-to-workspace-number-with-name
 	  ws-num (format "{} %s" ,(symbol-name project-name)))
@@ -298,7 +299,7 @@
 	 ,(when init
 	    `(progn
 	       ,init))
-	 (worskpace-save-current-view))
+	 (worskpace-save-current-view)))
 
        (defun ,dir-function-name ()
 	 (interactive)
@@ -356,18 +357,17 @@
   "Gather all project names."
   (mapcar #'car *project-projects*))
 
-
-(defun project-switch-project ()
-  "Allow user to switch to a project.
-
-   User specifies the PROJECT, the highest workspace available is used."
-  (interactive)
-  (let* ((workspace-number (workspace-get-next-workspace-number))
-	 (project-name     (ivy-read "Project: " (project--all-projects)))
-	 (project-function (alist-get
-			    project-name *project-projects* nil nil #'equal)))
-    (push (cons workspace-number project-name) *project-workspace-map*)
-    (funcall project-function workspace-number)))
+(defmacro project-switch-transient ()
+  "A macro to dynamically create transients for the project switcher."
+  (let ((menu-items '())
+	(current-command "a"))
+    (dolist (project (project--all-projects))
+      (let ((fn (alist-get project *project-projects* nil nil #'equal)))
+	(push (list current-command project fn) menu-items)
+	(setq current-command (project-letter-inc current-command))))
+    `(transient-define-prefix project-switch-project ()
+      "Allow user to switch to a project."
+      ["Project" ,@(reverse menu-items)])))
 
 (defun project-transient ()
   (interactive)

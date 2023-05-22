@@ -168,7 +168,7 @@
   ;;       for any keystroke with multiple bindings
   ;;       or maybe change the datastructure to be groups...
   ;; TODO: Maybe incorporate insert mode somehow...
-  (declare (indent defun))
+  (declare (indent 1))
   (let ((bindings (generate-mm-bindings mode bindings-plist))
 	(labels (generate-mm-labels   mode bindings-plist))
 	(result '()))

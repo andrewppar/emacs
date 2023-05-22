@@ -24,6 +24,15 @@
 	(format "done loading %s: %s"
 		,load-string (- (float-time) ,start))))))
 
+(defmacro time! (form)
+  (let ((start (gensym "start"))
+	(result (gensym "result")))
+    `(let ((,start (float-time))
+	   (,result (progn ,form)))
+       (message
+	(format "done with form %s: %s" ',form (- (float-time) ,start)))
+       ,result)))
+
 (setq user-mail-address  "andrew.p.parisi@gmail.com")
 
 (load! "~/.emacs.d/display.el")
@@ -33,29 +42,56 @@
 (load! "~/.emacs.d/project.el")
 
 ;;; Custom Helpers
-(load! "~/emacs-files/timesheet.el")
+(load! "~/emacs-files/timesheet/timesheet-ui.el")
 (load! "~/emacs-files/diary-helpers.el")
 (load! "~/emacs-files/sql-session.el")
 ;; (load! "~/emacs-files/github-pulls.el")
 
 ;; Custom Theme
-(colors!
-  :background            "#3b3b3f"
-  :foreground            "#d0d0d0"
-  :comment               "#8a8a8a"
-  :string                "#C2AD79"
-  :link                  (:foreground "red"     :weight 'bold)
-  :constant              (:foreground "#ffc63f" :weight 'bold)
-  :function              (:foreground "#18aed4" :weight 'bold)
-  :keyword               (:foreground "#AFD75F" :weight 'bold)
-  :type                  (:foreground "#18aed4")
-  :font                  (:height 240)
-  :transparency          ('alpha 80 80)
-  :mode-line             (:foreground "#3b3b3f" :background "#a9a9a9")
-  :mode-line-inactive    (:foreground "#3b3b3f" :background "#d0d0d0")
-  :prettify-symbols      t
-  ;; :fringe                (:background "#d0d0d0")
-  )
+(defvar *dark-mode* t)
+
+(defun set-colors! ()
+  (if *dark-mode*
+      (colors!
+	  :background            "#3b3b3f"
+	:foreground            "#d0d0d0"
+	:comment               "#8a8a8a"
+	:string                "#C2AD79"
+	:link                  (:foreground "red"     :weight 'bold)
+	:constant              (:foreground "#ffc63f" :weight 'bold)
+	:function              (:foreground "#18aed4" :weight 'bold)
+	:keyword               (:foreground "#AFD75F" :weight 'bold)
+	:type                  (:foreground "#18aed4")
+	:font                  (:height 240)
+	:transparency          ('alpha 80 80)
+	:mode-line             (:foreground "#3b3b3f" :background "#a9a9a9")
+	:mode-line-inactive    (:foreground "#3b3b3f" :background "#d0d0d0")
+	:prettify-symbols      t
+	;; :fringe                (:background "#d0d0d0")
+	)
+    ;; The cursor color in terminal is controlled by the terminal
+    (colors!
+	:background            "#F5F7F5"
+      :foreground            "#473645"
+      :comment               "#91B5D9"
+      :string                "#3D77B9"
+      :link                  (:foreground "red"     :weight 'bold)
+      :constant              (:foreground "#FCBE1D" :weight 'bold)
+      :function              (:foreground "#6793E2" :weight 'bold)
+      :keyword               (:foreground "#8EC7F7" :weight 'bold)
+      :type                  (:foreground "#6793E2")
+      :font                  (:height 240)
+      :transparency          ('alpha 80 80)
+      :mode-line             (:foreground "#3b3b3f" :background "#a9a9a9")
+      :mode-line-inactive    (:foreground "#3b3b3f" :background "#d0d0d0")
+      :prettify-symbols      t
+      ;; :fringe                (:background "#d0d0d0")
+      )))
+
+(set-colors!)
+
+;; TODO: Add this to colors! (and maybe change the name to theme!)
+(set-frame-font "Inconsolata-24")
 
 (mode-line!
   (:text "CUI ")
@@ -139,6 +175,11 @@
   (interactive)
   (workspace-to-workspace-number 6))
 
+(defun toggle-color-scheme ()
+  (interactive)
+  (setq *dark-mode* (not *dark-mode*))
+  (set-colors!))
+
 (defun restore-organizer ()
   (interactive)
   (restore-organizer-internal t))
@@ -157,7 +198,7 @@
     (when refresh?
       (org-agenda-redo))
     (split-window-below)
-    (task-log)
+    (todays-task-log)
     (split-window-right)
     (find-file *status-file*)
     (evil-close-folds )))
@@ -184,6 +225,26 @@
 (defun save-all-buffers-kill-no-prompt ()
   (interactive)
   (save-buffers-kill-emacs t))
+
+(defun insert-emoji ()
+  (interactive)
+  (let* ((emojis '(("fugind" .  "ε=ε=ε=┌(;*´Д`)ﾉ")
+		   ("wizard" .  "(∩｀-´)⊃━☆ﾟ.*･｡ﾟ")
+		   ("flip-table" . "(╯°□°）╯︵ ┻━┻")
+		   ("fix-table" . "┬─┬⃰͡ (ᵔᵕᵔ͜ )")
+		   ("flip-table-two" . "┻━┻ ︵ヽ(`Д´)ﾉ︵﻿ ┻━┻")
+		   ("pisica" . "ฅ^•ﻌ•^ฅ")
+		   ("caine" . "V•ᴥ•V")
+		   ("dance" . "~(^-^)~")
+		   ("cool" . "(っ▀¯▀)つ")
+		   ("why"  . "щ（ﾟДﾟщ）")
+		   ("headscratch" . "(⊙.☉)7")
+		   ("joy" . "ヽ(´▽`)/")
+		   ("shrug" . "¯\\_(ツ)_/¯")
+		   ("ouch" . "(҂◡_◡)")
+		   ("bewlidered" . "⊙﹏⊙")))
+	 (emoji-name (ivy-read "Select an emoji: " (mapcar #'car emojis))))
+    (insert (alist-get emoji-name emojis nil nil #'equal))))
 
 (which-key-map evil-normal-state-map ","
   :labels
@@ -235,21 +296,18 @@
    ;; organizer
    "oac" 'add-calendar-item-for-today
    "oas" 'set-up-agenda
-   "oed" 'edit-task-description-at-point
-   "oee" 'edit-task-end-time-at-point
-   "oeg" 'edit-task-group-at-point
-   "oes" 'edit-task-start-time-at-point
-   "oex" 'delete-task-at-point
+   "oed" 'timesheet-edit-description-at-point
+   "oee" 'timesheet-edit-end-time-at-point
+   "oeg" 'timesheet-edit-group-at-point
+   "oes" 'timesheet-edit-start-time-at-point
+   "oex" 'timesheet-delete-task-at-point
+   "ot"  'timesheet-add!
+   "ol"  'todays-task-log
    "of"  'task-log-for-date
-   "og"  'get-tasks-in-range
+   "og"  'task-log-for-dates
    "or"  'import-remote-items
    "ox"  'export-remote-items
    "os"  'restore-organizer-layout
-   "oed" 'edit-task-description-at-point
-   "oes" 'edit-task-start-time-at-point
-   "oee" 'edit-task-end-time-at-point
-   "oex" 'delete-task-at-point
-   "oeg" 'edit-task-group-at-point
    ;; s-expressions
    "sq"  'indent-pp-sexp
    "l"  'forward-sexp
@@ -258,19 +316,21 @@
    "k"  'backward-up-list
    "st"  'transpose-sexps
    ;; tools
-   "te"  'eirene-term
+   "tb"  'text-scale-increase
+   "tee" 'eirene-term
    "teq" 'eirene-term-end-session
+   "tie" 'insert-emoji
+   "tl"  'text-scale-decrease
    "tp"  'project-switch-project
    "td"  'docker
-   "tx"  'project-quit-project
    "tsl" 'sql-session-reset-window-layout
    "tsq" 'sql-session-quit-session
    "tss" 'sql-session-start-session
    "tst" 'sql-session-toggle-tables-buffer
    "tsw" 'sql-session-save-session
-   "tt"  'project-transient
-   "t+" 'text-scale-increase
-   "t-" 'text-scale-decrease
+   "tt"  'toggle-color-scheme
+   "tx"  'project-quit-project
+   "p"   'project-transient
    ;; workspaces
    "w1"  'to-workspace-1
    "w2"  'to-workspace-2
@@ -300,17 +360,32 @@
 	(my-cider-op 'cider-connect-clj params))
       t)))
 
+(defun kill-clojure-repls ()
+  "Kill all running clojure repls."
+  (let ((map     (tmux-window-map (tmux-current-session)))
+	(repl-title nil))
+    (dolist (title (mapcar #'car map))
+      (when (string-match (regexp-quote "rlwrap") title)
+	(tmux-close-window (alist-get title map nil nil #'equal))))))
+
 (defproject dummett-library
   :project-dir "/Users/andrewparisi/projects/dummett-library"
   :website "https://github.com/andrewppar/dummett-library"
   :docker-compose t)
 
+(defproject hera
+    :project-dir "/Users/andrewparisi/projects/hera"
+    :init (progn
+	    (treemacs-add-and-display-current-project-exclusively)
+	    (potentially-start-cider "hera"))
+    :stop (cider-quit))
+
 (defproject organizer
-  :project-dir "/Users/anparisi/org/"
+  :project-dir "/Users/andrewparisi/org/"
   :init (restore-organizer))
 
 (defproject pipes
-  :project-dir "/Users/andrewparisi/projects/pipes")
+    :project-dir "/Users/andrewparisi/projects/pipes")
 
 (defproject logos
   :project-dir "/Users/andrewparisi/projects/logos"
@@ -321,9 +396,14 @@
   :project-dir "/Users/andrewparisi/projects/scotus"
   :website  "https://github.com/andrewppar/logos"
   :init (progn
+	  (tmux-new-window-with-process "scotus")
+	  (sleep-for 4)
 	  (potentially-start-cider "scotus")
-	  (cider-load-file "/Users/andrewparisi/projects/scotus/src/clj/scotus/core.clj"))
-  :stop (cider-quit))
+	  (cider-load-file
+	   "/Users/andrewparisi/projects/scotus/scratch/startup.clj"))
+  :stop (progn
+	  (cider-quit)
+	  (kill-clojure-repls)))
 
 (defproject sql
   :init (sql-session-start-session)
@@ -335,16 +415,17 @@
 	  (potentially-start-cider "timesheet")
 	  (cider-load-file
 	   "/Users/andrewparisi/projects/timesheet/src/timesheet/core.clj")
-	  ;; TODO: maybe set this up to spawn a terminal and call timesheet.
-	 ;; activate application "iTerm"
-	 ;; tell application "System Events" to keystroke "t" using command down
-	  ;; tell application "iTerm" to tell session -1 of current terminal to write text "pwd"
-	  (cider-interactive-eval "(timesheet.core/-main)")
+	  (cider-interactive-eval "(timesheet.core/-main)")))
 
-	  ))
+(project-switch-transient)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Scratch and Miscellany
+
+(defun start-babashka (location)
+  (interactive "sPath: ")
+  (tmux-new-window-with-process
+   (format "cd %s & bb --nrepl-server" location)))
 
 ;; TODO
 ;; Clean this up and put it in a macro
@@ -359,3 +440,26 @@
 
 (setq *end* (float-time))
 (eirene-splash (- *end* *start*))
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(package-selected-packages
+   '(yaml-mode which-key vterm use-package undo-tree typescript-mode ttl-mode tide sqlformat sphinx-doc sparql-mode sbt-mode restclient quelpa proof-general poetry pbcopy pandoc-mode org-timeline org-roam lsp-metals ivy-rich highlight-indent-guides hcl-mode haskell-mode git-timemachine evil-collection ess envrc ein dockerfile-mode docker csv-mode crdt counsel company code-review cider blacken alert ag)))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(term-color-black ((t (:foreground "#3F3F3F" :background "#2B2B2B"))))
+ '(term-color-blue ((t (:foreground "#7CB8BB" :background "#4C7073"))))
+ '(term-color-cyan ((t (:foreground "#93E0E3" :background "#8CD0D3"))))
+ '(term-color-green ((t (:foreground "#7F9F7F" :background "#9FC59F"))))
+ '(term-color-magenta ((t (:foreground "#DC8CC3" :background "#CC9393"))))
+ '(term-color-red ((t (:foreground "#AC7373" :background "#8C5353"))))
+ '(term-color-white ((t (:foreground "#DCDCCC" :background "#656555"))))
+ '(term-color-yellow ((t (:foreground "#DFAF8F" :background "#9FC59F"))))
+ '(term-default-bg-color ((t (:inherit term-color-black))))
+ '(term-default-fg-color ((t (:inherit term-color-white)))))
+(put 'dired-find-alternate-file 'disabled nil)
