@@ -3,7 +3,7 @@
 
 ;;TODO: Are these necessary?
 (add-to-list 'exec-path "/usr/local/bin")
-(add-to-list 'load-path "~/.emacs.d/lisp")
+(add-to-list 'exec-path "/Users/anparisi/go/bin")
 
 
 ;; TODO: Create module! macro that is a thin wrapper around use-package
@@ -15,8 +15,7 @@
 ;; Required Packages
 ;; TODO See whether or not these can be paired down
 
-(defvar *status-file*
-  "/Users/anparisi/org/status.org")
+(defvar *status-file* "/Users/anparisi/org/status.org")
 
 (module! undo-tree
   :ensure t
@@ -26,6 +25,18 @@
   (global-undo-tree-mode)
   (setq undo-tree-history-directory-alist '(("." . "~/.emacs.d/undo")))
   (evil-set-undo-system 'undo-tree))
+
+(module! timesheet-ui
+  :use-package nil
+  (add-to-list 'load-path (expand-file-name "~/.emacs.d/timesheet")))
+
+(module! spacehammer
+  :use-package nil
+  (add-to-list 'load-path (expand-file-name "~/.emacs.d/lisp/spacehammer")))
+
+(module! tmux
+  :use-package nil
+  (add-to-list 'load-path (expand-file-name "~/.emacs.d/lisp/tmux")))
 
 (module! counsel
   :ensure t
@@ -73,6 +84,40 @@
   :init
   (turn-on-pbcopy))
 
+(module! sexpressions
+  :use-package nil
+  (defun drag-sexp-backwards (&optional times)
+    "Drag an s-expression bacwards.
+
+   Optionally, move it TIMES backward."
+    (interactive)
+    (let ((times (or times 1)))
+      (dotimes (_i times)
+	(transpose-sexps 1)
+	(backward-sexp 2))))
+
+  (defun drag-sexp-forwards (&optional times)
+    "Drag an s-expression forwards.
+
+   Optionally, move it TIMES forwards."
+    (interactive)
+    (let ((times (or times 1)))
+      (dotimes (_i times)
+	(forward-sexp)
+	(transpose-sexps 1)
+	(backward-sexp))))
+
+  (defun drag-binding-backwards ()
+    "Drag two sexpressions backward."
+    (interactive)
+    (drag-sexp-backwards)
+    (drag-sexp-backwards)
+    (forward-sexp)
+    (forward-sexp)
+    (forward-sexp)
+    (drag-sexp-backwards)
+    (drag-sexp-backwards)))
+
                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -98,7 +143,7 @@
 	   (name . "\*info\*")))
       ("keep"
        (or (name . "*Org Agenda*")
-	   (name . "*Todays Task Log*")
+	   (name . "*todays-task-log*")
 	   (name . "status.org")
 	   (name . "*scratch*")
 	   (name . "*Messages*")
@@ -118,6 +163,7 @@
 
 (module! dired
   :use-package nil
+  ;;(add-hook 'dired-mode-hook #'dired-hide-details-mode)
 
   (defun dired-get-root ()
     (save-excursion
@@ -204,7 +250,7 @@
     "w" 'dired-open-with
     "y" 'dired-yank-item
     "p" 'dired-paste-item
-    (kbd "C-m") 'magit-dired-log))
+    (kbd "C-l") 'magit-dired-log))
 
 (module! treemacs
   :use-package nil
@@ -231,12 +277,13 @@
   (defun git-commit-message-setup ()
     (insert (format "[%s] " (magit-get-current-branch)))
     (insert "\n\n")
-    (when (string-match
-	   (regexp-quote "projects/conure") default-directory)
-      (insert (with-temp-buffer
-		(insert-file-contents
-		 "/Users/anparisi/.emacs.d/conure-commit.txt")
-		(buffer-string)))))
+    (comment
+     (when (string-match
+	    (regexp-quote "projects/conure") default-directory)
+       (insert (with-temp-buffer
+		 (insert-file-contents
+		  "/Users/anparisi/.emacs.d/conure-commit.txt")
+		 (buffer-string))))))
 
   ;; TODO: Make these dynamically created in the project file?
   (defclass repo ()
@@ -402,10 +449,16 @@
   (evil-define-key  'insert eirene-term-mode-map
     (kbd "C-c C-c")      'vterm-send-paragraph
     (kbd "<tab>")        'comint-dynamic-complete-filename
-    (kbd "C-<return>")   'vterm-send-paragraph)
+    ;; Only works in GUI mode
+    (kbd "C-<return>")   'vterm-send-paragraph
+    (kbd "C-SPC")      'vterm-send-paragraph
+    (kbd "C-c RET")      'vterm-send-paragraph)
+
 
   (evil-define-key 'normal eirene-term-mode-map
-    (kbd "C-c C-c") 'vterm-send-paragraph
+    (kbd "C-c C-c")    'vterm-send-paragraph
+    (kbd "C-c RET")    'vterm-send-paragraph
+    (kbd "C-SPC")    'vterm-send-paragraph
     (kbd "C-<return>") 'vterm-send-paragraph
     ;; Why can't these be in major-mode-map?
     "mp" 'vterm-send-1password
@@ -488,7 +541,6 @@
 
 (module! markdown
   :use-package nil
-  (add-hook 'markdown-mode-hook 'org-fragtog-mode)
   (major-mode-map markdown-mode
     :bindings
     ("l" 'org-toggle-latex-fragment
@@ -559,6 +611,40 @@
 	  (setq hl (cdr hl))))
       pos))
 
+  (defun org-import-to-status-file ()
+    (interactive)
+    (when (org-entry-is-todo-p)
+      (save-window-excursion
+	(find-file *status-file*)
+	(save-excursion
+	  (goto-char (org-header-position '("Tasks" "Import")))
+	  (forward-line)
+	  (let* ((entry (assoc-delete-all
+			 "BLOCKED" (org-entry-properties)))
+		 (item  (alist-get "ITEM" entry nil t #'equal))
+		 (todo  (alist-get "TODO" entry nil t #'equal))
+		 (priority (alist-get "PRIORITY" entry nil t #'equal))
+		 (origin   (alist-get "FILE" entry nil t #'equal))
+		 (tags     (alist-get "ALLTAGS" entry nil t #'equal))
+		 (properties ":PROPERTIES:\n")
+		 (result     ""))
+	    (setq properties (format "%s :ORIGIN: %s\n" properties origin))
+	    (dolist (binding entry)
+	      (cl-destructuring-bind (property . value)
+		  binding
+	      (setq properties
+		    (format "%s:%s: %s\n" properties property value))))
+	    (setq properties
+		  (format "%s:END:\n" properties))
+	    (setq result (format "*** %s " todo))
+	    (when priority
+	      (setq result (format "%s [#%s]" result priority)))
+	    (setq result (format "%s %s" result item))
+	    (when tags
+	      (setq result (format "%s %s" result tags)))
+	    (setq result (format "%s\n%s\n" result properties))
+	    (insert result))))))
+
   (defun org-insert-github-issue-link (number)
     (interactive "nIssue Number: ")
     (insert
@@ -607,6 +693,10 @@
   (add-hook 'electric-indent-functions
 	    (lambda (x) (when (eq 'org-mode major-mode) 'no-indent)))
 
+  (defun org-code (value)
+    (interactive "sText: ")
+    (insert (format "=%s=" value)))
+
   (major-mode-map org-mode
     :bindings
     ("a"   'org-agenda
@@ -620,15 +710,17 @@
      "cs"  'org-archive-subtree
      "jo"  'org-open-at-point
      "fi"  'setup-org-file
-     "ic"  'org-insert-code-block
+     "hp"  'org-set-property
+     "ib"  'org-insert-code-block
+     "ic"  'org-code
      "ii"  'org-insert-github-issue-link
      "it"  'org-insert-time-stamped-row
      "e"   'org-export-dispatch
      "p"   'org-generate-pr-url
      "mp"  'org-move-subtree-up
      "mn"  'org-move-subtree-down
-     "mj"  'org-move-item-up
-     "mk"  'org-move-item-down
+     "mj"  'org-move-item-down
+     "mk"  'org-move-item-up
      "mh"  'org-promote-subtree
      "ml"  'org-demote-subtree
      "si"  'org-toggle-inline-images)
@@ -636,6 +728,7 @@
     ("i"  "insert"
      "j"  "jump"
      "m"  "move"
+     "h"  "header"
      "s"  "settings"
      "c"  "clear"
      "f"  "file"
@@ -687,7 +780,7 @@
   	'((sequence "TODO" "WORKING" "|" "DONE" "WONT DO(@)"))
   	org-hide-leading-stars t
   	org-confirm-babel-evaluate nil
-  	org-agenda-files (cons *status-file* (directory-files-recursively "~/notes" "\\.org$"))
+  	org-agenda-files (list *status-file*)
   	org-capture-default-notes-file *status-file*
 	org-default-notes-file *status-file*
 	nrepl-sync-request-timeout nil
@@ -792,7 +885,34 @@
 	lsp-lens-enable t
 	lsp-completion-enable t
 	lsp-enable-snipped nil
-	lsp-signature-auto-activate nil)
+	lsp-signature-auto-activate nil
+	lsp-headerline-breadcrumb-mode nil
+	lsp-headerline-breadcrumb-enable nil)
+;;  (defface lsp-headerline-breadcrumb-path-face '((t :inherit font-lock-function-face))
+;;    "Face used for breadcrumb paths on headerline."
+;;    :group 'lsp-headerline)
+;;
+;;  (defface lsp-headerline-breadcrumb-symbols-face
+;;      '((t :inherit font-lock-function-face :weight bold))
+;;    "Face used for breadcrumb symbols text on headerline."
+;;    :group 'lsp-headerline)
+
+
+
+  ;; sql
+  (add-hook 'sql-mode-hook 'lsp)
+  (setq
+   lsp-sqls-workspace-config-path nil
+   lsp-sqls-connections
+   '(
+     ((driver . "postgresql")
+      (dataSourceName . "host=localhost port=5431 user=anparisi password=local dbname=kb sslmode=disable"))
+    ((driver . "postgresql")
+      (dataSourceName . "host=localhost port=5432 user=postgres password=postgres dbname=investigation sslmode=disable"))))
+
+
+
+
 
   ;; TODO: Add these to the :hook section
   (add-hook 'lsp-mode #'lsp-enable-which-key-integration)
@@ -858,14 +978,22 @@
 
 (module! emacs
   :use-package nil
+  (evil-define-key 'normal emacs-lisp-mode-map
+    (kbd "L") 'forward-sexp
+    (kbd "H") 'backward-sexp)
   (major-mode-map emacs-lisp-mode
     :labels
     ("e" "eval")
     :bindings
-    ("el" 'eval-buffer
+    ("af" 'clojure-thread-first-all
+     "al" 'clojure-thread-last-all
+     "el" 'eval-buffer
      "ed" 'eval-defun
      "ee" 'eval-last-sexp
      "ep" 'pp-eval-last-sexp
+     "j" 'forward-sexp
+     "k" 'backward-sexp
+     "q" 'indent-pp-sexp
      "g"  'xref-find-definitions
      "m"  'emacs-lisp-macroexpand
      "."  'xref-prompt-find-definitions
@@ -890,6 +1018,7 @@
   :config
     (setq cider-repl-pop-to-buffer-on-connect nil
 	  cider-test-show-report-on-success t
+	  nrepl-use-ssh-fallback-for-remote-hosts t
 	  cider-show-eval-spinner t
 	  clojure-toplevel-inside-comment-form t
 	  cider-repl-display-help-banner nil
@@ -901,6 +1030,16 @@
   :mode ("\\.clj\\'" . clojure-mode)
   :requires (evil which-key)
   :init
+  (defun my-cider-op (op &rest args)
+    (apply op args)
+    (major-mode-map cider-repl-mode
+	:bindings
+      ("c" 'cider-repl-clear-buffer
+	   "k" 'cider-repl-previous-input
+	   "j" 'cider-repl-next-input)
+      :labels
+      ("" "major mode")))
+
   (defun my-cider-jack-in ()
     (interactive)
     (my-cider-op 'cider-jack-in '()))
@@ -908,16 +1047,6 @@
   (defun my-cider-connect ()
     (interactive)
     (my-cider-op 'cider-connect-clj '()))
-
-  (defun my-cider-op (op &rest args)
-    (apply op args)
-    (major-mode-map cider-repl-mode
-      :bindings
-      ("c" 'cider-repl-clear-buffer
-       "k" 'cider-repl-previous-input
-       "j" 'cider-repl-next-input)
-      :labels
-      ("" "major mode")))
 
   (defun xref-prompt-find-definitions ()
     (interactive)
@@ -953,54 +1082,89 @@
       (cider-eval-defun-at-point)
       (evil-normal-state)))
 
+  (defun clojure-start-scratch-repl ()
+    (interactive)
+    (workspace-add-workspace (workspace-get-next-workspace-number))
+    (tmux-new-window-with-process "bb --nrepl-server")
+    (sleep-for 1)
+    (let ((file (make-temp-file "clojure-scratch" nil ".clj")))
+      (find-file file)
+      (my-cider-op 'cider-connect-clj '(:host "localhost" :port 1667))))
+
   (major-mode-map clojure-mode
-    :bindings
-    ("aa"  'lsp-execute-code-action
-     "ad" 'clojure-toggle-debug-at-point
-     "as" 'cider-toggle-trace-var
-     "ae" 'cider-englighted-mode
-     "an" 'clojure-sort-ns
-     "jj" 'my-cider-jack-in
-     "jc" 'my-cider-connect
-     "jq" 'cider-quit
-     "el" 'cider-load-buffer
-     "ee" 'cider-pprint-eval-last-sexp
-     "ed" 'cider-eval-defun-at-point
-     "ec" 'cider-eval-defun-to-comment
-     "ep" 'cider-pprint-eval-defun-at-point
-     "fd" 'cider-format-defun
-     "fb" 'cider-format-buffer
-     "q"  'cider-quit
-     "n"  'cider-repl-set-ns
-     "g"  'xref-prompt-find-definitions
-     "."  'xref-find-definitions
-     ","  'xref-pop-marker-stack
-     "rn" 'lsp-rename
-     "rr" 'lsp-find-references
-     "dd" 'cider-doc
-     "de" 'eldoc-doc-buffer
-     "tn" 'cider-test-run-ns-tests
-     "tp" 'cider-test-run-project-tests
-     "tt" 'cider-test-run-test
-     )
+      :bindings
+    ("."  'xref-find-definitions
+	  ","  'xref-pop-marker-stack
+	  "'" 'clojure-toggle-ignore
+	  "aa" 'lsp-execute-code-action
+	  "ad" 'clojure-toggle-debug-at-point
+	  "ae" 'cider-englighted-mode
+	  "af" 'clojure-thread-first-all
+	  "al" 'clojure-thread-last-all
+	  "an" 'clojure-update-ns
+	  "as" 'cider-toggle-trace-var
+	  "au" 'clojure-unwind-all
+	  "dd" 'cider-doc
+	  "de" 'eldoc-doc-buffer
+	  "el" 'cider-load-buffer
+	  "ee" 'cider-pprint-eval-last-sexp
+	  "ed" 'cider-eval-defun-at-point
+	  "ec" 'cider-eval-defun-to-comment
+	  "ep" 'cider-pprint-eval-defun-at-point
+	  "fd" 'cider-format-defun
+	  "fb" 'cider-format-buffer
+	  "g"  'xref-prompt-find-definitions
+	  "jj" 'my-cider-jack-in
+	  "jc" 'my-cider-connect
+	  "jq" 'cider-quit
+	  "ml" 'clojure-move-to-let
+	  "q"  'cider-quit
+	  "rn" 'lsp-rename
+	  "rr" 'lsp-find-references
+	  "rc" 'lsp-treemacs-call-hierarchy
+	  "sa" 'clojure-align
+	  "sn" 'clojure-sort-ns
+	  "sq" 'cider-format-defun
+	  "te" 'lsp-clojure-show-test-tree
+	  "tn" 'cider-test-run-ns-tests
+	  "tp" 'cider-test-run-project-tests
+	  "tt" 'cider-test-run-test
+	  )
     :labels
     (""  "major mode"
-     "e" "eval"
-     "f" "format"
-     "a" "action"
-     "t" "test"
-     "l" "cider load"
-     "j" "repl"
-     "d" "documentation"))
+	 "e" "eval"
+	 "f" "format"
+	 "a" "action"
+	 "t" "test"
+	 "l" "cider load"
+	 "j" "repl"
+	 "d" "documentation"))
   :config
   (setq lsp-clojure-server-command '("clojure-lsp")
-	    org-babel-clojure-backend 'cider))
+	clojure-align-forms-automatically t
+	org-babel-clojure-backend 'cider))
+
+(module! fennel-mode
+  :use-package nil
+  :config
+  (autoload 'fennel-mode "/Users/anparisi/emacs-files/fennel-mode/fennel-mode.el" nil t)
+  (add-to-list 'auto-mode-alist '("\\.fnl\\'" . fennel-mode)))
 
            ;;;
 ;;;;;;;;;;;;;;
 
+(module! poetry
+  :ensure t
+  :defer t)
+
 ;;;;;;;
 ;;; SQL
+
+(module! sql-indent
+  :ensure t
+  :defer t
+  :init
+  (add-hook 'sql-mode-hook 'sqlind-minor-mode))
 
 (module! sqlformat
   :ensure t
@@ -1012,55 +1176,25 @@
 (module! sql
   :defer t
   :init
-
-  (defun sql-add-newline-first (output)
-    "Add newline to beginning of OUTPUT for `comint-preoutput-filter-functions'"
-    (if (equal major-mode 'sql-interactive-mode)
-	(concat "\n" output)
-      output))
-
-  (defun sqli-add-hooks ()
-    "Add hooks to `sql-interactive-mode-hook'."
-    (add-hook 'comint-preoutput-filter-functions
-              'sql-add-newline-first))
-
-  (add-hook 'sql-interactive-mode-hook 'sqli-add-hooks)
-  (add-hook 'sql-interactive-mode-hook
-	    (lambda () (toggle-truncate-lines t)))
-
-  (defun sql-eirene-send-paragraph ()
-    (interactive)
-    (save-window-excursion
-      (switch-to-buffer *sqli-connection-buffer*)
-      (comint-clear-buffer)
-      (goto-char (point-max)))
-    (sql-send-paragraph))
-
   (evil-define-key 'insert sql-mode-map
-    (kbd "C-<return>") 'sql-eirene-send-paragraph
-    (kbd "C-c p") 'autocomplete-table)
+    (kbd "C-<return>") 'lsp-sql-execute-paragraph
+    (kbd "C-c RET") 'lsp-sql-execute-paragraph
+    (kbd "C-c C-c") 'lsp-sql-execute-paragraph)
   (evil-define-key 'normal sql-mode-map
-    (kbd "C-<return>") 'sql-eirene-send-paragraph
-    (kbd "C-c p") 'autocomplete-table)
+    (kbd "C-<return>") 'lsp-sql-execute-paragraph
+    (kbd "C-c RET") 'lsp-sql-execute-paragraph
+    (kbd "C-c C-c") 'lsp-sql-execute-paragraph)
 
-  (setq sql-postgres-login-params nil
-	sql-connection-alist
-	'((conure-dev-local
-	   (sql-product 'postgres)
-	   (sql-database
-	    "postgresql://postgres:postgres@localhost:5432/investigation"))
-	  (scotus-dev-local
-	   (sql-product 'postgres)
-	   (sql-database
-	    "postgresql://localhost:5432/kb")))))
-
+  (major-mode-map sql-mode
+      :bindings
+      ("c" 'lsp-sql-switch-connection
+       "d" 'lsp-sql-switch-database)))
 
 (module! restclient
   :ensure t
   :defer t
   :init
   (add-to-list 'auto-mode-alist '("\\.http\\'" . restclient-mode)))
-
 
 (module! tex
   :use-package nil
@@ -1147,6 +1281,10 @@ OUT describes the output file and is either a %-escaped string
 ;;;;;;;;;;;;;
 ;;; Utilities
 
+(module! json-mode
+  :defer t
+  :ensure t)
+
 (module! yaml-mode
   :defer t
   :ensure t)
@@ -1189,4 +1327,7 @@ OUT describes the output file and is either a %-escaped string
     (compose-mail "auhaas@cisco.com" "emacs region")
     (when region?
       (insert s))))
- )
+
+ "I should write this at some point, I'm surprised there aren't any
+  emacs lisp packages for navigating clojure code."
+  )

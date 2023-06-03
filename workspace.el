@@ -30,6 +30,9 @@
 (defvar *current-workspace* nil)
 (defvar *workspace-workspace-buffers* '())
 
+(defun current-workspace ()
+  *current-workspace*)
+
 (defun length= (lista num)
   (equal (length lista) num))
 
@@ -164,14 +167,13 @@
     (workspace--add-workspace-no-prompt n name)))
 
 (defun workspace--to-workspace-number (n name)
-  (let ((workspaces-set? *workspaces*))
-    (when (<= n 0)
-      (error "Workspace number must be at least 1."))
-    (if-let ((ws-name (cdr (assoc n *workspaces*))))
-	(workspace-switch-workspace ws-name)
-      (if name
-	  (workspace--add-workspace-no-prompt n name)
-	(workspace-add-workspace n)))))
+  (when (<= n 0)
+    (error "Workspace number must be at least 1"))
+  (if-let ((ws-name (cdr (assoc n *workspaces*))))
+      (workspace-switch-workspace ws-name)
+    (if name
+	(workspace--add-workspace-no-prompt n name)
+      (workspace-add-workspace n))))
 
 (defun workspace-to-workspace-number (n)
   (interactive)
@@ -274,10 +276,10 @@
 (defmacro save-workspace-excursion (ws-name &rest body)
   (declare (indent 1))
   (let ((current-ws (gensym)))
-    `(let ((,current-ws *current-workspace*))
+    `(let ((,current-ws (current-workspace)))
        (workspace-switch-workspace (format "{} %s" ,ws-name))
        ,@body
-       (workspace--to-workspace-number ,current-ws))))
+       (workspace-to-workspace-number ,current-ws))))
 
 
 

@@ -1,6 +1,5 @@
 (load! "~/.emacs.d/core.el")
-
-(require 'use-package)
+;;(require core)
 
 (use-package evil
   :ensure t
@@ -125,7 +124,7 @@
    "1"  'delete-other-windows
    "2"  'split-window-below
    "3"  'split-window-right
-   "bx" 'kill-buffer
+   "bx" 'kill-buffer-and-window
    "ry" 'counsel-yank-pop
    "a"  'other-window))
 
