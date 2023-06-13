@@ -48,7 +48,7 @@
   (sleep-for 4)
   (when (potentially-start-cider "conure")
     (shell-command "docker compose up -d db")
-    (shell-command "docker compose up -d ctia")
+    (shell-command "docker compose up -d fake-ctia")
     (shell-command "docker compose up -d distributor")
     (cider-load-file
      "/Users/anparisi/projects/conure/scratch/startup.clj")
@@ -75,7 +75,7 @@
     (when conure-db
       (shell-command (format "docker stop %s" conure-db))))
   (tmux-kill-all-windows-with-name "conure")
-  (tmux-kill-all-windows-with-name "node"))
+  (tmux-kill-all-windows-with-name "incident-manager"))
 
 (defproject conure
     :key "c"
@@ -83,7 +83,7 @@
     :stop (progn (conure-quit) (shell-command "docker compose down"))
     :commands ((:title "db" :executable "just"
 		       :args ("db") :transient-key "d")
-	       (:title "quit" :executable conure-quit
+	       (:title "stop" :executable conure-quit
 		       :transient-key "q" :executor :elisp)
 	       (:title "start" :executable conure-init
 		       :executor :elisp :transient-key "s")

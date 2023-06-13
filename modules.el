@@ -826,7 +826,7 @@
     "." 'org-agenda-goto-today
     (kbd "<RET>") 'org-agenda-goto)
   (setq
-   org-agenda-dim-blocked-tasks 'invisible
+   org-agenda-dim-blocked-tasks t
    org-agenda-overriding-columns-format
    "%TODO %7EFFORT %PRIORITY     %100ITEM 100%TAGS"
    org-agenda-prefix-format '((agenda . " %i %-12:c%?-12t%-6e% s")
@@ -897,22 +897,9 @@
 ;;    "Face used for breadcrumb symbols text on headerline."
 ;;    :group 'lsp-headerline)
 
-
-
   ;; sql
   (add-hook 'sql-mode-hook 'lsp)
-  (setq
-   lsp-sqls-workspace-config-path nil
-   lsp-sqls-connections
-   '(
-     ((driver . "postgresql")
-      (dataSourceName . "host=localhost port=5431 user=anparisi password=local dbname=kb sslmode=disable"))
-    ((driver . "postgresql")
-      (dataSourceName . "host=localhost port=5432 user=postgres password=postgres dbname=investigation sslmode=disable"))))
-
-
-
-
+  (setq lsp-sqls-workspace-config-path nil)
 
   ;; TODO: Add these to the :hook section
   (add-hook 'lsp-mode #'lsp-enable-which-key-integration)
@@ -1176,6 +1163,36 @@
 (module! sql
   :defer t
   :init
+  (defun sql-product-string (sql-product)
+    (cl-case sql-product
+      ('postgres "postgresql")))
+
+  (setq lsp-sqls-connections nil)
+  (setq sql-connection-alist nil)
+  (setq sql-connections nil)
+
+  (defmacro sql-connection
+      (connection-name product user password host port db)
+    (let* ((server-connection `(,connection-name
+				(sql-product ',product)
+				(sql-user ,user)
+				(sql-password ,password)
+				(sql-server ,host)
+				(sql-port ,port)
+				(sql-database ,db)))
+	   (lsp-string (format
+			"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable"
+			host port user password db))
+
+	   (lsp-connection `((driver . ,(sql-product-string product))
+			     (dataSourceName . ,lsp-string))))
+      (message (format "%s" server-connection))
+      `(progn
+	 (push ',server-connection sql-connection-alist)
+	 (push ',lsp-connection lsp-sqls-connections)
+	 (push '(,connection-name ((lsp . ,lsp-connection)
+				   (sqli . ,server-connection))) sql-connections))))
+
   (evil-define-key 'insert sql-mode-map
     (kbd "C-<return>") 'lsp-sql-execute-paragraph
     (kbd "C-c RET") 'lsp-sql-execute-paragraph
@@ -1187,8 +1204,11 @@
 
   (major-mode-map sql-mode
       :bindings
-      ("c" 'lsp-sql-switch-connection
-       "d" 'lsp-sql-switch-database)))
+    ("c" 'lsp-sql-switch-connection
+     "d" 'lsp-sql-switch-database))
+
+  (sql-connection conure postgres "postgres" "postgres" "localhost" 5432 "investigation")
+  (sql-connection scotus postgres "anparisi" "" "localhost" 5431 "kb"))
 
 (module! restclient
   :ensure t

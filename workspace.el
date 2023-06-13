@@ -281,6 +281,13 @@
        ,@body
        (workspace-to-workspace-number ,current-ws))))
 
+(defmacro save-layout-excursion (&rest body)
+  "Execute BODY restoring the previous window layout when finished."
+  (let ((current-layout (gensym)))
+    `(let ((,current-layout (current-window-configuration)))
+       (progn ,@body)
+       (set-window-configuration ,current-layout))))
+
 
 
 ;;; workspace.el ends here

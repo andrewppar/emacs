@@ -21,31 +21,10 @@
 (require 'timesheet-tasks)
 (require 'widget)
 
-
-;;(defun log-task-with-prompts! (time-range)
-;;  "Log a task to the database.
-;;
-;;   TIME-RANGE specifies the start and end of the work on task."
-;;  (interactive "sTime: ")
-;;  (ensure-groups-valid)
-;;  (cl-multiple-value-bind (start-time end-time)
-;;      (parse-time-range time-range)
-;;    (let* ((date    (format-time-string "%m-%d-%Y"))
-;;	   (group (ido-completing-read
-;;		   "Select Group: " timesheet-groups))
-;;	   (issue       ""))
-;;      (when (equal group "Conure")
-;;	(setq issue (read-string "Github Issue: ")))
-;;      (let ((description (read-string "Task Description: ")))
-;;	(unless (equal issue "")
-;;	  (setq description (format "%s: %s" issue description)))
-;;	(timesheet-add! date start-time end-time group description)))))
-
 (defmacro finsert (format-string &rest args)
   "Insert FORMAT-STRING with ARGS to current buffer at point."
   (declare (indent 0))
   `(insert (format ,format-string ,@args)))
-
 
 (defvar *task-card-window-layout* nil)
 
@@ -73,7 +52,7 @@
 	(group (card-line-value :group))
 	(desc  (card-line-value :description))
 	(date  (format-time-string "%m-%d-%Y")))
-    (cond ((not (and start end date group description))
+    (cond ((not (and start end date group desc))
 	   (message "Some required fields missing"))
 	  ((not (timesheet-valid-group? group))
 	   (message "%s is not a valid timesheet group" group))
@@ -110,10 +89,10 @@
       (setq description (read-string "Task Description: "))
       (unless (equal issue "")
 	(setq description (format "%s: %s" issue description))))
-    (let ((edit? (y-or-n-p "Would you like to review these entries?")))
+    (let ((edit?  (y-or-n-p "Would you like to review these entries?"))
+	  (layout (current-window-configuration)))
       (if edit?
-	  (let* ((layout       (current-window-configuration))
-		 (height       (- (frame-height) 15))
+	  (let* ((height       (- (frame-height) 15))
 		 (card-window (split-window (frame-root-window) height)))
 	    (select-window card-window)
 	    (setq *task-card-window-layout* layout)
@@ -126,59 +105,9 @@
 	      (finsert "End Time: %s\n" end-time)
 	      (finsert "Group: %s\n" group)
 	      (finsert "Description: %s\n" description)))
-	(timesheet-add! date start-time end-time group description)))))
-
-
-(defun log-task-old! ()
-  "Log a task into the database using a pop up card."
-  (interactive)
-  (make-local-variable 'start-time)
-  (make-local-variable 'end-time)
-  (make-local-variable 'group)
-  (make-local-variable 'description)
-  (let* ((layout       (current-window-configuration))
-	 (height       (- (frame-height) 15))
-	 (card-window (split-window (frame-root-window) height)))
-    (select-window card-window)
-    (let ((card-buffer "*log-task*"))
-      (switch-to-buffer card-buffer)
-      (evil-insert 1)
-      (widget-insert "Log Task\n")
-      (setq start-time
-	    (widget-create 'editable-field
-			   :size 10
-			   :format "Start Time: %v\n"))
-      (setq end-time
-	    (widget-create 'editable-field
-			   :size 10
-			   :format "End Time: %v\n"))
-      (apply #'widget-create 'menu-choice
-	     :value "Select Group"
-	     :notify (lambda (widget &rest ignore)
-		       (setq group (widget-value widget)))
-	     (let ((values `()))
-	       (dolist (group timesheet-groups)
-		 (push `(item ,group) values))
-	       values))
-      (setq description
-	    (widget-create 'editable-field
-			   :format "Description: %v"))
-      (widget-create 'push-button
-		     :notify (lambda (&rest ignore)
-			       (let* ((start (widget-value start-time))
-				      (end (widget-value end-time))
-				      (date (format-time-string "%m-%d-%Y"))
-				      (description (widget-value description)))
-				 (if (not (and start end date group description))
-				     (message "Some required fields missing")
-				   (timesheet-add! date start end group description)
-				   (progn
-				     (kill-buffer)
-				     (todays-task-log)
-				     (set-window-configuration layout)))))
-		     "Log")
-      (use-local-map widget-keymap)
-      (widget-setup))))
+	(timesheet-add! date start-time end-time group description)
+	(todays-task-log)
+	(set-window-configuration layout)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Generating Task Buffer ;;;;
