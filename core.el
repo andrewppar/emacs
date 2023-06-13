@@ -32,20 +32,19 @@
 ;;;;;;;;;;;
 ;; Packages
 
-(require 'package)
-(package-initialize)
-
-(add-to-list
- 'package-archives
- '("org" . "http://orgmode.org/elpa/") t)
-
-(add-to-list
- 'package-archives
- '("melpa-stable" . "https://stable.melpa.org/packages/") t)
-
-(add-to-list
- 'package-archives
- '("melpa" . "https://melpa.org/packages/") t)
+(defvar bootstrap-version)
+(let* ((relative-file "straight/repos/straight.el/bootstrap.el")
+       (bootstrap-file (expand-file-name relative-file  user-emacs-directory))
+       (bootstrap-version 6))
+  (unless (file-exists-p bootstrap-version)
+    (with-current-buffer
+	(url-retrieve-synchronously
+ 	 "https://raw.githubusercontent.com/radian-software/straight.el/develop/install.el"
+	 'silent 'inhibit-cookies)
+      (goto-char (point-max))
+      (eval-print-last-sexp)))
+  (load bootstrap-file nil 'nomessage))
+(setq straight-use-package-by-default t)
 
 (setq read-process-output-max (* 1024 1024))
 
@@ -55,62 +54,11 @@
 (defun install-core ()
   "Install Eirene."
   (setq package-list '(evil use-package))
-
-  ;; activate all the packages (in particular autoloads)
-  (package-initialize)
-
-  ;; fetch the list of packages available
-  (unless package-archive-contents
-    (package-refresh-contents))
+  (setq enable-package-at-startup nil)
 
   ;; install the missing packages
   (dolist (package package-list)
-    (unless (package-installed-p package)
-      (package-install package))))
-
-;;; Manage knowledge of what packages are installed
-(defvar *packages* '())
-
-(defun read-packages ()
-  "Read all packages from the `packages` db."
-  (find-file "~/.emacs.d/packages")
-  (let ((package-string (buffer-substring
-			 (point-min) (point-max))))
-    (kill-this-buffer)
-    (split-string package-string "\n")))
-
-(defun write-packages (packages)
-  "Write installed PACKAGES to the `packages` db."
-  (find-file "~/.emacs.d/packages")
-  (erase-buffer)
-  (dolist (package packages)
-    (insert (format "%s\n" package)))
-  (save-buffer)
-  (kill-this-buffer))
-
-(defun sync-packages ()
-  "Ensure that `packages` db is in sync with current state."
-  (let ((to-delete (read-packages))
-	(current-packages *packages*))
-    ;;(message (format "CUR: %s" current-packages))
-    (dolist (package current-packages)
-      (setq to-delete (remove package to-delete)))
-    ;;(message (format "CURRENT: %s" current-packages))
-    (dolist (package to-delete)
-      (let ((package-spec (cadr
-			   (assoc
-			    (intern package)
-			    package-alist))))
-	(when package-spec
-	  (package-delete package-spec))))
-    (write-packages current-packages)))
-
-(defun save-package (module-name)
-  "Save a new package under MODULE-NAME to the `packages` db."
-  (let ((packages (read-packages)))
-    (if (member module-name packages)
-	(write-packages packages)
-      (write-packages (cons module-name packages)))))
+    (straight-use-package package)))
 
 (defmacro use-package-wrapper! (module-name &rest args)
   "A Macro for wrapping `use-package`.
@@ -128,7 +76,6 @@ It takes MODULE-NAME and whatever ARGS would normally be sent to
 	  (format "Done loading %s ... %s"
 		  ',module-name
 		  (- (float-time) ,start)))))))
-
 
 (defun maybe-install-package (module-name module-dir)
   "Install MODULE-NAME to MODULE-DIR if it isn't already installed."

@@ -11,32 +11,27 @@ then
     LOAD_CORE="(load \"~/.emacs.d/core.el\")"
     INSTALL_MESSAGE="(message \"Installing Core Packages\")"
     INSTALL_CORE="(install-core)"
-    INSTALL="$START 
+    INSTALL="$START
               $LOADING_MESSAGE
               $LOAD_CORE
-              $INSTALL_MESSAGE 
-              $INSTALL_CORE 
-              $MESSAGE_DONE 
+              $INSTALL_MESSAGE
+              $INSTALL_CORE
+              $MESSAGE_DONE
               $KILL_EMACS
              $END"
     cp -r . ~/.emacs.d
     ln -s ~/.emacs.d/emacs-init ~/.emacs
     emacs -q --eval "$INSTALL"
-    
-elif [ $ACTION == 'sync' ] 
+
+elif [ $ACTION == 'sync' ]
 then
-    PACKAGE_REFRESH="(package-refresh-contents)"
     SWITCH_BUFFER="(switch-to-buffer \"*Messages*\")"
     MESSAGE_RECOMPILE="(message \"byte-recompiling\")"
     RECOMPILE_PACKAGES="(byte-recompile-directory \"~/.emacs.d\")"
-    SYNC_MESSAGE="(message \"Syncing Modules\")"
-    SYNC_PACKAGES="(sync-packages)"
 
     SYNC="$START
-          $SWITCH_BUFFER 
-          $SYNC_MESSAGE
-          $SYNC_PACKAGES
-          $MESSAGE_RECOMPILE 
+          $SWITCH_BUFFER
+          $MESSAGE_RECOMPILE
           $RECOMPILE_PACKAGES
           $MESSAGE_DONE
           $KILL_EMACS
