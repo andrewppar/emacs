@@ -18,7 +18,7 @@
 ;;; Code:
 (require 'request)
 
-(defvar timesheet-server "10.0.0.33")
+(defvar timesheet-server "192.168.1.139")
 (defvar timesheet-port 3000)
 
 

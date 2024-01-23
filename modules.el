@@ -26,17 +26,71 @@
   (setq undo-tree-history-directory-alist '(("." . "~/.emacs.d/undo")))
   (evil-set-undo-system 'undo-tree))
 
-(module! timesheet-ui
-  :use-package nil
-  (add-to-list 'load-path (expand-file-name "~/.emacs.d/timesheet")))
+(module! tmuxmacs
+  :straight (tmuxmacs :host github :repo "andrewppar/tmuxmacs")
+  :ensure t
+  :defer t
+  :init
+  (defun send-window-to-background ()
+    (interactive)
+    (let ((window (tmux--get-window)))
+      (tmux-window/to-session window (tmux-session/find-or-make "background"))))
 
-(module! spacehammer
-  :use-package nil
-  (add-to-list 'load-path (expand-file-name "~/.emacs.d/lisp/spacehammer")))
+  (defun send-window-to-main ()
+    (interactive)
+    (let ((window (tmux--get-window))
+	  (main-session nil))
+      (when-let ((session (tmux-session/find "main")))
+	(setq main-session session))
+      (unless main-session
+	(if-let ((focused-session (tmux-session/focused)))
+	    (progn
+	      (tmux-session/rename focused-session "main")
+	      (setq main-session focused-session))
+	  (setq main-session (tmux-session/make "main"))))
+      (tmux-window/to-session window main-session)))
 
-(module! tmux
+  (defun get-bash-history ()
+    (let ((buffer-result nil)
+	  (result nil))
+      (save-window-excursion
+	(let ((buffer (find-file (expand-file-name "~/.zsh_history"))))
+	  (switch-to-buffer buffer)
+	  (setq buffer-result (buffer-substring (point-min) (point-max)))
+	  (kill-buffer buffer)))
+      (dolist (command (split-string buffer-result "\n"))
+	(unless (member command result)
+	  (push command result)))
+      result))
+
+  (defun new-window-with-command ()
+    (interactive)
+    (let* ((history (get-bash-history))
+	   (command (ivy-completing-read "command: " history))
+	   (window nil)
+	   (pane nil))
+      (save-tmux-excursion
+	(setq window (tmux-window/make nil (tmux-session/focused)))
+	(setq pane (car (tmux-pane/list window))))
+      (tmux-pane/send-command pane command)))
+
+  :config
+  (transient-append-suffix 'tmuxmacs  "w"
+    '("b" "send to background" send-window-to-background))
+  (transient-append-suffix 'tmuxmacs  "w"
+    '("m" "send to main" send-window-to-main))
+  (transient-append-suffix 'tmuxmacs "w"
+    '("c" "new window with command" new-window-with-command))
+  )
+
+
+
+(module! timesheet
   :use-package nil
-  (add-to-list 'load-path (expand-file-name "~/.emacs.d/lisp/tmux")))
+  :init (add-to-list
+	 'load-path
+	 (expand-file-name "~/.emacs.d/timesheet")))
+
 
 (module! counsel
   :ensure t
@@ -161,96 +215,30 @@
 	       (ibuffer-switch-to-saved-filter-groups
 		"default"))))
 
-(module! dired
-  :use-package nil
-  ;;(add-hook 'dired-mode-hook #'dired-hide-details-mode)
-
-  (defun dired-get-root ()
-    (save-excursion
-      (goto-char 0)
-      (let ((line (thing-at-point 'line t)))
-	(car (split-string line ":" t "[\t \n]+")))))
-
-  (defun dired-path-line? (line)
-    (or
-     (string-prefix-p "  d" line)
-     (string-prefix-p "  -" line)))
-
-  (defun dired-path-name (line)
-    (let ((line-list (split-string line " " t "\n")))
-      (nth 8 line-list)))
-
-  (defvar *dired-yanked-path* nil)
-
-  (defun dired-yank-item ()
-    (interactive)
-    (let ((root (dired-get-root))
-	  (line (thing-at-point 'line t)))
-      (when (dired-path-line? line)
-	(let ((full-path (format "%s/%s" root (dired-path-name line)))
-	      (directory? (string-prefix-p "  d" line)))
-	  (kill-new full-path)
-	  (setq *dired-yanked-path* `(,full-path . ,directory?))
-	  (message (format "Yanked %s" full-path))))))
-
-  (defun dired-paste-item ()
-    (interactive)
-    (when *dired-yanked-path*
-      (let ((current-dir (format "%s/" (dired-get-root))))
-	(if (cdr *dired-yanked-path*)
-	    (copy-directory (car *dired-yanked-path*) current-dir)
-	  (copy-file (car *dired-yanked-path*) current-dir)
-	  (message (format "Copied %s to %s" copy-file current-dir))))))
-
-  (defun dired-build-location-map ()
-    (let ((result      '())
-	  (line-number  1))
-      (save-excursion
-	(goto-char (point-min))
-	(while (not (eobp))
-	  (let ((line (thing-at-point 'line t)))
-	    (when (dired-path-line? line)
-	      (push
-	       (cons (dired-path-name line) line-number)
-	       result))
-	    (setq line-number (+ line-number 1))
-	    (forward-line 1))))
-      result))
-
-  (defun dired-goto-and-find ()
-    (interactive)
-    (let* ((location-map  (dired-build-location-map))
-	   (all-locations (mapcar 'car location-map))
-	   (location (ivy-completing-read
-		      "Navigate to file: " all-locations nil t)))
-      (goto-char (point-min))
-      (forward-line (- (alist-get location location-map nil nil #'equal) 1))
-      (dired-find-alternate-file)))
-
-  (defun dired-open-with ()
-    (interactive)
-    (let ((line (thing-at-point 'line t)))
-      (if (not (dired-path-line? line))
-	  (message "No path at point")
-	(let* ((path (dired-path-name line))
-	       (open-command (read-string
-			      "Open With Command: " nil nil "open"))
-	       (command (format "%s %s" open-command path)))
-	  (shell-command command)))))
-
-  (setq dired-dwim-target t)
-  (when (string= system-type "darwin")
-    (setq dired-use-ls-dired nil))
-
-  (evil-define-key
-    'normal dired-mode-map
-    "l" 'dired-find-alternate-file
-    "h" 'dired-up-directory
-    "f" 'dired-goto-and-find
-    "w" 'dired-open-with
-    "y" 'dired-yank-item
-    "p" 'dired-paste-item
-    (kbd "C-l") 'magit-dired-log))
+(module! diranger
+  :straight (diranger :host github :repo "andrewppar/diranger")
+  :ensure t
+  :init
+  (evil-define-key 'normal diranger-mode-map
+  "C" #'dirnager-copy
+  "D" #'diranger-delete
+  "f" #'diranger-jump
+  "gr" #'diranger-refresh
+  "h" #'diranger-out
+  "j" #'diranger-forward-line
+  "k" #'diranger-backward-line
+  "l" #'diranger-into
+  "mx" #'diranger-mark-delete
+  "mu" #'diranger-unset-mark-at-point
+  "mU" #'diranger-unset-all-marks
+  "pp" #'diranger-paste
+  "pr" #'diranger-paste-from-ring
+  "q" #'diranger-quit
+  "R" #'diranger-rename
+  "x" #'diranger-execute-marks
+  "yy" #'diranger-yank
+  "yx" #'diranger-cut
+  (kbd "RET") #'diranger-into))
 
 (module! treemacs
   :use-package nil
@@ -349,170 +337,7 @@
   :init
   (setq forge-add-default-bindings nil))
 
-(module! code-review
-  :ensure t
-  :defer t
-  :init
-  (setq ghub-use-workaround-for-emacs-bug 'force)
-  :config
-  (setq code-review-fill-column 80
-	code-review-new-buffer-window-strategy #'switch-to-buffer
-	code-review-download-dir "/tmp/code-review/")
-  (add-hook 'code-review-mode-hook #'emojify-mode)
-  (major-mode-map code-review-mode
-    :bindings
-    ("m"  'code-review-transient-api
-     "c" 'code-review-comment-add-or-edit)))
-
-(module! vterm
-  :ensure t
-  :defer t
-  :init
-  ;; TODO: Put this in another file
-  ;; TODO: NEed to worry about absolute vs. relative paths
-  ;; TODO: What about aliases
-  ;; Maybe it's just like 10000 times easier to get the current directory
-  ;; from vterm
-  (defun get-path-from-command (command)
-    (let ((path (cadr (split-string command))))
-      (if (string-match "/$" command)
-	  (substring command 0 (- (length command) 1))
-	command)))
-
-  (defun vterm-send-command (command &optional switch-to-vterm?)
-    (let ((buf           (current-buffer))
-	  (clean-command
-	   (string-trim (substring-no-properties command))))
-      ;;(when (string-prefix-p "cd " clean-command)
-      ;;	;; TODO: Handle cases with semi-colons
-      ;;	;; e.g. cd one/two ; cd ../../three - I don't know
-      ;;	;; why someone would do that, but it's legit bash
-      ;;	(setq default-directory (get-path-from-command clean-command)))
-      (when switch-to-vterm?
-	(vterm))
-      (vterm--goto-line -1)
-      (vterm-send-string command)
-      (vterm-send-return)))
-
-  (defun vterm--get-password ()
-    (let* ((base    "security find-generic-password")
-	   (service "'iTerm2'")
-	   (account "'1Password - iterm'")
-	   (command (format "%s -s %s -a %s -w"
-			    base service account)))
-      (replace-regexp-in-string
-       "\n" "" (shell-command-to-string command))))
-
-  (defun vterm-send-1password ()
-    (interactive)
-    (save-window-excursion
-      (vterm)
-      (vterm--goto-line -1)
-      (vterm-send-string (vterm--get-password))
-      (vterm-send-return)))
-
-  (defun vterm-send-password ()
-    (let ((buf (current-buffer)))
-      (vterm)
-      (sleep-for 5)
-      (vterm-send-string (vterm--get-password))
-      (vterm-send-return)
-      (vterm-clear)))
-
-  (defun vterm-run (command)
-    (save-window-excursion
-      (vterm-send-command command t)))
-
-  (defun vterm-send-paragraph ()
-    (interactive)
-    (let* ((start (save-excursion
-		    (backward-paragraph)
-		    (point)))
-	   (end (save-excursion
-		  (forward-paragraph)
-		  (point)))
-	   (command (buffer-substring start end)))
-      (vterm-run command)))
-
-  (defun eval-expression-at-point ()
-    (interactive)
-    ;; TODO: This could be a little more robust
-    (let ((url (thing-at-point 'line)))
-      (browse-url url)))
- ;;; Figure out auto/tab complete (with lsp?)
- ;;;###autoload
-  (define-derived-mode eirene-term-mode sh-mode "eirene-term"
-		       "Major mode for eirene-term files.")
-  ;; TODO: Create a macro - major-mode-redefs that works like
-  ;; major mode map but does this...
-
-  (evil-define-key  'insert eirene-term-mode-map
-    (kbd "C-c C-c")      'vterm-send-paragraph
-    (kbd "<tab>")        'comint-dynamic-complete-filename
-    ;; Only works in GUI mode
-    (kbd "C-<return>")   'vterm-send-paragraph
-    (kbd "C-SPC")      'vterm-send-paragraph
-    (kbd "C-c RET")      'vterm-send-paragraph)
-
-
-  (evil-define-key 'normal eirene-term-mode-map
-    (kbd "C-c C-c")    'vterm-send-paragraph
-    (kbd "C-c RET")    'vterm-send-paragraph
-    (kbd "C-SPC")    'vterm-send-paragraph
-    (kbd "C-<return>") 'vterm-send-paragraph
-    ;; Why can't these be in major-mode-map?
-    "mp" 'vterm-send-1password
-    "mc" 'vterm-send-paragraph
-    "mb" 'browse-url-at-point)
-
-  (defvar *eirene-term-session* nil)
-  (defvar *eirene-term-buffer* "*eirene-term*")
-
-  (defun eirene-term ()
-    (interactive)
-    (if *eirene-term-session*
-	(workspace-to-workspace-number *eirene-term-session*)
-      (let* ((ws-num (workspace-get-next-workspace-number))
-	     (ws-name (format "%s: eirene-term" ws-num)))
-	(workspace--to-workspace-number ws-num ws-name)
-	(let ((vterm-buffer (vterm)))
-	  (split-window-right)
-	  (switch-to-buffer *eirene-term-buffer*)
-	  (eirene-term-mode))
-	(setq *eirene-term-session* ws-num))))
-
-  (defun eirene-term-end-session ()
-    (interactive)
-    (if (not *eirene-term-session*)
-	(message "No eirene term session active")
-      (progn
-	(if (equal *eirene-term-session* 1)
-	    (workspace-to-workspace-number 2)
-	  (workspace-to-workspace-number 1))
-	(workspace-remove-workspace-number *eirene-term-session*)
-	(setq *eirene-term-session* nil))))
-
-  (defun vterm-goto-beginning ()
-    (interactive)
-    (vterm--goto-line 0)))
-
-(module! term
-  :use-package nil
-  (custom-set-faces
-
-   '(term-color-black ((t (:foreground "#3F3F3F" :background "#2B2B2B"))))
-   '(term-color-red ((t (:foreground "#AC7373" :background "#8C5353"))))
-   '(term-color-green ((t (:foreground "#7F9F7F" :background "#9FC59F"))))
-   '(term-color-yellow ((t (:foreground "#DFAF8F" :background "#9FC59F"))))
-   '(term-color-blue ((t (:foreground "#7CB8BB" :background "#4C7073"))))
-   '(term-color-magenta ((t (:foreground "#DC8CC3" :background "#CC9393"))))
-   '(term-color-cyan ((t (:foreground "#93E0E3" :background "#8CD0D3"))))
-   '(term-color-white ((t (:foreground "#DCDCCC" :background "#656555"))))
-
-   '(term-default-fg-color ((t (:inherit term-color-white))))
-   '(term-default-bg-color ((t (:inherit term-color-black))))))
-
-(module! ag
+(module! rg
   :defer t
   :ensure t)
 
@@ -692,6 +517,7 @@
   (add-hook 'org-after-todo-statistics-hook #'org-summary-todo)
   (add-hook 'electric-indent-functions
 	    (lambda (x) (when (eq 'org-mode major-mode) 'no-indent)))
+  (add-hook 'org-mode-hook 'flyspell-mode)
 
   (defun org-code (value)
     (interactive "sText: ")
@@ -723,7 +549,8 @@
      "mk"  'org-move-item-up
      "mh"  'org-promote-subtree
      "ml"  'org-demote-subtree
-     "si"  'org-toggle-inline-images)
+     "si" 'org-toggle-inline-images
+     ""  'org-meta-return)
     :labels
     ("i"  "insert"
      "j"  "jump"
@@ -743,33 +570,8 @@
   (defmacro capture-entry (key header)
     `'(,key ,header entry
 	    (file+headline ,*status-file* ,header)
-	    "*** TODO %?\nSCHEDULED: %^t\n"))
+       "*** TODO %?\nSCHEDULED: %^t\n"))
 
-  (defun org-add-to-issue-block ()
-    (let ((issue-number (read-string "Issue Number: ")))
-      (save-window-excursion
-	(find-file *status-file*)
-	(goto-char 0)
-	(let* ((issue-label (format "GH-%s" issue-number))
-	       (issue-header (format "TODO %s" issue-label))
-	       (maybe-header (org-header-position
-			      (list "Tasks" "Engine Team" issue-header)))
-	       (header-pos nil))
-	  (if maybe-header
-	      (setq header-pos maybe-header)
-	    (progn
-	      (goto-char (org-header-position (list "Tasks" "Engine Team")))
-	      (re-search-forward ":END:")
-	      (forward-line 1)
-	      (setq header-pos (point))
-	      (insert (format "*** TODO GH-%s\n" issue-number))
-	      (insert
-	       (format ":PROPERTIES:\n:CATEGORY: %s\n:END:\n"
-		       (downcase issue-label)))
-	      (insert "\n")))
-	  (goto-char header-pos)))))
-
-  (require 'ox-md)
   (setq org-startup-indented t
   	org-startup-truncated nil
   	org-hide-leading-stars nil
@@ -786,16 +588,12 @@
 	nrepl-sync-request-timeout nil
 	org-capture-templates
 	(list
-	 '("t" "Engine Team" entry
-	   (file+headline *status-file* "General")
-	   "**** TODO %?\nSCHEDULED: %^t\n")
-	 (capture-entry "c" "Comfort")
-	 (capture-entry "s" "Cisco Onboarding")
+	 (capture-entry "p" "Pipes")
+	 (capture-entry "s" "Spacephoenix")
 	 (capture-entry "l" "Learning")
-	 (capture-entry "o" "Miscellaneous")
-	 '("i" "Conure Issue" entry
-	   (file+function *status-file* org-add-to-issue-block)
-	   "**** TODO %?\nSCHEDULED: %^t\n")))
+	 (capture-entry "k" "Scotus")
+	 (capture-entry "e" "Emacs")))
+
   (org-babel-do-load-languages
    'org-babel-load-languages
    '((clojure . t)
@@ -806,9 +604,7 @@
      (shell . t))))
 
 (module! org-agenda
-  :requires evil
-  :after org
-  :config
+  :use-package nil
   (evil-set-initial-state 'org-agenda-mode 'normal)
   (evil-define-key 'normal org-agenda-mode-map
     "b" 'org-agenda-earlier
@@ -841,25 +637,7 @@
   :ensure t
   :after org
   :init
-  (load-file "/Users/anparisi/emacs-files/widget.el")
   (setq org-timeline-prepend nil)
-
-  (defun org-insert-stock-ticker ()
-    (unless (buffer-narrowed-p)
-      (goto-char (point-min))
-      (while (and (or
-		   (eq (get-text-property
-			(line-beginning-position) 'org-agenda-type)
-		       'agenda)
-		   (member 'org-timeline-elapsed (text-properties-at (point))))
-		  (not (eobp)))
-	(forward-line))
-      (forward-line)
-      (let ((inhibit-read-only-t))
-	(cursor-sensor-mode 1)
-	(let ((widget-string (agenda-widget!)))
-	  (insert widget-string)))
-      (font-lock-mode)))
 
   (defun org-color-holidays-green ()
     (save-excursion
@@ -868,9 +646,8 @@
 	(add-text-properties (match-beginning 0) (point-at-eol)
 			     '(face (:foreground "#AFD75F"))))))
 
-    (add-hook 'org-agenda-finalize-hook 'org-timeline-insert-timeline :append)
-    (add-hook 'org-agenda-finalize-hook 'org-insert-stock-ticker :append)
-    (add-hook 'org-agenda-finalize-hook 'org-color-holidays-green :append))
+  (add-hook 'org-agenda-finalize-hook 'org-timeline-insert-timeline :append)
+  (add-hook 'org-agenda-finalize-hook 'org-color-holidays-green :append))
 
 ;;;;;;;
 ;;; LSP
@@ -965,16 +742,22 @@
 
 (module! emacs
   :use-package nil
+  (defun elisp-debug-function ()
+    (interactive)
+    (eval-defun t))
   (evil-define-key 'normal emacs-lisp-mode-map
     (kbd "L") 'forward-sexp
     (kbd "H") 'backward-sexp)
   (major-mode-map emacs-lisp-mode
     :labels
-    ("e" "eval")
+    ("a"
+     "action"
+     "e" "eval")
     :bindings
     ("af" 'clojure-thread-first-all
      "al" 'clojure-thread-last-all
-     "el" 'eval-buffer
+     "ad" 'elisp-debug-function
+     "eb" 'eval-buffer
      "ed" 'eval-defun
      "ee" 'eval-last-sexp
      "ep" 'pp-eval-last-sexp
@@ -1044,7 +827,7 @@
             (completing-read
 	     "Find Definitions: "
 	     (xref-backend-identifier-completion-table backend)
-             nil nil nil
+             nil t (thing-at-point 'word 'no-properties)
              'xref--read-identifier-history)))
       (if (equal id "")
           (user-error "There is no default identifier")
@@ -1069,14 +852,9 @@
       (cider-eval-defun-at-point)
       (evil-normal-state)))
 
-  (defun clojure-start-scratch-repl ()
+  (defun cider-turn-on-debug-at-point ()
     (interactive)
-    (workspace-add-workspace (workspace-get-next-workspace-number))
-    (tmux-new-window-with-process "bb --nrepl-server")
-    (sleep-for 1)
-    (let ((file (make-temp-file "clojure-scratch" nil ".clj")))
-      (find-file file)
-      (my-cider-op 'cider-connect-clj '(:host "localhost" :port 1667))))
+    (cider-eval-defun-at-point t))
 
   (major-mode-map clojure-mode
       :bindings
@@ -1084,7 +862,7 @@
 	  ","  'xref-pop-marker-stack
 	  "'" 'clojure-toggle-ignore
 	  "aa" 'lsp-execute-code-action
-	  "ad" 'clojure-toggle-debug-at-point
+	  "ad" 'cider-turn-on-debug-at-point
 	  "ae" 'cider-englighted-mode
 	  "af" 'clojure-thread-first-all
 	  "al" 'clojure-thread-last-all
@@ -1093,7 +871,7 @@
 	  "au" 'clojure-unwind-all
 	  "dd" 'cider-doc
 	  "de" 'eldoc-doc-buffer
-	  "el" 'cider-load-buffer
+	  "eb" 'cider-load-buffer
 	  "ee" 'cider-pprint-eval-last-sexp
 	  "ed" 'cider-eval-defun-at-point
 	  "ec" 'cider-eval-defun-to-comment
@@ -1131,18 +909,98 @@
 	clojure-align-forms-automatically t
 	org-babel-clojure-backend 'cider))
 
-(module! fennel-mode
-  :use-package nil
-  :config
-  (autoload 'fennel-mode "/Users/anparisi/emacs-files/fennel-mode/fennel-mode.el" nil t)
-  (add-to-list 'auto-mode-alist '("\\.fnl\\'" . fennel-mode)))
+(module! eros
+     :init
+     (eros-mode 1)
+
+     (defun eros-build-output-string (output value)
+       (concat "" (when (not (string-empty-p output)) (concat output ": ")) value ))
+
+     (defun eros-overlay-result (value)
+       (eros--make-result-overlay (format "%s" value)
+                      :where (save-excursion (end-of-defun) (point))
+                      :duration eros-eval-result-duration))
+
+     (defun ~/emacs-lisp/eval-defun-pp ()
+       (interactive)
+       (let ((output-buffer (get-buffer-create "*elisp-result*"))
+         (current-buffer (current-buffer)))
+         (save-excursion
+              (end-of-defun)
+              (beginning-of-defun)
+              (let* ((form (read (current-buffer)))
+             (result (eval form)))
+        (pop-to-buffer output-buffer)
+        (setq buffer-read-only nil)
+        (erase-buffer)
+        (pp result (current-buffer))
+        (setq buffer-read-only t)))
+         (pop-to-buffer current-buffer)))
+
+     :config
+
+     (comment
+      (major-mode-map emacs-lisp-mode
+              ;; TODO
+              )))
+(module! sly
+     :after eros
+     :init
+     (defun sly-defun-at-point ()
+       "Docs."
+       (interactive)
+       (save-excursion
+        (apply #'buffer-substring-no-properties
+           (sly-region-for-defun-at-point))))
+
+     (defun sly-eval-overlay ()
+       "Eval current expression in Lisp; insert any output in overlay at point."
+       (interactive)
+       (let ((form (sly-defun-at-point)))
+         (if (string-match "^(defvar " form)
+         (sly-eval-async
+          `(slynk:re-evaluate-defvar ,form)
+          (lambda (result)
+            (setq this-command "eros-sly-eval-overlay")
+            (eros-overlay-result result)))
+         (sly-eval-async
+          `(slynk:eval-and-grab-output ,form)
+          (lambda (result)
+            (setq this-command "eros-sly-eval-overlay")
+            (cl-destructuring-bind (output value) result
+                       (eros-overlay-result (eros-build-output-string output value))))))))
+     (setq inferior-lisp-program "sbcl")
+
+
+     (require 'sly-autodoc "contrib/sly-autodoc")
+     (require 'sly-mrepl "contrib/sly-mrepl")
+
+     (defun lisp/sly-mrepl-clear-repl ()
+       (interactive)
+       (save-window-excursion
+         (switch-to-buffer "*sly-mrepl for sbcl*")
+         (sly-mrepl-clear-repl)))
+     :config
+     (major-mode-map
+         lisp-mode
+      :bindings ("ed"
+             'sly-eval-overlay
+             "el" 'sly-eval-buffer
+             "ep" 'sly-pprint-eval-last-expression
+             "as" 'sly-toggle-trace-fdefinition
+             "jc" 'sly-connect
+             "q"  'sly-quit-lisp
+             "c"  'lisp/sly-mrepl-clear-repl
+             )
+      :labels (;;"a" "debug"
+           "j" "jack in"
+               "e" "eval"))
+     (major-mode-map
+         sly-mrepl-mode
+         :bindings ("c" 'sly-mrepl-clear-repl)))
 
            ;;;
 ;;;;;;;;;;;;;;
-
-(module! poetry
-  :ensure t
-  :defer t)
 
 ;;;;;;;
 ;;; SQL
@@ -1186,7 +1044,6 @@
 
 	   (lsp-connection `((driver . ,(sql-product-string product))
 			     (dataSourceName . ,lsp-string))))
-      (message (format "%s" server-connection))
       `(progn
 	 (push ',server-connection sql-connection-alist)
 	 (push ',lsp-connection lsp-sqls-connections)
@@ -1350,4 +1207,21 @@ OUT describes the output file and is either a %-escaped string
 
  "I should write this at some point, I'm surprised there aren't any
   emacs lisp packages for navigating clojure code."
+  )
+
+(module! forth-mode
+  :defer t
+  :ensure t
+  :after eros
+  :init
+  (defun forth-expression-at-point ()
+    (interactive)
+    (save-excursion
+      (re-search-forward "[;\\n]" nil t)
+      (backward-sexp)
+      (let ((start (point)))
+	(forward-sexp)
+	(buffer-substring-no-properties
+	 start (point)))))
+
   )

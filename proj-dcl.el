@@ -1,4 +1,4 @@
-;;; proj-dcl.el --- Manage Eirene Projects -*- lexical-binding: t -*-
+;; proj-dcl.el --- Manage Eirene Projects -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2023-2023 Andrew Parisi
 
@@ -14,119 +14,55 @@
 
 ;; Declare Eirene Projects here
 ;;; Code:
-(require 'tmux)
+(require 'tmuxmacs)
 
-(defun kill-clojure-repls ()
-  "Kill all running clojure repls."
+(defun phoenix-build ()
+  "Build Phoenix."
   (interactive)
-  (tmux-kill-all-windows-with-name "rlwrap")
-  (tmux-kill-all-windows-with-name "bb"))
+  (let ((default-directory "/Users/anparisi/.config/phoenix"))
+    (call-process "just" nil nil t "build")))
 
-(defun start-incident-manager ()
-  "Run the incident manager in another tmux window."
-  (interactive)
-  (tmux-new-window-with-process "incident_manager" "incident-manager"))
+(defproject phoenix
+    :key "s"
+    :project-dir "/Users/anparisi/.config/phoenix"
+    :commands ((:title "build" :executable "just"
+		      :args ("build")
+		      :transient-key "b")))
+
 
 (defun potentially-start-cider (project-name)
-  "Connect to PROJECT-NAME's repl if it's up."
-  (require 'cider)
-  (let* ((host "localhost")
-	 (port-alist (cider--infer-ports host nil)))
-    (when-let ((port (car
-		      (alist-get
-		       project-name port-alist nil nil #'equal))))
-      (let ((params (-> '()
-			(plist-put :host host)
-			(plist-put :port port))))
-	(my-cider-op 'cider-connect-clj params))
-      t)))
-
-(defun conure-init ()
-  "Start a conure session."
-  (interactive)
-  (tmux-new-window-with-process "conure" "conure")
-  (sleep-for 4)
-  (when (potentially-start-cider "conure")
-    (shell-command "docker compose up -d db")
-    (shell-command "docker compose up -d fake-ctia")
-    (shell-command "docker compose up -d distributor")
-    (cider-load-file
-     "/Users/anparisi/projects/conure/scratch/startup.clj")
-    ;; it would be cooler to do something like this...
-    ;;(cider-interactive-eval "(conure.startup/start-dev)")
-    ))
-
-(defun conure-quit ()
-  "Close conure repl and surrounding processes."
-  (interactive)
-  (save-all-buffers)
-  (when (or
-	 (sesman-browser-get 'object)
-	 (cider-current-repl))
-    (cider-quit))
-  (let* ((containers
-	  (split-string (shell-command-to-string "docker ps") "\n"))
-	 (conure-db (let ((result nil))
-		      (dolist (row containers)
-			(let ((items (split-string row)))
-			  (when (equal (cadr items) "postgres:14")
-			    (setq result (car items)))))
-		      result)))
-    (when conure-db
-      (shell-command (format "docker stop %s" conure-db))))
-  (tmux-kill-all-windows-with-name "conure")
-  (tmux-kill-all-windows-with-name "incident-manager"))
-
-(defproject conure
-    :key "c"
-    :website "https://github.com/advthreat/conure"
-    :stop (progn (conure-quit) (shell-command "docker compose down"))
-    :commands ((:title "db" :executable "just"
-		       :args ("db") :transient-key "d")
-	       (:title "stop" :executable conure-quit
-		       :transient-key "q" :executor :elisp)
-	       (:title "start" :executable conure-init
-		       :executor :elisp :transient-key "s")
-	       (:title "incident manager" :executable start-incident-manager
-		       :executor :elisp :transient-key "i")
-	       (:title "test" :executable "just"
-		       :args ("test") :transient-key "t")
-	       (:title "integration test" :executable "just"
-		       :args ("test-ci") :transient-key "I")
-	       (:title "reset db" :executable "just"
-		       :args ("db-reset") :transient-key "r")
-	       (:title "migrate db" :executable "just"
-		       :args ("db-migrate") :transient-key "m"))
-    :project-dir "/Users/anparisi/projects/conure")
-
-(defproject git-sync
-    :key "g"
-    :project-dir "/Users/anparisi/projects/git-sync")
-
-(defproject organizer
-    :key "o"
-    :project-dir "/Users/anparisi/org/"
-    :commands ((:title "Log Task" :executable log-task!
-		       :transient-key "t" :executor :elisp)
-	       (:title "Restore" :executable restore-organizer
-		       :transient-key "r" :executor :elisp))
-    :init (restore-organizer))
+       "Connect to PROJECT-NAME's repl if it's up."
+       (require 'cider)
+       (let* ((host "localhost")
+	      (port-alist (cider--infer-ports host nil)))
+	 (when-let ((port (car
+			   (alist-get
+			    project-name port-alist nil nil #'equal))))
+	   (let ((params
+		  (plist-put (plist-put '() :host host) :port port)))
+	     (my-cider-op 'cider-connect-clj params))
+	   t)))
 
 (defun scotus-init ()
   "Initialize a Scotus Session."
   (interactive)
-  (tmux-new-window-with-process "scotus" "scotus")
-  (sleep-for 4)
-  (when (potentially-start-cider "scotus")
-    (shell-command "brew services start postgresql@14")
-    (cider-load-file
-     "/Users/anparisi/projects/scotus/scratch/startup.clj")))
+  (let ((session (tmux-session/find-or-make "background")))
+    (if-let ((window (tmux-window/find "scotus")))
+	(message "scotus is already running.")
+      (let* ((window (tmux-window/make "scotus" session))
+	     (pane (car (tmux-pane/list window))))
+	(tmux-pane/send-command pane "scotus")
+	(sleep-for 4)
+	(when (potentially-start-cider "scotus")
+	  (shell-command "brew services start postgresql@16")
+	  (cider-interactive-eval
+	   "(do (require '[scotus.core :as scotus]) (scotus/init!))"))))))
 
 (defun scotus-quit ()
   "Quit a scotus session."
   (interactive)
   (cider-quit)
-  (tmux-kill-all-windows-with-name "scotus"))
+  (tmux-window/kill (tmux-window/find "scotus")))
 
 (defproject scotus
     :key "s"
@@ -134,18 +70,85 @@
     :commands ((:title "test" :executable "clj" :args ("-X:dev/test")
 		       :transient-key "t"))
     :project-dir "/Users/anparisi/projects/scotus"
-    :commands ((:title "test" :executable "clj"
+    :commands ((:title "stop" :executable :elisp
+		       :executor scotus-quit
+		       :transient-key "q")
+	       (:title "start" :executable :elisp
+		       :executor scotus-init
+		       :transient-key "s")
+	       (:title "test" :executable "clj"
 		       :args ("-X:dev/test") :transient-key "t"))
-    :stop )
+    :stop (scotus-quit))
 
 (defproject sql
     :key "q"
-  :init (sql-session-start))
+    :init (sql-session-start))
 
-(defproject teamspace
-    :key "t"
-    :init (teamspace-start-session)
-    :stop (save-all-buffers))
+(defproject bash-parens
+    :key "b"
+    :project-dir "/Users/anparisi/quicklisp/local-projects/bash-parens"
+    :init (let* ((make-server "(slynk:create-server :port 4005 :dont-close t)"))
+	    (tmux-new-window-with-process
+	     (format "rlwrap sbcl --eval '%s'" make-server)
+	     "lisp")
+	    (sleep-for 2)
+	    (sly-connect "localhost" 4005)
+	    (sly-interactive-eval "(ql:quickload :persidastricl)")
+	    (find-file
+	     "/Users/anparisi/quicklisp/local-projects/bash-parens/src/main.lisp"))
+  :commands ((:title "test" :executable "sbcl"
+	      :args ("--eval " "\"(asdf:test-system :bash-parens)\"")
+		     :transient-key "t"))
+  :quit (sly-quit-lisp))
+
+(defun pipes-init ()
+  "Start a pipes session."
+  (interactive)
+  (message "starting pipes backend...")
+  (let* ((session (tmux-session/find-or-make "background"))
+	 (window  (tmux-window/make "pipes" session))
+	 (pane    (car (tmux-pane/list window))))
+    (tmux-pane/send-command
+     pane
+     "cd /Users/anparisi/projects/pipes ; clj -M:dev/repl")
+    (sleep-for 3)
+    (message "Trying to connect to backend...")
+    (if (potentially-start-cider "pipes")
+	(cider-interactive-eval
+	 "(do (require '[pipes.server :as server]) (server/run!))")
+      (message "Could not find cider session for pipes.")
+      (message "starting pipes frontend..."))
+    (let ((next-pane (tmux-pane/split pane)))
+      (tmux-pane/send-command
+       next-pane
+       "cd /Users/anparisi/projects/pipes; npx shadow-cljs watch :app"))))
+
+(defun pipes-quit ()
+  "Stop a pipes session."
+  (interactive)
+  (if-let ((window (tmux-window/find "pipes")))
+      (tmux-window/kill window)
+    (message "No pipes session running. ")))
+
+(defproject pipes
+    :key "p"
+    :project-dir "/Users/anparisi/projects/pipes"
+    :commands ((:title
+		"start"
+		:executable pipes-init
+		:transient-key "s"
+		:executor :elisp)
+	       (:title
+		"stop"
+		:executable pipes-quit
+		:transient-key "q"
+		:executor :elisp))
+    :quit (pipes-stop))
+
+(defproject organizer
+    :key "o"
+    :project-dir "/Users/anparisi/org"
+    :init (restore-organizer))
 
 (project-switch-transient)
 

@@ -117,8 +117,7 @@
   "r" "kill-ring"
   "m" "major mode")
   :default-bindings
-  ("f"  'counsel-find-file
-   "el" 'eval-buffer
+  ("el" 'eval-buffer
    "ed" 'eval-defun
    "0"  'delete-window
    "1"  'delete-other-windows

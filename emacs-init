@@ -21,39 +21,27 @@
 (load! "~/.emacs.d/proj-dcl.el")
 (load! "~/.emacs.d/settings.el")
 
-;;; Custom Helpers
-(require 'timesheet-ui)
-(require 'tmux)
-(require 'spacehammer)
-(load! "~/emacs-files/diary-helpers.el")
-(load! "~/emacs-files/sql-session.el")
-(load! "~/emacs-files/teamspace.el")
-
 ;; Custom Theme
 (colors!
-  :background            "#3B3B3F"
+  :background            "#404042"
   :foreground            "#D0D0D0"
   :comment               "#8A8A8A"
-  :string                "#F5D037"
+  :string                "#FFC63F"
   :link                  (:foreground "#A2E5C3" :weight 'bold)
-  :constant              (:foreground "#F5D037" :weight 'bold)
-  :function              (:foreground "#18AED4" :weight 'bold)
-  :keyword               (:foreground "#AFD75F" :weight 'bold)
-  :type                  (:foreground "#18AED4")
+  :constant              (:foreground "#FFAF00" :weight 'bold)
+  :function              (:foreground "#7AD6FF" :weight 'bold)
+  :keyword               (:foreground "#94BE54" :weight 'bold)
+  :type                  (:foreground "#5D8FBE")
   :font                  (:height 220)
   :transparency          ('alpha 90 80)
   :mode-line             (:foreground "#3B3B3F" :background "#E4E4E4")
   :mode-line-inactive    (:foreground "#3B3B3F" :background "#D0D0D0")
   :prettify-symbols      t
-  :fringe                (:background "#d0d0d0"))
+  :fringe                (:background "#D0D0D0"))
 
 (mode-line!
-
-;;     (:text " ⚓ ")
-;;     (:text (format-time-string "%H:%M ")
-;;  	    :color "#C45651")
     (:text " ")
-  (:text  (mode-line-workspace))
+    (:text  (mode-line-workspace))
   (:text " %*%+ ")
   (:text " %m: ")
   (:text "%b ")
@@ -77,21 +65,11 @@
 
 ;; Custom Bindings
 
-(defun video-call-with ()
-  (interactive)
-  (let* ((contacts
-	  '(("Brooke" . "https://us06web.zoom.us/j/5142946429?pwd=ZDVTTndHYm9EKzRiSVBycWJ0NC8wdz09")
-	    ("Mike" .  "https://us02web.zoom.us/j/6214579943?pwd=aXlJUkM3d1d3SENQbk42aXZUTW9OQT0")))
-	 (person (ivy-completing-read "Who would you like to chat with: "
-				      (mapcar #'car contacts))))
-    (browse-url (alist-get person contacts nil nil #'equal))))
-
-(defun open-browser ()
-  "Open important browser tabs."
-  (interactive)
-  (let ((urls '(("Engine" .
-		 "https://github.com/orgs/advthreat/projects/13/views/3"))))
-    (mapcar (lambda (binding) (browse-url (cdr binding))) urls)))
+(defun org-date (month day year &optional mark)
+  "Like `diary-float', but with fixed (ISO) order of arguments."
+  (with-no-warnings
+    (let ((calendar-date-style 'iso))
+      (diary-date month day year mark))))
 
 (defun messages-buffer ()
   (interactive)
@@ -146,9 +124,10 @@
   (workspace-to-workspace-number 6))
 
 (defun restore-organizer-internal (refresh?)
+  "Restore an organizer session.
+Optionally REFRESH? the calendar."
+  (require 'timesheet-ui)
   (org-agenda-list 1)
-  (when refresh?
-    (refresh-calendar-items-next-week))
   (let ((agenda-buffer (current-buffer)))
     (delete-other-windows)
     (switch-to-buffer agenda-buffer)
@@ -181,6 +160,8 @@
   (interactive)
   (save-buffers-kill-emacs t))
 
+(require 'tmuxmacs)
+
 (which-key-map evil-normal-state-map ","
   :labels
   ( "g"  "git"
@@ -197,12 +178,13 @@
     "te" "eirene term"
     "tf" "flyspell"
     "ts" "sql"
-    "tt" "tmux"
+    "u" "tmux"
     "v"  "ivy-view"
     "w"  "workspaces"
     )
   :default-bindings
-  (;; buffer
+  ("f" 'diranger
+   ;; buffer
    "ba" 'save-all-buffers
    "bb" 'workspace-switch-buffer
    "bd" 'kill-buffer
@@ -258,7 +240,7 @@
    "tcq" 'kill-clojure-repls
    "tee" 'eirene-term
    "teq" 'eirene-term-end-session
-   "ttt" 'tmux-close-window-interactively
+   "u"  'tmuxmacs
    "tp"  'project-switch-project
    "td"  'docker
    "tx"  'project-quit-project
@@ -284,6 +266,8 @@
 ;; Clean this up and put it in a macro
 (evil-define-key 'normal 'evil-normal-state-map "'" 'evil-jump-item)
 (evil-define-key 'visual 'evil-visual-state-map "'" 'evil-jump-item)
+(evil-define-key 'normal 'evil-normal-state-map "-" 'evil-jump-item)
+(evil-define-key 'visual 'evil-visual-state-map "-" 'evil-jump-item)
 
 (evil-define-key 'normal 'evil-normal-state-map (kbd "C-k") 'comint-previous-input)
 (evil-define-key 'insert 'evil-insert-state-map (kbd "C-k") 'comint-previous-input)
@@ -318,55 +302,39 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(ignored-local-variable-values
+   '((elisp-lint-indent-specs (if-let* . 2) (when-let* . 1)
+      (let* . defun) (nrepl-dbind-response . 2)
+      (cider-save-marker . 1) (cider-propertize-region . 1)
+      (cider-map-repls . 1) (cider--jack-in . 1)
+      (cider--make-result-overlay . 1) (insert-label . defun)
+      (insert-align-label . defun) (insert-rect . defun)
+      (cl-defun . 2) (with-parsed-tramp-file-name . 2)
+      (thread-first . 0) (thread-last . 0))
+     (checkdoc-package-keywords-flag)))
  '(package-selected-packages
-   '(json-mode yaml-mode which-key websocket vterm use-package undo-tree ttl-mode sqlformat sparql-mode restclient request quelpa pyvenv proof-general polymode pbcopy org-timeline just-mode ivy-rich hcl-mode git-timemachine flycheck exec-path-from-shell evil-collection envrc dockerfile-mode docker dap-mode crdt counsel company code-review cider anaphora alert ag))
+   '(json-mode yaml-mode which-key websocket vterm use-package undo-tree
+     ttl-mode sqlformat sparql-mode restclient request quelpa pyvenv
+     proof-general polymode pbcopy org-timeline just-mode ivy-rich
+     hcl-mode git-timemachine flycheck exec-path-from-shell
+     evil-collection envrc dockerfile-mode docker dap-mode crdt
+     counsel company code-review cider anaphora alert ag))
  '(safe-local-variable-values
    '((cider-preferred-build-tool . lein)
-     (eval progn
-      (put 's/defn 'clojure-doc-string-elt 2)
+     (eval progn (put 's/defn 'clojure-doc-string-elt 2)
       (define-clojure-indent
-       (puppetlabs\.trapperkeeper\.core/defservice
-	'(:defn
-	  (:defn)))
-       (trapperkeeper/defservice
-	'(:defn
-	  (:defn)))
-       (tk/defservice
-	'(:defn
-	  (:defn)))
-       (defservice
-	   '(:defn
-	     (:defn)))
-       (dotests 2)
-       (context 2)
-       (tk-test 2)
-       (DELETE 2)
-       (GET 2)
-       (PATCH 2)
-       (POST 2)
-       (PUT 2)))
+       (puppetlabs.trapperkeeper.core/defservice '(:defn (:defn)))
+       (trapperkeeper/defservice '(:defn (:defn)))
+       (tk/defservice '(:defn (:defn))) (defservice '(:defn (:defn)))
+       (dotests 2) (context 2) (tk-test 2) (DELETE 2) (GET 2)
+       (PATCH 2) (POST 2) (PUT 2)))
      (cljr-favor-prefix-notation)
-     (eval progn
-      (put 's/defn 'clojure-doc-string-elt 2)
+     (eval progn (put 's/defn 'clojure-doc-string-elt 2)
       (define-clojure-indent
-       (puppetlabs\.trapperkeeper\.core/defservice
-	'(:defn
-	  (:defn)))
-       (trapperkeeper/defservice
-	'(:defn
-	  (:defn)))
-       (tk/defservice
-	'(:defn
-	  (:defn)))
-       (defservice
-	   '(:defn
-	     (:defn)))
-       (dotests 2)
-       (context 2)
-       (DELETE 2)
-       (GET 2)
-       (PATCH 2)
-       (POST 2)
+       (puppetlabs.trapperkeeper.core/defservice '(:defn (:defn)))
+       (trapperkeeper/defservice '(:defn (:defn)))
+       (tk/defservice '(:defn (:defn))) (defservice '(:defn (:defn)))
+       (dotests 2) (context 2) (DELETE 2) (GET 2) (PATCH 2) (POST 2)
        (PUT 2)))
      (eval add-to-list 'auto-mode-alist
       '("\\.clj-template$" . clojure-mode))

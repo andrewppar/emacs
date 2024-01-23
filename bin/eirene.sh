@@ -26,11 +26,13 @@ then
 elif [ $ACTION == 'sync' ]
 then
     SWITCH_BUFFER="(switch-to-buffer \"*Messages*\")"
+    PULL_REPOS="(straight-pull-recipe-repositories)"
     MESSAGE_RECOMPILE="(message \"byte-recompiling\")"
-    RECOMPILE_PACKAGES="(byte-recompile-directory \"~/.emacs.d\")"
+    RECOMPILE_PACKAGES="(byte-recompile-directory \"~/.emacs.d\" nil t)"
 
     SYNC="$START
           $SWITCH_BUFFER
+          $PULL_REPOS
           $MESSAGE_RECOMPILE
           $RECOMPILE_PACKAGES
           $MESSAGE_DONE
