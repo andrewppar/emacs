@@ -27,20 +27,25 @@
 
 ;;(require 'workspace)
 (require 'transient)
+(require 'ansi-color)
 
+;; Make this into a single hash table
 (defvar *project-projects* '())
+(defvar *project-transient-keys* '())
 (defvar *project-workspace-map* '())
 (defvar *project-directories* '())
 (defvar *project-quit-function* ())
 
 
 (defun alist-update (alist key update-function &rest args)
+  "Change the value of ALIST at KEY with UPDATE-FUNCTION applied to ARGS."
   (let* ((old-value (alist-get key alist nil t #'equal))
 	 (new-alist (assoc-delete-all key alist #'equal))
 	 (new-value (apply update-function old-value args)))
     (cons (cons key new-value) new-alist)))
 
 (defun plist-keys (plist)
+  "Get the keys for PLIST."
   (let ((key-position? t)
 	(result      '()))
     (dolist (item plist)
@@ -49,16 +54,8 @@
       (setq key-position? (not key-position?)))
     result))
 
-(defmacro with-vterm(&rest body)
-  (declare (indent defun))
-  (vterm)
-  (vterm--goto-line -1)
-  (vterm-send-string (vterm-get-password))
-  (vterm-send-return)
-  (vterm-clear)
-  (progn ,@body))
-
 (defun create-run-function (project-dir project-name command)
+  "Create a project run function for PROJECT-NAME in PROJECT-DIR using COMMAND."
   (let ((function-name (intern (format "run-%s" project-name))))
     `(defun ,function-name ()
        (interactive)
@@ -71,6 +68,9 @@
        (vterm-send-command ,command))))
 
 (defun docker-build-function (project-dir tag vault build-block)
+  "Create a function to build a docker image in PROJECT-DIR.
+
+ Build  with TAG in AWS VAULT with the options in BUILD-BLOCK."
   (let* ((tag-name   (substring (symbol-name tag) 1))
 	 (function-name (intern (format "%s-build" tag-name)))
 	 (build-args    (plist-get build-block :build-args))
@@ -94,13 +94,13 @@
        (interactive)
        (vterm)
        (vterm--goto-line -1)
-;;       (vterm-send-string (vterm-get-password))
-;;       (vterm-send-return)
-;;       (vterm-clear)
        (vterm-send-command ,cd-string)
        (vterm-send-command ,build-string))))
 
 (defun docker-run-function (project-dir tag vault run-block)
+  "Create a function to run a docker image in PROJECT-DIR.
+
+It is run with TAG in AWS VAULT using RUN-BLOCK."
   (let* ((tag-name      (substring (symbol-name tag) 1))
 	 (function-name (intern (format "%s-run" tag-name)))
 	 (volume        (plist-get run-block :volume))
@@ -140,38 +140,48 @@
        (interactive)
        (vterm)
        (vterm--goto-line -1)
-       ;;(vterm-send-string (vterm-get-password))
-       ;;(vterm-send-return)
-       ;;(vterm-clear)
        (vterm-send-command ,cd-string)
        (vterm-send-command ,run-string))))
 
 
 (defun create-command-symbol (project-name title)
+  "Create a command for PROJECT-NAME with TITLE."
   (let ((clean-title
 	 (replace-regexp-in-string (regexp-quote " ") "-" title)))
-    (intern (format "%s-%s" project-name title))))
+    (intern (format "%s-%s" project-name clean-title))))
+
+(define-minor-mode project-command-mode
+    "Minor mode for project command result pane."
+  :init-value nil)
+(evil-define-key 'normal project-command-mode-map
+  "q" 'kill-buffer-and-window)
 
 (defun create-command-function (project-name project-dir command)
+  "Create a function to run COMMAND in PROJECT-DIR with PROJECT-NAME."
   (cl-destructuring-bind (&key title executable args &allow-other-keys)
       command
     (let ((function-name       (create-command-symbol project-name title))
-	  (project-name-string (format "%s" project-name)))
+	  (project-name-string (format "%s" project-name))
+	  (executor            (or (plist-get command :executor) :shell)))
       `(defun ,function-name ()
 	 (interactive)
 	 (let ((default-directory ,project-dir))
-	   (save-window-excursion
-	     (when (< (length (window-list)) 2)
-	       (split-window-right))
-	     (let ((test-buf ,(format "*%s*" function-name)))
-	       (with-output-to-temp-buffer test-buf
-		 (switch-to-buffer test-buf)
-		 (call-process ,executable nil test-buf nil ,@args)
-		 (let ((done? (read-char "Press any key to exit")))
-		   (kill-buffer test-buf)
-		   done?)))))))))
+	   ,(cl-case executor
+	     (:elisp `(,executable ,@args))
+	     (:shell
+	      `(progn
+		 (when (< (length (window-list)) 2)
+		   (split-window-right))
+		 (let ((test-buf ,(format "*%s*" function-name)))
+		   (with-output-to-temp-buffer test-buf
+		     (switch-to-buffer test-buf)
+		     (project-command-mode 1)
+		     (call-process ,executable nil test-buf t ,@args)
+		     (ansi-color-apply-on-region
+		      (point-min) (point-max))))))))))))
 
 (defun create-command-functions (project-name project-dir commands)
+  "Create command functions for PROJECT-NAME in PROJECT-DIR with COMMANDS."
   `(progn
      ,@(mapcar
 	(lambda (command)
@@ -179,18 +189,21 @@
        commands)))
 
 (defun command-transient-menu-item (project-name command)
+  "Create a transient menu item for COMMAND in PROJECT-NAME."
   (cl-destructuring-bind (&key title transient-key &allow-other-keys)
       command
     (let ((function-name (create-command-symbol project-name title)))
       `(,(format "c%s" transient-key) ,title ,function-name))))
 
 (defun command-transient-menu-items (project-name commands)
+  "Create all transient menu items for COMMANDS in PROJECT-NAME."
   (mapcar
    (lambda (command)
      (command-transient-menu-item project-name command))
    commands))
 
 (defun create-docker-functions (project-dir args)
+  "Creat all docker functions for PROJECT-DIR with ARGS."
   (let ((docker-block (plist-get args :docker)))
     (when docker-block
       (let ((tags (plist-keys docker-block))
@@ -207,6 +220,7 @@
 	(cons 'progn result)))))
 
 (defun regenerate-docker-function-names (docker-block)
+  "Get the docker function names for DOCKER-BLOCK."
   (let ((tags    (plist-keys docker-block))
 	(result '()))
     (dolist (tag tags)
@@ -218,6 +232,7 @@
     result))
 
 (defun create-docker-compose-functions (project-dir project-name)
+  "Create all the docker-compose functions for PROJECT-NAME with PROJECT-DIR."
   (let ((build (intern (format "compose-build-%s" project-name)))
 	(run   (intern (format "compose-run-%s" project-name))))
     `(progn
@@ -257,9 +272,11 @@
    :project-dir -- a specification of where the project is
    :conda-env   -- a specification of a conda environment
      associated with the project."
+  ;; todo - make this a descructuring
   (let* ((project-dir     (plist-get args :project-dir))
 	 (conda-env       (plist-get args :conda-env))
 	 (init            (plist-get args :init))
+	 (transient-key   (plist-get args :key))
 	 (stop            (plist-get args :stop))
 	 (docker          (plist-get args :docker))
 	 (run-command     (plist-get args :run))
@@ -274,6 +291,8 @@
 					     (format "%s-session-visit-webiste")))))
     (push `(,(symbol-name project-name) . ,start-function-name)
 	  *project-projects*)
+    (push `(,(symbol-name project-name) . ,transient-key)
+	  *project-transient-keys*)
     (when stop
       (push (cons (format "%s" project-name) `,stop)
     	    *project-quit-function*))
@@ -284,6 +303,7 @@
 	 (delete-other-windows)
 	 (workspace-to-workspace-number-with-name
 	  ws-num (format "{} %s" ,(symbol-name project-name)))
+	 (push (cons ws-num ,(format "%s" project-name)) *project-workspace-map*)
 	 ,(when project-dir
 	    (setq *project-directories*
 		  (alist-update *project-directories*
@@ -355,16 +375,16 @@
 
 (defun project--all-projects ()
   "Gather all project names."
-  (mapcar #'car *project-projects*))
+  (reverse
+   (mapcar #'car *project-projects*)))
 
 (defmacro project-switch-transient ()
   "A macro to dynamically create transients for the project switcher."
-  (let ((menu-items '())
-	(current-command "a"))
+  (let ((menu-items '()))
     (dolist (project (project--all-projects))
-      (let ((fn (alist-get project *project-projects* nil nil #'equal)))
-	(push (list current-command project fn) menu-items)
-	(setq current-command (project-letter-inc current-command))))
+      (let ((fn (alist-get project *project-projects* nil nil #'equal))
+	    (key (alist-get project *project-transient-keys*)))
+	(push (list key project fn) menu-items)))
     `(transient-define-prefix project-switch-project ()
       "Allow user to switch to a project."
       ["Project" ,@(reverse menu-items)])))
@@ -374,22 +394,6 @@
   (if-let ((project-name (alist-get *current-workspace* *project-workspace-map*)))
       (funcall (intern project-name))
     (message "No project associated with current workspace")))
-
-;;(defun project-browse-website ()
-;;  "Select a project website to visit.
-;;
-;;  Options are selected from the projects
-;;  that specify a :website keyword."
-;;  (interactive)
-;;  (let* ((websites (mapcar #'car *project-website-map*))
-;;	 (to-visit (ido-completing-read
-;;		    "Select a website: "
-;;		    websites
-;;		    nil
-;;		    t))
-;;	 (url      (alist-get
-;;		    to-visit *project-website-map* nil nil #'equal)))
-;;    (browse-url url)))
 
 (defun project--name-from-workspace (ws)
   (-> ws (split-string ":") cdr car (substring 1)))
@@ -408,11 +412,8 @@
 	   (ws-name (project--name-from-workspace to-quit))
 	   (stop (alist-get
 		  ws-name *project-quit-function* nil nil #'equal)))
-      (workspace-switch-workspace ws-name)
-      (eval stop)
-      ;; HACK - find previous workspace or allow removal of current workspace
-      ;; I think I like the latter
-      (workspace-to-workspace-number 1)
+      (save-workspace-excursion ws-name
+	(eval stop))
       (workspace-remove-workspace to-quit))))
 
 (provide 'eirene-project)

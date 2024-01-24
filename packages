@@ -5,11 +5,15 @@ sparql-mode
 ttl-mode
 proof-general
 crdt
+yaml-mode
+json-mode
 dockerfile-mode
 docker
 restclient
 sql
 sqlformat
+sql-indent
+poetry
 clojure-mode
 cider
 company

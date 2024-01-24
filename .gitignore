@@ -30,3 +30,4 @@ request/*
 undo/*
 *.sqlite
 url
+conure-commit.txt
